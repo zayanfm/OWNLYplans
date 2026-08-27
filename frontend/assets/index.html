@@ -1,0 +1,2409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>OCBC Digital — OWNLYplans</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ocbc: { red: '#D81E05', black: '#1A1A1A', grey: '#767676', border: '#E8E8E8', bg: '#F5F4F0', cream: '#EDE8DF' }
+          },
+          fontFamily: { sans: ['-apple-system','BlinkMacSystemFont','Inter','SF Pro Display','Roboto','sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    window.__babelTransformAndRun = function(src) {
+      try {
+        var compiled = Babel.transform(src, { presets: [['react', { runtime: 'classic' }]] }).code;
+        (new Function('React','ReactDOM', compiled))(React, ReactDOM);
+      } catch(e) { console.error('[OWNLYplans]', e); }
+    };
+  </script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body { margin:0; padding:0; background:#111; display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; }
+    #root { width:390px; height:844px; background:#F5F4F0; border-radius:50px; overflow:hidden; position:relative; box-shadow:0 40px 80px rgba(0,0,0,0.65); }
+
+    
+    .panel { position:absolute; inset:0; display:flex; flex-direction:column; overflow:hidden; }
+    .scrollable { overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
+    .scrollable::-webkit-scrollbar { display:none; }
+    .hscroll { overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; white-space:nowrap; }
+    .hscroll::-webkit-scrollbar { display:none; }
+
+    
+    .dynamic-island { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:120px; height:36px; background:#000; border-radius:20px; z-index:200; }
+
+    /* Status bar */
+    .status-bar { height:54px; display:flex; align-items:flex-end; padding:0 20px 8px; position:relative; z-index:100; flex-shrink:0; }
+
+    /* Hero banner — lifestyle photo simulation */
+    .hero-bg { background: linear-gradient(135deg, #daeaf5 0%, #c8dff0 40%, #e8d5c0 70%, #d4c4a8 100%); }
+    .hero-red-arc { position:absolute; left:-30px; top:0; bottom:0; width:110px; background:#D81E05; border-radius:0 60% 60% 0; opacity:0.92; }
+    .hero-figure { position:absolute; right:0; top:0; bottom:0; width:68%; background:linear-gradient(to left, rgba(200,190,170,0.7) 0%, transparent 100%); }
+
+    /* Account card pill avatar */
+    .acct-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+
+    /* Tab pill */
+    .tab-active { background:#D81E05; color:#fff; border:none; }
+    .tab-inactive { background:#fff; color:#1A1A1A; border:1.5px solid #E0E0E0; }
+
+    /* Pressable */
+    .tap { transition:transform 0.1s,opacity 0.1s; cursor:pointer; }
+    .tap:active { transform:scale(0.96); opacity:0.8; }
+
+    /* Animations */
+    @keyframes slideUp { from{transform:translateY(22px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .su { animation:slideUp 0.32s ease forwards; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+    .pulse { animation:pulse 1.8s ease-in-out infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation:spin 0.8s linear infinite; }
+    @keyframes pop { 0%{transform:scale(0)} 60%{transform:scale(1.18)} 100%{transform:scale(1)} }
+    .pop { animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* Bottom nav */
+    .bnav { position:absolute; bottom:0; left:0; right:0; height:82px; background:#fff; border-top:1px solid #EBEBEB; display:flex; align-items:flex-start; padding-top:10px; z-index:100; }
+    .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:2px 0; }
+    .bnav-label { font-size:10px; font-weight:600; line-height:1; }
+
+    /* Quick action icons */
+    .qa-icon { width:44px; height:44px; border-radius:50%; background:#F5F4F0; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; }
+
+    /* OWNLYplans — agent cards */
+    @keyframes shimmer { 0%{background-position:-300px 0} 100%{background-position:300px 0} }
+    .shimmer { background:linear-gradient(90deg,#f0ede8 25%,#e8e4de 50%,#f0ede8 75%); background-size:300px 100%; animation:shimmer 1.2s infinite; border-radius:8px; }
+
+    /* Sticky approve drawer */
+    .approve-drawer { position:absolute; bottom:82px; left:0; right:0; background:rgba(245,244,240,0.97); backdrop-filter:blur(12px); border-top:1px solid #E8E8E8; padding:12px 16px 14px; z-index:50; }
+
+    /* Help portal */
+    @keyframes drawerSlide { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .help-drawer { animation:drawerSlide 0.32s cubic-bezier(0.32,0.72,0,1) forwards; border-radius:28px 28px 0 0; }
+    @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+    .help-overlay { animation:overlayIn 0.2s ease forwards; }
+
+    /* Floating action button */
+    .fab { position:absolute; bottom:92px; right:16px; width:44px; height:44px; border-radius:50%; background:#1A1A1A; color:#fff; font-size:18px; font-weight:900; font-style:italic; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:140; box-shadow:0 6px 20px rgba(0,0,0,0.28); transition:transform 0.1s,opacity 0.1s; }
+    .fab:active { transform:scale(0.92); opacity:0.85; }
+
+    /* Accordion */
+    @keyframes accordionOpen { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    .accordion-body { animation:accordionOpen 0.2s ease forwards; }
+
+    /* AI Life Planner — screen transitions */
+    @keyframes slideRight { from{transform:translateX(56px);opacity:0} to{transform:translateX(0);opacity:1} }
+    .sr { animation:slideRight 0.3s cubic-bezier(0.22,1,0.36,1) forwards; }
+    @keyframes fadeItem { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .fi { animation:fadeItem 0.35s ease forwards; opacity:0; }
+
+    /* Planner loading orbits */
+    @keyframes orbit1 { from{transform:rotate(0deg) translateX(48px)} to{transform:rotate(360deg) translateX(48px)} }
+    @keyframes orbit2 { from{transform:rotate(180deg) translateX(36px)} to{transform:rotate(540deg) translateX(36px)} }
+    .orbit1 { animation:orbit1 2s linear infinite; }
+    .orbit2 { animation:orbit2 3s linear infinite; }
+
+    /* Chat bubbles */
+    .bubble-user { background:#D81E05; color:#fff; border-radius:18px 18px 4px 18px; padding:10px 14px; font-size:13px; line-height:1.45; font-weight:500; }
+    .bubble-ai   { background:#fff; color:#1A1A1A; border-radius:18px 18px 18px 4px; padding:10px 14px; font-size:13px; line-height:1.45; font-weight:500; border:1px solid #E8E8E8; }
+
+    /* Chatbot drawer */
+    @keyframes chatOpen { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .chat-drawer { animation:chatOpen 0.32s cubic-bezier(0.32,0.72,0,1) forwards; border-radius:28px 28px 0 0; overflow:hidden; }
+
+    /* Range slider — cross-browser */
+    input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:4px; background:transparent; outline:none; cursor:pointer; }
+    input[type=range]::-webkit-slider-runnable-track { height:4px; background:linear-gradient(to right,#D81E05 var(--pct,50%),#E8E8E8 var(--pct,50%)); border-radius:4px; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:26px; height:26px; border-radius:50%; background:#D81E05; box-shadow:0 2px 10px rgba(216,30,5,0.45); margin-top:-11px; }
+    input[type=range]::-moz-range-track { height:4px; background:#E8E8E8; border-radius:4px; }
+    input[type=range]::-moz-range-progress { height:4px; background:#D81E05; border-radius:4px; }
+    input[type=range]::-moz-range-thumb { width:26px; height:26px; border-radius:50%; background:#D81E05; box-shadow:0 2px 10px rgba(216,30,5,0.45); border:none; }
+
+    /* Morph to FAB animation */
+    @keyframes morphToBubble {
+      0%   { width:160px; height:56px; border-radius:16px; transform:translate(0,0); opacity:1; }
+      55%  { border-radius:50%; width:56px; height:56px; opacity:0.95; }
+      100% { border-radius:50%; width:56px; height:56px; transform:translate(230px,220px); opacity:0; }
+    }
+    .morph-to-fab { animation:morphToBubble 0.8s cubic-bezier(0.34,1.1,0.64,1) forwards; }
+
+    /* Waiting pulse ring */
+    @keyframes pingRing { 0%{transform:scale(1);opacity:0.8} 100%{transform:scale(2.2);opacity:0} }
+    .ping { animation:pingRing 1.4s ease-out infinite; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/plain" id="jsx-source">
+const { useState, useEffect, useRef } = React;
+
+/* ═══════════════════════════════════════════════════════════════════
+   DATA  ·  Financial.pdf + OWNLYplans_Pitch_Script.docx
+═══════════════════════════════════════════════════════════════════ */
+
+const USER = { first: 'Mary', partner: 'Zayan', segment: '25–44 Dual Income' };
+
+const COPY = {
+  logout: 'Logout',
+  start: 'START',
+  next: 'Next',
+  edit: 'Edit',
+  agree: 'Agree',
+  disagree: 'Disagree',
+  continue: 'Continue →',
+  submitInvite: 'Submit Invitation →',
+  generatePlan: 'Generate Plan',
+  approvePlan: 'Approve Plan',
+  backHome: 'Back to Home',
+  approveExecute: 'Approve & Execute Plan',
+  executing: 'Executing Plan…',
+  seeAll: 'See all →',
+  getStarted: 'Get started →',
+  whatsThis: "What's this?",
+  currentMode: 'Current mode',
+  tapToExpand: 'Tap to expand',
+  highestPriority: 'Highest Priority',
+  dragToAdjust: 'Drag to adjust',
+  planVerified: 'Plan verified',
+  aiActive: 'AI Active',
+  live: 'LIVE',
+  ready: 'Ready',
+  source: 'SOURCE',
+  done: 'DONE',
+  active: 'ACTIVE',
+  filtered: 'FILTERED',
+  new: 'NEW',
+};
+
+// Autonomy modes — short labels only; full definitions live in the Help Portal
+const MODES = {
+  Low:    { style:'Notify Only',          pill:'Notify Only',          cls:'text-blue-600',   bg:'bg-blue-600',   ring:'border-blue-100 bg-blue-50'  },
+  Medium: { style:'Ask First',            pill:'Ask First',            cls:'text-[#D81E05]',  bg:'bg-[#D81E05]',  ring:'border-red-100 bg-red-50'    },
+  High:   { style:'Auto-Cap · S$500',     pill:'Auto-Cap · S$500',     cls:'text-green-600',  bg:'bg-green-600',  ring:'border-green-100 bg-green-50'},
+};
+
+// Surplus routing flows — Pitch Script Step 2
+const ALLOC_ROUTES = [
+  { to:'LionGlobal SGD MMF', amt:'S$1,000', yield:'3.85% p.a.',     icon:'💰', color:'text-blue-600'   },
+  { to:'BTO Goal Pot',        amt:'S$200',   yield:'Dec 2027 target', icon:'🏠', color:'text-green-600' },
+  { to:'FRANK Auto-pay',      amt:'S$1,240', yield:'Clears balance',  icon:'💳', color:'text-purple-600'},
+];
+
+// Agent orchestration statuses — Pitch Script Step 3
+const AGENT_STATUSES = [
+  { id:'cashflow',   icon:'💸', color:'bg-blue-50 border-blue-200',   text:'text-blue-700',   badge:'bg-blue-100 text-blue-800',   name:'Cashflow Forecast',        status:'Surplus Verified'         },
+  { id:'spending',   icon:'🛒', color:'bg-amber-50 border-amber-200', text:'text-amber-700',  badge:'bg-amber-100 text-amber-800', name:'Spending Pattern',          status:'Outliers Filtered'        },
+  { id:'goal',       icon:'🎯', color:'bg-green-50 border-green-200', text:'text-green-700',  badge:'bg-green-100 text-green-800', name:'Goal Optimiser',            status:'MMF Yield Maxed'          },
+  { id:'protection', icon:'🛡️', color:'bg-purple-50 border-purple-200',text:'text-purple-700',badge:'bg-purple-100 text-purple-800',name:'Protection & Opps',        status:'GE Gap Identified'        },
+];
+
+// Agent recommendation cards (expandable) — action details
+const AGENTS = [
+  { id:'cashflow',   icon:'💸', label:'Cashflow Agent',   color:'bg-blue-50 border-blue-200',    text:'text-blue-700',   conf:94, finding:'S$1,340 monthly surplus confirmed.',               action:'Route S$1,000 → LionGlobal MMF at 3.85% p.a.' },
+  { id:'spending',   icon:'🛒', label:'Spending Agent',   color:'bg-amber-50 border-amber-200',  text:'text-amber-700',  conf:87, finding:'F&B +18% vs last month · Dining Out.',            action:'Soft cap S$420/mo · Alert at 80%.' },
+  { id:'goal',       icon:'🎯', label:'Goal Agent',       color:'bg-green-50 border-green-200',  text:'text-green-700',  conf:91, finding:'BTO goal S$60K · Dec 2027 · On track ✓',          action:'+S$200/mo allocation · hit target 2 months early.' },
+  { id:'protection', icon:'🛡️', label:'Protection Agent', color:'bg-purple-50 border-purple-200',text:'text-purple-700', conf:89, finding:'Life cover gap: S$160K vs recommended.',           action:'GE FlexiLife Health plan · est. S$28/mo.' },
+];
+
+// Cross-product promos
+const PROMOS = [
+  { id:'ge',    logo:'🛡️', brand:'Great Eastern', title:'FlexiLife Term Plan',  sub:'Cover gap S$160K detected', tag:'Protection', tagCls:'bg-purple-100 text-purple-700', cta:'Get Covered', grad:'from-purple-700 to-purple-900' },
+  { id:'frank', logo:'💳', brand:'OCBC FRANK',    title:'6% cashback · Dining', sub:'Matched to your top category', tag:'Rewards', tagCls:'bg-orange-100 text-orange-700', cta:'Apply Now',  grad:'from-orange-500 to-rose-600'  },
+  { id:'gl',    logo:'🌿', brand:'Great Eastern', title:'GreatLife Saver II',    sub:'Savings + protection bundle', tag:'Savings',  tagCls:'bg-green-100 text-green-700',  cta:'Learn More', grad:'from-emerald-500 to-teal-700' },
+];
+
+// Accounts
+const ACCOUNTS = [
+  { id:'frank',   avatar:'FRA', avatarBg:'#E8A07A', label:'OCBC FRANK Account',  sub:'•••  •••  •',  bal:'S$ •,•••.••',  field:'Available balance', field2:'Debit card no.', field2val:'•• •  ••••  ••••  • ••' },
+  { id:'three60', avatar:'360', avatarBg:'#7AB5E8', label:'OCBC 360 Account',     sub:'•••• 4892',    bal:'S$24,180.33',  field:'Available balance', field2:'Savings bonus',  field2val:'S$12.80/mo'              },
+  { id:'mmf',     avatar:'MMF', avatarBg:'#89C48A', label:'LionGlobal SGD MMF',   sub:'Auto-surplus', bal:'S$8,500.00',   field:'Available balance', field2:'Yield p.a.',     field2val:'3.85%'                   },
+];
+const CARDS       = [{ id:'frank-card', avatar:'FRA', avatarBg:'#E8A07A', label:'OCBC FRANK Card',   sub:'•••• 1107',    bal:'S$1,240.80', field:'Outstanding',  field2:'Cashback (MTD)', field2val:'S$18.40'   }];
+const INVESTMENTS = [{ id:'sec',        avatar:'SGX', avatarBg:'#B07AE8', label:'OCBC Securities',   sub:'Portfolio',    bal:'S$18,450.00',field:'Market value', field2:'Return (MTD)',   field2val:'+3.2%  ▲'  }];
+
+/* ── Help Portal content — ALL dense explanations live here ── */
+const HELP_SECTIONS = [
+  {
+    id:'autonomy', icon:'🎛️', title:'Autonomy Modes', sub:'We Guide, U Decide',
+    items:[
+      { label:'Notify Only (Low)',                        text:'OWNLYplans monitors your accounts and sends smart alerts. You approve every action before anything moves.' },
+      { label:'Ask Before Moving Anything (Medium)',      text:'OWNLYplans proposes each transfer and waits for your tap. Nothing moves without your explicit OK.' },
+      { label:'Auto-Execute Within Set Cap (High)',       text:'Routine transfers auto-execute within your pre-set cap (S$500). Any larger move always needs your approval.' },
+    ],
+  },
+  {
+    id:'agents', icon:'🤖', title:'Multi-Agent System', sub:'4 AI agents working in parallel',
+    items:[
+      { label:'Cashflow Forecast Agent',        text:'Analyses 3–6 months of transactions to predict your reliable monthly surplus after all fixed commitments.' },
+      { label:'Spending Pattern Agent',         text:'Identifies and filters one-time anomalies (e.g. large purchases) so they don\'t distort your monthly baseline.' },
+      { label:'Goal Optimiser Agent',           text:'Routes surplus to high-yield MMFs and goal pots to maximise returns while keeping BTO and other milestones on track.' },
+      { label:'Protection & Opps Agent',        text:'Scans for insurance coverage gaps and cross-product matches from Great Eastern and OCBC.' },
+    ],
+  },
+  {
+    id:'feat', icon:'⚖️', title:'Governance & Safety', sub:'FEAT-Aligned Architecture',
+    items:[
+      { label:'FEAT Principles',                text:'Fairness, Ethics, Accountability, Transparency — every OWNLYplans decision is explainable, auditable, and reversible.' },
+      { label:'Hard Spending Floor',            text:'A minimum S$2,000 balance is always protected. OWNLYplans never routes funds below this floor.' },
+      { label:'Dynamic Cash Buffers',           text:'S$800 liquidity buffer maintained at all times. Overlapping bill dates are auto-resolved with rescheduling.' },
+      { label:'Immutable Audit Trail',          text:'Every action is permanently logged. You can review, dispute, or manually override any decision at any time.' },
+    ],
+  },
+  {
+    id:'anomaly', icon:'🔍', title:'Anomaly Detection', sub:'How baseline accuracy is preserved',
+    items:[
+      { label:'What counts as an anomaly?',     text:'A statistically unusual transaction — like a one-time MacBook purchase — that doesn\'t represent regular monthly spending.' },
+      { label:'How it\'s handled',              text:'The Spending Pattern Agent flags and excludes non-recurring outliers so your cashflow baseline stays accurate.' },
+      { label:'Your baseline is always honest', text:'Only true recurring expenses are used to calculate surplus. OWNLYplans never over-allocates based on one-off spends.' },
+    ],
+  },
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   AI LIFE PLANNER — Static Data
+═══════════════════════════════════════════════════════════════════ */
+const MOCK_PROFILE = [
+  { label:'Income Level',    value:'S$8,500/mo combined'         },
+  { label:'Marital Status',  value:'Married'                     },
+  { label:'Housing Goal',    value:'BTO Application · Dec 2027'  },
+  { label:'Dependents',      value:'0 (Planning for 1)'          },
+  { label:'Risk Profile',    value:'Balanced (MAS FAIR)'         },
+  { label:'CPF OA Balance',  value:'S$42,000'                    },
+];
+
+const CHATBOT_RESPONSES = [
+  "Based on your plan, I recommend topping up your BTO Goal Pot by S$200/mo. You'll hit the target 2 months early! 🏠",
+  "Your LionGlobal SGD MMF is yielding 3.85% p.a. No action needed — your surplus is working hard.",
+  "Your investment portfolio returned +3.2% this month. You're on track for your 5-year wealth target. 📈",
+  "Your protection gap of S$160K can be covered by GE FlexiLife at ~S$28/mo. Want me to generate a quote?",
+  "F&B spending is 18% above your monthly baseline. I've flagged a soft cap of S$420/mo to keep your plan on track. 🛒",
+  "All 4 AI agents are active. Your plan is fully optimised for this month. Great work, Mary! ✨",
+];
+
+const PLAN_MILESTONES_5YR = [
+  { year:'Year 1', icon:'💰', title:'Emergency Fund Complete',  detail:'S$24,000 fully funded · 3-month buffer secured'          },
+  { year:'Year 2', icon:'🏠', title:'BTO Key Collection',       detail:'S$60,000 goal hit · Down payment & stamp duty ready'     },
+  { year:'Year 3', icon:'🛡️', title:'Protection Optimised',     detail:'Life + health coverage gap closed · GE FlexiLife active'  },
+  { year:'Year 4', icon:'📈', title:'Portfolio Growth',         detail:'Investment target S$50,000 · MMF + equities diversified'  },
+  { year:'Year 5', icon:'✨', title:'Financial Freedom',        detail:'Net worth S$200,000+ · Passive income S$800/mo'          },
+];
+
+const PLAN_MILESTONES_10YR = [
+  { year:'Year 2',  icon:'🏠', title:'BTO Key Collection',    detail:'S$60,000 goal hit · Down payment ready'                     },
+  { year:'Year 4',  icon:'👶', title:'Education Fund Starts', detail:'Child education pot · S$300/mo allocation begins'           },
+  { year:'Year 6',  icon:'📈', title:'Investment Milestone',  detail:'Equity portfolio S$120,000 · Diversified across asset class' },
+  { year:'Year 8',  icon:'🏢', title:'Property Planning',     detail:'Investment property capital target S$200K · Planning begins' },
+  { year:'Year 10', icon:'🌅', title:'Early Retirement Prep', detail:'Retirement corpus S$500,000 · FIRE pathway at age 55'        },
+];
+
+const PLAN_MILESTONES = { '5': PLAN_MILESTONES_5YR, '10': PLAN_MILESTONES_10YR };
+
+const FINANCE = {
+  monthlySurplus: 1340,
+  mmfYield: '3.85%',
+  yieldLift: '0.05% → 3.85%',
+  btoPct: 68,
+  btoCurrent: 'S$40,800',
+  btoTarget: 'S$60K',
+  btoTargetLong: 'S$60,000',
+  btoDeadline: 'Dec 2027',
+  emergencyFund: 'S$24,000',
+  portfolio: 'S$18,450',
+  portfolioTarget: 'S$50K',
+  portfolioReturn: '+3.2%',
+  protectionGap: 'S$160K',
+  gePremium: 'S$28/mo',
+  estimatedGain: '+S$340/mo',
+  wealthByTimeline: { '5': '+S$200K', '10': '+S$500K' },
+  splitDefault: 60,
+  timelineDefault: '5',
+};
+
+const ACCOUNT_TABS = ['Accounts', 'Cards', 'Investments', 'Loans'];
+const ACCOUNT_LISTS = { Accounts: ACCOUNTS, Cards: CARDS, Investments: INVESTMENTS };
+
+const HERO_CONTENT = {
+  title: 'Welcome',
+  subtitle: 'Score S$20 cash for every friend you refer to OCBC FRANK! No limit!',
+  badge: 'OWNLYplans Ready',
+};
+
+const GOAL_TILES = {
+  savings: {
+    kicker: 'Savings Goal',
+    title: 'Stay on track and make your dreams a reality',
+    cta: 'View/manage goals',
+  },
+  ownly: {
+    kicker: 'OWNLYplans',
+    title: 'Your June AI plan is ready',
+    cta: 'Review now →',
+  },
+};
+
+const ANOMALY_NOTICE = {
+  title: 'Anomaly Handled',
+  detail: 'One-time MacBook Purchase · excluded from baseline',
+  badge: 'FILTERED',
+};
+
+const ALLOCATION_NOTICE = {
+  icon: '📅',
+  text: 'Overlap resolved · HDB Loan & School Fee rescheduled to 25 Jun',
+  badge: 'DONE',
+};
+
+const ALLOCATION_SOURCE = {
+  avatar: '360',
+  label: 'OCBC 360 Account',
+  sub: 'Base rate 0.05% p.a. · Surplus S$2,440',
+  tag: 'SOURCE',
+};
+
+const GOVERNANCE_GUARDRAILS = [
+  { icon:'⚖️', label:'FEAT-Aligned Architecture',             sub:'Fairness · Ethics · Accountability · Transparency' },
+  { icon:'🔒', label:'Hard Spending Floor + Cash Buffers',     sub:'S$800 buffer · S$2,000 min balance always protected' },
+  { icon:'📋', label:'Immutable Audit Trail + Manual Override', sub:'Every action logged · Override available anytime' },
+];
+
+const PLANNER_START_FEATURES = [
+  { icon:'🔒', text:'Bank-grade security & PDPA compliant' },
+  { icon:'🤖', text:'4 AI agents working in parallel' },
+  { icon:'⚡', text:'Ready in under 30 seconds' },
+];
+
+const PLANNER_TERMS_SECTIONS = [
+  { title:'Data Usage & AI Consent', text:'By proceeding, you consent to OCBC Bank ("OCBC") using your personal financial data — including transaction history, account balances, and profile information — to generate a personalised AI Life Plan ("the Plan").' },
+  { title:'AI-Generated Recommendations', text:'The Plan is generated by artificial intelligence and is for informational and planning purposes only. It does not constitute financial advice. You should consult a licensed financial adviser before making any significant financial decisions.' },
+  { title:'Data Security & Privacy', text:'Your data is protected under the Personal Data Protection Act (PDPA) 2012 and OCBC\'s Privacy Policy. We do not share your data with third parties without explicit consent, except as required by law.' },
+  { title:'Regulatory Compliance', text:'This service is aligned with MAS FEAT Principles — Fairness, Ethics, Accountability, and Transparency. All AI decisions are auditable and reversible at any time.' },
+  { title:'Your Rights', text:'You may withdraw consent, request data deletion, or override any AI recommendation at any time through OCBC app settings or by calling 1800 363 3333.' },
+];
+
+const PLANNER_TERMS_FOOTER = 'Version 1.2 · Effective 1 Jan 2026 · OCBC Bank · UEN 193200032W';
+
+const PROFILE_HEADER = {
+  initial: 'M',
+  name: 'Mary Tan',
+  role: 'Primary Account Holder',
+  badge: 'OCBC 360 Verified',
+};
+
+const PROFILE_FIELDS = [
+  { label:'Full Name',        value:'Mary Tan'                    },
+  { label:'Age',              value:'32 years old'                },
+  { label:'Occupation',       value:'Senior Marketing Manager'    },
+  { label:'Monthly Income',   value:'S$6,200 (take-home)'        },
+  { label:'OCBC Account',     value:'360 Account · •••• 4892'    },
+  { label:'Savings Balance',  value:'S$24,180.33'                },
+  { label:'Risk Profile',     value:'Balanced (MAS FAIR)'        },
+  { label:'CPF OA Balance',   value:'S$42,000'                   },
+];
+
+const GOAL_TYPE_OPTIONS = [
+  { val:'personal', icon:'👤', label:'Personal Goals',  sub:'Plan for yourself — savings, investments, protection' },
+  { val:'shared',   icon:'👫', label:'Shared Goals',    sub:'Plan together with a partner toward joint milestones'  },
+];
+
+const FINANCIAL_GOALS = ['BTO (Build-To-Order)', 'Car', 'Retirement Planning', 'Education'];
+
+const AI_TIERS = [
+  { id:'low',    tag:'Plan Only', label:'Low Intervention',    desc:'AI only provides the personalised plan. You must manually execute all actions.',                             icon:'📋' },
+  { id:'medium', tag:'Co-Pilot',  label:'Medium Intervention', desc:'AI handles allocation logic, but all fund movements must be approved by you.',                               icon:'🤝' },
+  { id:'high',   tag:'Autopilot', label:'High Intervention',   desc:'AI moves funds freely to optimise goals. Includes a mandatory monthly review and check-in.',                icon:'🚀' },
+];
+
+const TIMELINE_OPTIONS = [
+  { val:'5',  label:'5-Year Plan',  sub:'Focused milestones · BTO, protection, growth'        },
+  { val:'10', label:'10-Year Plan', sub:'Long-term wealth · Family, property, retirement prep' },
+];
+
+const PLANNER_LOADING_STEPS = [
+  { text:'Analysing 6 months of transactions',    delay:'0s'    },
+  { text:'Mapping goal milestones & timelines',   delay:'0.55s' },
+  { text:'Optimising your surplus allocation',    delay:'1.1s'  },
+  { text:'Generating personalised roadmap',       delay:'1.65s' },
+];
+
+const PLANNER_STEPS_CONFIG = {
+  terms: 'terms',
+  profile: 'profile',
+  goalSelect: 'goalSelect',
+  waiting: 'waiting',
+  config: 'config',
+  loading: 'loading',
+  output: 'output',
+};
+
+const CHIP_OPTIONS = ['BTO progress?', 'Split breakdown?', 'Protection gap?', 'Monthly surplus?'];
+
+const DASHBOARD_GOAL_PROGRESS = [
+  { label:'BTO Goal Pot',        pct:68,  bar:'#D81E05', val:'S$40,800 / S$60K'  },
+  { label:'Emergency Fund',       pct:100, bar:'#4ade80', val:'S$24,000 ✓'        },
+  { label:'Investment Portfolio', pct:37,  bar:'#7AB5E8', val:'S$18,450 / S$50K'  },
+];
+
+const DASHBOARD_STAT_TILES = [
+  { icon:'💰', label:'Monthly Surplus',  value:'S$1,340',  sub:'Routed to MMF',          color:'text-blue-600'    },
+  { icon:'📈', label:'Portfolio Return',  value:'+3.2%',    sub:'This month',             color:'text-green-600'   },
+  { icon:'🛡️', label:'Protection Gap',   value:'S$160K',   sub:'GE plan available',      color:'text-purple-600'  },
+  { icon:'🏠', label:'BTO Countdown',    value:'18 mo',    sub:'On schedule ✓',          color:'text-[#D81E05]'   },
+];
+
+const OCBC_RECOMMENDS = [
+  { id:'ge',    icon:'🛡️', brand:'Great Eastern', title:'FlexiLife Term Plan',  sub:'Closes your S$160K protection gap', grad:'from-purple-700 to-purple-900', cta:'Get Covered' },
+  { id:'frank', icon:'💳', brand:'OCBC FRANK',    title:'6% Dining Cashback',   sub:'Matches your top spending category', grad:'from-orange-500 to-rose-600',   cta:'Apply Now'  },
+  { id:'gl',    icon:'🌿', brand:'LionGlobal',    title:'SGD MMF · 3.85% p.a.', sub:'Your surplus is already earning here', grad:'from-emerald-500 to-teal-700', cta:'View Now'   },
+  { id:'cpp',   icon:'📊', brand:'CPF Board',     title:'CPF OA Top-Up',        sub:'Boost retirement with S$42K OA base',  grad:'from-sky-500 to-blue-700',     cta:'Learn More' },
+];
+
+const PLAN_HUB_STATS = [
+  { label:'Est. gain', value:'+S$340/mo' },
+  { label:'Agents',    value:'4 active'  },
+  { label:'Actions',   value:'6 planned' },
+];
+
+const PLAN_HUB_FEATURES = [
+  { icon:'🤖', text:'4 AI Agents' },
+  { icon:'⚡', text:'Ready in 30s' },
+];
+
+const COMPLETED_ACTIONS = [
+  { action: 'MMF Route: S$1,000 → LionGlobal',    status: '✅ Completed' },
+  { action: 'Spend cap S$420/mo activated',         status: '✅ Completed' },
+  { action: 'BTO Goal Pot +S$200 allocation',       status: '✅ Completed' },
+  { action: 'FRANK Card auto-pay S$1,240',          status: '✅ Completed' },
+  { action: 'GE FlexiLife Health quote dispatched', status: '✅ Completed' },
+  { action: 'Audit trail logged & immutable',       status: '✅ Completed' },
+];
+
+const GOVERNANCE_ITEMS = [
+  'Immutable audit trail recorded',
+  'FEAT compliance confirmed',
+  'Manual override remains available',
+];
+
+const OWNLY_HEADER_STATS = [
+  { label:'Est. Gain', value:'+S$340/mo',  cls:'text-green-400' },
+  { label:'Actions',   value:'6 planned',  cls:'text-white'     },
+  { label:'Source',    value:'Financial.pdf', cls:'text-blue-400' },
+];
+
+const AUTONOMY_LEVELS = ['Low', 'Medium', 'High'];
+
+const CHAT_INTENTS = [
+  { test: /split|contribut/, reply: (c) => `Your plan has ${USER.first} contributing ${c.split}% (S$${c.maryMonthly}/mo) and ${c.goalType==='shared'?`${USER.partner} ${c.partnerSplit}% (S$${c.zayanMonthly}/mo)`:'100% solo'}. This auto-routes into your shared MMF.` },
+  { test: /bto|home|hdb/, reply: (c) => `Your BTO Goal Pot is at ${FINANCE.btoCurrent} (${FINANCE.btoPct}% of ${FINANCE.btoTarget} target). On the current ${c.planLabel} plan you're on track to hit it 2 months early. OWNLYplans is routing +S$200/mo there.` },
+  { test: /year|timeline|horizon/, reply: (c) => `You're on a ${c.planLabel} plan. By Year ${c.timeline} the AI projects ${FINANCE.wealthByTimeline[c.timeline]} in net wealth assuming ${FINANCE.mmfYield} MMF yield and your current surplus.` },
+  { test: /partner|zayan/, reply: (c) => c.goalType==='shared'
+      ? `${USER.partner} is linked and contributing ${c.partnerSplit}% (S$${c.zayanMonthly}/mo). Combined monthly contribution is S$${FINANCE.monthlySurplus.toLocaleString('en-SG')} routed via your shared pot.`
+      : `You're on a Personal Goals plan — no partner linked. You can add a partner later from Plan settings.` },
+  { test: /protect|insur/, reply: () => `OWNLYplans detected a ${FINANCE.protectionGap} protection gap. Great Eastern FlexiLife Term is recommended at ${FINANCE.gePremium}. Tap the "OCBC Recommends" card to view the quote.` },
+  { test: /surplus|mmf|cash/, reply: () => `Your monthly surplus is S$${FINANCE.monthlySurplus.toLocaleString('en-SG')} — S$1,000 → LionGlobal MMF (${FINANCE.mmfYield}), S$200 → BTO Goal Pot, S$140 → FRANK auto-pay. Nothing sits idle in your 360 Account.` },
+  { test: /invest|portfolio/, reply: () => `Your investment portfolio is at ${FINANCE.portfolio} (37% of ${FINANCE.portfolioTarget} target). LionGlobal MMF is the primary vehicle at ${FINANCE.mmfYield} p.a. You can upgrade to equity exposure via OWNLYplans at any time.` },
+];
+
+function monthlyShare(splitPct) {
+  return Math.round(FINANCE.monthlySurplus * splitPct / 100);
+}
+
+function formatSurplus(amount) {
+  return `S$${amount.toLocaleString('en-SG')}`;
+}
+
+function getChatResponse(msg, ctx) {
+  const m = msg.toLowerCase();
+  const match = CHAT_INTENTS.find(rule => rule.test.test(m));
+  if (match) return match.reply(ctx);
+  return CHATBOT_RESPONSES[Math.floor(Math.random() * CHATBOT_RESPONSES.length)];
+}
+
+function buildWelcomeMessage(ctx) {
+  return {
+    from: 'ai',
+    text: `Hi ${USER.first}! 👋 Your ${ctx.planLabel} ${ctx.goalType==='shared'?'Shared ':''}AI Life Plan is active. You're contributing ${ctx.split}% (S$${ctx.maryMonthly}/mo)${ctx.goalType==='shared'?` and ${USER.partner} ${ctx.partnerSplit}% (S$${ctx.zayanMonthly}/mo)`:''} toward your goals. What would you like to know?`,
+  };
+}
+
+/* ─── HELPERS ─── */
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+function now() {
+  return new Date().toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+/* ─── DYNAMIC ISLAND + STATUS BAR ─── */
+function StatusBar({ dark }) {
+  const [t, setT] = useState(now());
+  useEffect(() => { const id = setInterval(() => setT(now()), 10000); return () => clearInterval(id); }, []);
+  const c = dark ? 'text-white' : 'text-[#1A1A1A]';
+  return (
+    <div className={`status-bar ${dark ? 'bg-transparent' : 'bg-[#F5F4F0]'}`}>
+      <div className="dynamic-island" />
+      <div className={`flex justify-between items-center w-full text-xs font-semibold ${c}`}>
+        <span>{t}</span>
+        <div className="flex items-center gap-1.5">
+          {/* WiFi */}
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+            <path d="M8 9.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill={dark?'white':'#1A1A1A'}/>
+            <path d="M8 6.5C9.7 6.5 11.2 7.2 12.3 8.3l1.4-1.4A8 8 0 008 4.5a8 8 0 00-5.7 2.4l1.4 1.4C4.8 7.2 6.3 6.5 8 6.5z" fill={dark?'white':'#1A1A1A'}/>
+            <path d="M8 3A10.9 10.9 0 0115.5 6l1.4-1.4A13 13 0 008 1 13 13 0 00.9 4.5L2.3 6A10.9 10.9 0 018 3z" fill={dark?'white':'#1A1A1A'} opacity="0.5"/>
+          </svg>
+          {/* Battery */}
+          <svg width="26" height="13" viewBox="0 0 26 13" fill="none">
+            <rect x="0.5" y="0.5" width="22" height="12" rx="3.5" stroke={dark?'white':'#1A1A1A'} strokeOpacity="0.7" strokeWidth="1"/>
+            <rect x="2" y="2" width="17" height="9" rx="2" fill={dark?'white':'#1A1A1A'}/>
+            <path d="M23.5 4.5v4a2 2 0 000-4z" fill={dark?'white':'#1A1A1A'} opacity="0.4"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── TOP ACTION BAR (scan + bell + logout) ─── */
+function TopActionBar({ onScan }) {
+  return (
+    <div className="flex justify-between items-center px-5 pb-3">
+      {/* Scan icon */}
+      <button className="w-9 h-9 flex items-center justify-center tap" onClick={onScan}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round"/>
+          <rect x="7" y="7" width="4" height="4" rx="0.5" fill="#1A1A1A"/>
+          <rect x="13" y="7" width="4" height="4" rx="0.5" fill="#1A1A1A"/>
+          <rect x="7" y="13" width="4" height="4" rx="0.5" fill="#1A1A1A"/>
+          <rect x="13" y="13" width="2" height="2" fill="#1A1A1A"/>
+          <rect x="16" y="15" width="2" height="2" fill="#1A1A1A"/>
+        </svg>
+      </button>
+      <div className="flex items-center gap-3">
+        <button className="relative tap">
+          <svg width="22" height="24" viewBox="0 0 22 24" fill="none">
+            <path d="M11 1a7 7 0 00-7 7v4l-2 2v1h18v-1l-2-2V8a7 7 0 00-7-7z" stroke="#1A1A1A" strokeWidth="1.8"/>
+            <path d="M8.5 20a2.5 2.5 0 005 0" stroke="#1A1A1A" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#D81E05] rounded-full" />
+        </button>
+        <button className="text-[#D81E05] text-sm font-semibold tap">{COPY.logout}</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── HERO BANNER ─── */
+function HeroBanner({ onOwnly }) {
+  return (
+    <div className="relative mx-0 overflow-hidden" style={{height:170}}>
+      {/* Background lifestyle gradient */}
+      <div className="absolute inset-0 hero-bg" />
+      {/* Red swoosh arc */}
+      <div className="hero-red-arc" />
+      {/* Silhouette figures */}
+      <div className="hero-figure" />
+      {/* OWNLYplans banner overlay — NEW feature entry */}
+      <div className="absolute inset-0 flex flex-col justify-end px-5 pb-4" style={{background:'linear-gradient(to top,rgba(0,0,0,0.18) 0%,transparent 60%)'}}>
+        <p className="text-white font-black text-2xl leading-tight drop-shadow-sm">{HERO_CONTENT.title}</p>
+        <p className="text-white/90 text-xs leading-snug mt-0.5 max-w-[200px] drop-shadow-sm">{HERO_CONTENT.subtitle} <span className="font-bold">›</span></p>
+      </div>
+      {/* OWNLYplans blinking badge */}
+      <button onClick={onOwnly} className="absolute top-3 right-4 bg-[#D81E05] rounded-xl px-3 py-1.5 flex items-center gap-1.5 tap shadow-lg">
+        <div className="w-1.5 h-1.5 bg-white rounded-full pulse" />
+        <span className="text-white text-[10px] font-bold">{HERO_CONTENT.badge}</span>
+      </button>
+    </div>
+  );
+}
+
+/* ─── QUICK ACTIONS STRIP ─── */
+const QUICK_ACTIONS = [
+    { label:'PayNow',         svg: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><rect x="0" y="0" width="12" height="8" rx="1" fill="#D81E05"/><rect x="14" y="0" width="14" height="4" rx="1" fill="#1A1A1A"/><rect x="14" y="6" width="10" height="2" rx="1" fill="#1A1A1A"/><rect x="14" y="10" width="14" height="4" rx="1" fill="#1A1A1A"/><rect x="14" y="16" width="8" height="2" rx="1" fill="#1A1A1A"/></svg> },
+    { label:'Scan & Pay',     svg: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#1A1A1A" strokeWidth="1.8"/><rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#1A1A1A" strokeWidth="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#1A1A1A" strokeWidth="1.8"/><rect x="5" y="5" width="4" height="4" rx="0.5" fill="#1A1A1A"/><rect x="15" y="5" width="4" height="4" rx="0.5" fill="#1A1A1A"/><rect x="5" y="15" width="4" height="4" rx="0.5" fill="#1A1A1A"/><rect x="13" y="13" width="4" height="4" rx="0.5" fill="#1A1A1A"/><rect x="19" y="19" width="2" height="2" rx="0.5" fill="#1A1A1A"/></svg> },
+    { label:'Foreign\nExchange', svg: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#1A1A1A" strokeWidth="1.8"/><path d="M12 3c0 0-4 3-4 9s4 9 4 9M12 3c0 0 4 3 4 9s-4 9-4 9M3 12h18" stroke="#1A1A1A" strokeWidth="1.5"/><path d="M8 7.5C9 6.5 10.4 6 12 6" stroke="#1A1A1A" strokeWidth="1.3" strokeLinecap="round"/></svg> },
+    { label:'Customise',      svg: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="#1A1A1A" strokeWidth="1.8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="#1A1A1A" strokeWidth="1.8" strokeLinecap="round"/></svg>, divider: true },
+];
+
+function QuickActions({ actions = QUICK_ACTIONS }) {
+  return (
+    <div className="mx-4 -mt-5 bg-white rounded-2xl shadow-sm border border-[#EAEAEA] flex items-start py-4 px-1 relative z-10">
+      {actions.map((a, i) => (
+        <React.Fragment key={a.label}>
+          {a.divider && <div className="w-px bg-[#E8E8E8] self-stretch mx-1" />}
+          <button className="flex-1 flex flex-col items-center tap">
+            <div className="qa-icon">{a.svg}</div>
+            <span className="text-[10px] font-semibold text-[#1A1A1A] text-center leading-tight whitespace-pre-line">{a.label}</span>
+          </button>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* ─── ACCOUNT FILTER TABS ─── */
+function FilterTabs({ tab, onTab, tabs = ACCOUNT_TABS }) {
+  return (
+    <div className="flex items-center gap-2 px-4 mt-5 mb-3">
+      {/* Eye visibility toggle */}
+      <button className="w-8 h-8 rounded-full border border-[#E0E0E0] bg-white flex items-center justify-center flex-shrink-0 tap">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+          <path d="M9 1C5 1 1.7 3.6 1 6c.7 2.4 4 5 8 5s7.3-2.6 8-5c-.7-2.4-4-5-8-5z" stroke="#767676" strokeWidth="1.5"/>
+          <circle cx="9" cy="6" r="2.5" stroke="#767676" strokeWidth="1.5"/>
+        </svg>
+      </button>
+      <div className="w-px h-5 bg-[#E0E0E0]" />
+      {/* Scrollable tabs */}
+      <div className="hscroll flex gap-2 flex-1">
+        {tabs.map(t => (
+          <button key={t} onClick={() => onTab(t)}
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold tap ${tab===t ? 'tab-active' : 'tab-inactive'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── ACCOUNT CARD ─── */
+function AccountCard({ acct, delay=0 }) {
+  return (
+    <div className="mx-4 mb-3 rounded-2xl bg-[#EDE8DF] overflow-hidden su tap" style={{animationDelay:`${delay}s`}}>
+      <div className="p-4">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="acct-avatar text-white text-[11px]" style={{background:acct.avatarBg}}>{acct.avatar}</div>
+            <div>
+              <p className="text-[#1A1A1A] font-bold text-sm leading-tight">{acct.label}</p>
+              <p className="text-[#767676] text-xs">{acct.sub}</p>
+            </div>
+          </div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke="#767676" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        {/* Balance row */}
+        <div className="border-t border-black/10 pt-3">
+          <div className="flex justify-between items-center py-1.5">
+            <span className="text-[#767676] text-xs">{acct.field}</span>
+            <span className="text-[#1A1A1A] font-bold text-sm">{acct.bal}</span>
+          </div>
+          <div className="flex justify-between items-center py-1.5 border-t border-black/5">
+            <span className="text-[#767676] text-xs">{acct.field2}</span>
+            <span className="text-[#1A1A1A] text-xs font-medium">{acct.field2val}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── SAVINGS GOAL CARDS ─── */
+function GoalCards({ onOwnly }) {
+  return (
+    <div className="px-4 mb-4">
+      <div className="flex gap-3">
+        {/* Savings goal tile */}
+        <div className="flex-1 bg-[#EDE8DF] rounded-2xl p-4 tap su">
+          <p className="text-[#767676] text-[9px] font-bold uppercase tracking-widest mb-2">{GOAL_TILES.savings.kicker}</p>
+          <p className="text-[#1A1A1A] font-bold text-sm leading-snug">{GOAL_TILES.savings.title}</p>
+          <p className="text-[#D81E05] text-xs font-semibold mt-3">{GOAL_TILES.savings.cta}</p>
+        </div>
+        {/* OWNLYplans tile */}
+        <button onClick={onOwnly} className="flex-1 bg-[#D81E05] rounded-2xl p-4 tap su text-left" style={{animationDelay:'0.05s'}}>
+          <div className="flex items-center gap-1 mb-2">
+            <div className="w-1.5 h-1.5 bg-white rounded-full pulse" />
+            <p className="text-white/70 text-[9px] font-bold uppercase tracking-widest">{GOAL_TILES.ownly.kicker}</p>
+          </div>
+          <p className="text-white font-bold text-sm leading-snug">{GOAL_TILES.ownly.title}</p>
+          <p className="text-white/80 text-xs font-semibold mt-3">{GOAL_TILES.ownly.cta}</p>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── BOTTOM NAV ─── */
+const NAV = [
+  { id:'home',    label:'Home',           icon: (active) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H5a1 1 0 01-1-1V10.5z" fill={active?'#D81E05':'none'} stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8"/><path d="M9 22V12h6v10" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8"/></svg> },
+  { id:'plan',    label:'Plan',           icon: (active) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2v8l4 4" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="14" r="8" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8"/><path d="M8.5 19.5C9.5 17 11 15.5 12 14c1 1.5 2.5 3 3.5 5.5" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { id:'pay',     label:'Pay & Transfer', icon: (active) => <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="10" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8"/><path d="M9 13h8M14 10l3 3-3 3" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>, big:true },
+  { id:'rewards', label:'Rewards',        icon: (active) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="10" width="18" height="12" rx="2" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8"/><path d="M12 10V22M3 14h18" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.5"/><path d="M8 10c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.8"/><path d="M12 6C11 4 8 2 7 4s2 4 5 6" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.3" strokeLinecap="round"/><path d="M12 6c1-2 4-4 5-2s-2 4-5 6" stroke={active?'#D81E05':'#8A8A8A'} strokeWidth="1.3" strokeLinecap="round"/></svg> },
+  { id:'more',    label:'More',           icon: (active) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="7" cy="7" r="2.5" fill={active?'#D81E05':'#8A8A8A'}/><circle cx="17" cy="7" r="2.5" fill={active?'#D81E05':'#8A8A8A'}/><circle cx="7" cy="17" r="2.5" fill={active?'#D81E05':'#8A8A8A'}/><circle cx="17" cy="17" r="2.5" fill={active?'#D81E05':'#8A8A8A'}/></svg> },
+];
+
+function BottomNav({ active, onNavigate }) {
+  return (
+    <div className="bnav">
+      {NAV.map(n => {
+        const isActive = active===n.id || (active==='ownly' && n.id==='plan');
+        return (
+          <button key={n.id} className="bnav-item tap" onClick={() => onNavigate(n.id)}>
+            {n.big
+              ? <div className="w-12 h-12 rounded-full bg-[#D81E05] -mt-5 flex items-center justify-center shadow-lg">{n.icon(true)}</div>
+              : n.icon(isActive)
+            }
+            <span className={`bnav-label ${isActive ? 'text-[#D81E05]' : 'text-[#8A8A8A]'}`}>{n.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 1 — Anomaly badge (clean pill, no verbose text)
+═══════════════════════════════════════════════════════════════════ */
+function AnomalyBadge() {
+  return (
+    <div className="mx-4 mb-4 su" style={{animationDelay:'0.1s'}}>
+      <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+        <span className="text-xl flex-shrink-0">⚠️</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-amber-800 font-bold text-sm">{ANOMALY_NOTICE.title}</p>
+          <p className="text-amber-600 text-xs">{ANOMALY_NOTICE.detail}</p>
+        </div>
+        <span className="bg-amber-200 text-amber-800 text-[9px] font-black px-2 py-1 rounded-full flex-shrink-0">{ANOMALY_NOTICE.badge}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 2 — Smart allocation flow (single-line alert + clean routing)
+═══════════════════════════════════════════════════════════════════ */
+function AllocationFlow() {
+  return (
+    <div className="px-4 mb-4 space-y-3">
+      {/* Single-line timing conflict notice */}
+      <div className="flex items-center gap-3 bg-[#1A1A1A] rounded-2xl px-4 py-3.5">
+        <span className="text-base flex-shrink-0">{ALLOCATION_NOTICE.icon}</span>
+        <p className="text-white text-xs font-medium flex-1">{ALLOCATION_NOTICE.text}</p>
+        <span className="text-green-400 text-[9px] font-black flex-shrink-0">{ALLOCATION_NOTICE.badge}</span>
+      </div>
+
+      {/* Clean routing card */}
+      <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4">
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-[#1A1A1A] font-bold text-sm">Surplus Routing</p>
+          <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">{FINANCE.yieldLift}</span>
+        </div>
+        {/* Source */}
+        <div className="flex items-center gap-2.5 mb-3 pb-3 border-b border-[#F0EDE8]">
+          <div className="w-7 h-7 rounded-full bg-[#7AB5E8] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">{ALLOCATION_SOURCE.avatar}</div>
+          <div className="flex-1">
+            <p className="text-[#1A1A1A] text-xs font-semibold">{ALLOCATION_SOURCE.label}</p>
+            <p className="text-[#767676] text-[9px]">{ALLOCATION_SOURCE.sub}</p>
+          </div>
+          <span className="text-[#D81E05] text-[9px] font-black">{ALLOCATION_SOURCE.tag}</span>
+        </div>
+        {/* Destinations */}
+        {ALLOC_ROUTES.map((r, i) => (
+          <div key={i} className="flex items-center gap-3 py-2.5 border-b border-[#F5F5F5] last:border-0">
+            <span className="text-lg flex-shrink-0">{r.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[#1A1A1A] text-xs font-semibold truncate">{r.to}</p>
+              <p className="text-[#767676] text-[9px]">{r.yield}</p>
+            </div>
+            <p className={`text-sm font-bold flex-shrink-0 ${r.color}`}>{r.amt}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 3 — Agent status grid (icon + name + badge only, no prose)
+═══════════════════════════════════════════════════════════════════ */
+function AgentOrchestration() {
+  return (
+    <div className="mb-5" id="agent-orchestration">
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-[#1A1A1A] font-bold text-sm">Agent Status</p>
+        <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">4 / 4 Active</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {AGENT_STATUSES.map(a => (
+          <div key={a.id} className={`rounded-2xl border p-4 ${a.color}`}>
+            <span className="text-2xl block mb-2">{a.icon}</span>
+            <p className={`text-[9px] font-black uppercase tracking-wide leading-tight mb-2.5 ${a.text}`}>{a.name}</p>
+            <span className={`text-[8px] font-bold px-2 py-1 rounded-full leading-none ${a.badge}`}>✓ {a.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HELP PORTAL — FAB + slide-up drawer with all dense explanations
+═══════════════════════════════════════════════════════════════════ */
+function HelpFAB({ onClick }) {
+  return (
+    <button id="help-fab" onClick={onClick} className="fab" aria-label="Help and transparency">
+      <span style={{fontStyle:'italic', fontWeight:900, fontSize:20}}>?</span>
+    </button>
+  );
+}
+
+function HelpPortal({ onClose }) {
+  const [open, setOpen] = useState(null);
+  return (
+    <div className="help-overlay" style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.52)', zIndex:200}}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="help-drawer scrollable" style={{position:'absolute', bottom:0, left:0, right:0, background:'#fff', maxHeight:'78%', overflowY:'auto', paddingBottom:32}}>
+        {/* Handle + header */}
+        <div style={{position:'sticky', top:0, background:'#fff', zIndex:10, paddingTop:12, paddingBottom:16, borderBottom:'1px solid #F0EDE8'}}>
+          <div className="flex justify-center mb-3">
+            <div className="w-9 h-1 bg-[#E0E0E0] rounded-full" />
+          </div>
+          <div className="flex justify-between items-start px-5">
+            <div>
+              <p className="text-[#1A1A1A] font-black text-lg leading-tight">AI Transparency</p>
+              <p className="text-[#767676] text-xs mt-0.5">OWNLYplans · Help Centre</p>
+            </div>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F5F4F0] flex items-center justify-center text-[#1A1A1A] text-sm font-bold tap flex-shrink-0">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Accordion sections */}
+        <div className="px-4 pt-4 space-y-2">
+          {HELP_SECTIONS.map(s => (
+            <div key={s.id} className="bg-[#F5F4F0] rounded-2xl overflow-hidden">
+              <button onClick={() => setOpen(open === s.id ? null : s.id)}
+                className="w-full flex items-center justify-between p-4 tap text-left">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{s.icon}</span>
+                  <div>
+                    <p className="text-[#1A1A1A] font-bold text-sm">{s.title}</p>
+                    <p className="text-[#767676] text-[10px]">{s.sub}</p>
+                  </div>
+                </div>
+                <svg width="12" height="8" viewBox="0 0 12 8" fill="none" style={{transform: open===s.id ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0, marginLeft:8}}>
+                  <path d="M1 1l5 5 5-5" stroke="#767676" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {open === s.id && (
+                <div className="accordion-body border-t border-[#E8E8E8] px-4 pt-3 pb-4 space-y-3.5">
+                  {s.items.map((item, i) => (
+                    <div key={i}>
+                      <p className="text-[#1A1A1A] font-bold text-xs mb-1">{item.label}</p>
+                      <p className="text-[#767676] text-xs leading-relaxed">{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Compliance strip inside portal */}
+          <div className="bg-[#1A1A1A] rounded-2xl p-4 mt-1">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 rounded-full bg-[#D81E05] flex items-center justify-center flex-shrink-0">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <p className="text-white text-[10px] font-black uppercase tracking-widest">Governance Guardrails</p>
+            </div>
+            {GOVERNANCE_GUARDRAILS.map(({icon,label,sub},i) => (
+              <div key={i} className="flex items-start gap-2.5 mb-2.5 last:mb-0">
+                <span className="text-sm flex-shrink-0">{icon}</span>
+                <div className="flex-1">
+                  <p className="text-white text-[10px] font-bold leading-snug">{label}</p>
+                  <p className="text-white/50 text-[9px] mt-0.5">{sub}</p>
+                </div>
+                <span className="text-green-400 text-[9px] font-black flex-shrink-0">{COPY.active}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AI LIFE PLANNER — Screens 1–8 + Active Dashboard
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Shared back-arrow ── */
+function BackBtn({ onClick }) {
+  return (
+    <button onClick={onClick} className="w-8 h-8 flex items-center justify-center tap flex-shrink-0">
+      <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
+        <path d="M9 1L1 9l8 8" stroke="#D81E05" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCREEN 1 — Plan Start Page (first thing seen on Plan tab)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function PlannerStart({ onStart, onBack }) {
+  return (
+    <div className="panel bg-[#F5F4F0]">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3">
+        <BackBtn onClick={onBack} />
+        <p className="text-[#1A1A1A] font-bold text-base">AI Life Planner</p>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8">
+        {/* Chatbot logo graphic */}
+        <div className="w-32 h-32 rounded-3xl bg-[#D81E05] flex items-center justify-center mb-8 shadow-2xl su" style={{boxShadow:'0 20px 60px rgba(216,30,5,0.35)'}}>
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <rect x="10" y="16" width="44" height="30" rx="9" fill="white" fillOpacity="0.95"/>
+            <circle cx="22" cy="31" r="4.5" fill="#D81E05"/>
+            <circle cx="42" cy="31" r="4.5" fill="#D81E05"/>
+            <path d="M22 31c0 5.5 4.5 10 10 10s10-4.5 10-10" stroke="#D81E05" strokeWidth="2.8" strokeLinecap="round"/>
+            <path d="M32 16V9M27 9h10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+
+        <h1 className="text-[#1A1A1A] font-black text-3xl text-center leading-tight mb-3 su" style={{animationDelay:'0.08s'}}>
+          AI Life Planner
+        </h1>
+        <p className="text-[#767676] text-sm text-center leading-relaxed mb-6 su" style={{animationDelay:'0.14s'}}>
+          Your personalised AI-powered financial roadmap, built from your real OCBC data.
+        </p>
+
+        <div className="w-full space-y-2.5 su" style={{animationDelay:'0.2s'}}>
+          {[['🔒','Bank-grade security & PDPA compliant'],['🤖','4 AI agents working in parallel'],['⚡','Ready in under 30 seconds']].map(([ic,tx]) => (
+            <div key={tx} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-[#EAEAEA]">
+              <span className="text-lg flex-shrink-0">{ic}</span>
+              <p className="text-[#1A1A1A] text-xs font-semibold">{tx}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-6 pb-12">
+        <button onClick={onStart} className="w-full bg-[#D81E05] text-white font-black text-xl py-5 rounded-2xl tap su shadow-lg" style={{animationDelay:'0.26s', boxShadow:'0 8px 24px rgba(216,30,5,0.35)'}}>
+          {COPY.start}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Screen 2: Terms & Conditions ── */
+function PlannerTerms({ onAgree, onDisagree, onBack }) {
+  return (
+    <div className="panel bg-[#F5F4F0] sr">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3">
+        <BackBtn onClick={onBack} />
+        <div>
+          <p className="text-[#1A1A1A] font-bold text-base">Terms & Conditions</p>
+          <p className="text-[#767676] text-[10px]">AI Life Planner · OCBC Digital</p>
+        </div>
+      </div>
+
+      <div className="flex-1 mx-4 mb-4 bg-white rounded-2xl border border-[#EAEAEA] scrollable p-5 space-y-4" style={{fontSize:12, color:'#767676', lineHeight:1.65}}>
+        <div>
+          <p style={{color:'#1A1A1A', fontWeight:700, fontSize:13, marginBottom:6}}>Data Usage & AI Consent</p>
+          <p>By proceeding, you consent to OCBC Bank ("OCBC") using your personal financial data — including transaction history, account balances, and profile information — to generate a personalised AI Life Plan ("the Plan").</p>
+        </div>
+        <div>
+          <p style={{color:'#1A1A1A', fontWeight:700, fontSize:13, marginBottom:6}}>AI-Generated Recommendations</p>
+          <p>The Plan is generated by artificial intelligence and is for informational and planning purposes only. It does not constitute financial advice. You should consult a licensed financial adviser before making any significant financial decisions.</p>
+        </div>
+        <div>
+          <p style={{color:'#1A1A1A', fontWeight:700, fontSize:13, marginBottom:6}}>Data Security & Privacy</p>
+          <p>Your data is protected under the Personal Data Protection Act (PDPA) 2012 and OCBC's Privacy Policy. We do not share your data with third parties without explicit consent, except as required by law.</p>
+        </div>
+        <div>
+          <p style={{color:'#1A1A1A', fontWeight:700, fontSize:13, marginBottom:6}}>Regulatory Compliance</p>
+          <p>This service is aligned with MAS FEAT Principles — Fairness, Ethics, Accountability, and Transparency. All AI decisions are auditable and reversible at any time.</p>
+        </div>
+        <div>
+          <p style={{color:'#1A1A1A', fontWeight:700, fontSize:13, marginBottom:6}}>Your Rights</p>
+          <p>You may withdraw consent, request data deletion, or override any AI recommendation at any time through OCBC app settings or by calling 1800 363 3333.</p>
+        </div>
+        <p style={{fontSize:10, borderTop:'1px solid #F0EDE8', paddingTop:12, marginTop:4}}>Version 1.2 · Effective 1 Jan 2026 · OCBC Bank · UEN 193200032W</p>
+      </div>
+
+      <div className="flex gap-3 px-4 pb-10">
+        <button onClick={() => { console.log('[Demo] Disagree tapped'); }} className="flex-1 py-4 rounded-2xl border-2 border-[#E8E8E8] text-[#767676] font-bold text-base tap bg-white">
+          Disagree
+        </button>
+        <button onClick={onAgree} className="flex-1 py-4 rounded-2xl bg-[#D81E05] text-white font-bold text-base tap shadow-sm">
+          Agree
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCREEN 3 — Profile Verification (single user baseline)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function PlannerProfile({ onNext, onBack }) {
+  const MARY = [
+    { label:'Full Name',        value:'Mary Tan'                    },
+    { label:'Age',              value:'32 years old'                },
+    { label:'Occupation',       value:'Senior Marketing Manager'    },
+    { label:'Monthly Income',   value:'S$6,200 (take-home)'        },
+    { label:'OCBC Account',     value:'360 Account · •••• 4892'    },
+    { label:'Savings Balance',  value:'S$24,180.33'                },
+    { label:'Risk Profile',     value:'Balanced (MAS FAIR)'        },
+    { label:'CPF OA Balance',   value:'S$42,000'                   },
+  ];
+  return (
+    <div className="panel bg-[#F5F4F0] sr">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3">
+        <BackBtn onClick={onBack} />
+        <div>
+          <p className="text-[#1A1A1A] font-bold text-base">Your Profile</p>
+          <p className="text-[#767676] text-[10px]">Verify your baseline before we build your plan</p>
+        </div>
+      </div>
+
+      <div className="flex-1 scrollable px-4 pb-4">
+        <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-3 mb-4 su">
+          <span className="text-lg flex-shrink-0">🤖</span>
+          <div className="flex-1">
+            <p className="text-blue-800 text-xs font-semibold">AI-sourced from your OCBC data</p>
+            <p className="text-blue-600 text-[10px]">Verified against your account history</p>
+          </div>
+          <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-2 py-0.5 rounded-full">LIVE</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su" style={{animationDelay:'0.06s'}}>
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#F0EDE8]">
+            <div className="w-14 h-14 rounded-full bg-[#D81E05] flex items-center justify-center text-white font-black text-xl flex-shrink-0">M</div>
+            <div>
+              <p className="text-[#1A1A1A] font-bold text-base">Mary Tan</p>
+              <p className="text-[#767676] text-xs">Primary Account Holder</p>
+              <span className="inline-block bg-green-100 text-green-700 text-[9px] font-bold px-2 py-0.5 rounded-full mt-1">OCBC 360 Verified</span>
+            </div>
+          </div>
+          {MARY.map((f, i) => (
+            <div key={i} className="flex justify-between items-center py-2.5 border-b border-[#F5F5F5] last:border-0">
+              <span className="text-[#767676] text-xs">{f.label}</span>
+              <span className="text-[#1A1A1A] text-xs font-semibold">{f.value}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-[#767676] text-[10px] text-center px-2 su" style={{animationDelay:'0.12s'}}>
+          These details power your personalised plan. Tap Edit to update any field.
+        </p>
+      </div>
+
+      <div className="flex gap-3 px-4 pb-10">
+        <button onClick={() => console.log('[Demo] Edit profile')} className="flex-1 py-4 rounded-2xl border-2 border-[#E8E8E8] text-[#767676] font-bold text-base tap bg-white">
+          Edit
+        </button>
+        <button onClick={onNext} className="flex-1 py-4 rounded-2xl bg-[#D81E05] text-white font-bold text-base tap shadow-sm">
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCREEN 4 — Goal Selection & Partner Link
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function PlannerGoalSelect({ onShared, onPersonal, onBack }) {
+  const [goalType,       setGoalType]       = useState(null);
+  const [partnerAccount, setPartnerAccount] = useState('');
+  const canSubmit = partnerAccount.replace(/\s/g,'').length >= 6;
+
+  return (
+    <div className="panel bg-[#F5F4F0] sr">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3">
+        <BackBtn onClick={onBack} />
+        <div>
+          <p className="text-[#1A1A1A] font-bold text-base">Your Goal</p>
+          <p className="text-[#767676] text-[10px]">Choose how you'd like to plan</p>
+        </div>
+      </div>
+
+      <div className="flex-1 scrollable px-4 pb-4">
+        <h2 className="text-[#1A1A1A] font-black text-xl mb-2 su">What are you planning for?</h2>
+        <p className="text-[#767676] text-sm mb-5 su" style={{animationDelay:'0.04s'}}>Your choice shapes the AI's recommendations and timeline.</p>
+
+        <div className="space-y-4 su" style={{animationDelay:'0.08s'}}>
+          {[
+            { val:'personal', icon:'👤', label:'Personal Goals',  sub:'Plan for yourself — savings, investments, protection' },
+            { val:'shared',   icon:'👫', label:'Shared Goals',    sub:'Plan together with a partner toward joint milestones'  },
+          ].map(o => (
+            <button key={o.val} onClick={() => setGoalType(o.val)}
+              className={`w-full flex items-center gap-4 p-5 rounded-2xl border-2 tap text-left transition-all ${goalType===o.val ? 'border-[#D81E05] bg-red-50' : 'border-[#E8E8E8] bg-white'}`}>
+              <span className="text-4xl flex-shrink-0">{o.icon}</span>
+              <div className="flex-1">
+                <p className={`font-bold text-base ${goalType===o.val?'text-[#D81E05]':'text-[#1A1A1A]'}`}>{o.label}</p>
+                <p className="text-[#767676] text-xs mt-0.5">{o.sub}</p>
+              </div>
+              {goalType===o.val && (
+                <div className="w-5 h-5 rounded-full bg-[#D81E05] flex items-center justify-center flex-shrink-0">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Dynamic partner account input */}
+        {goalType === 'shared' && (
+          <div className="mt-5 su">
+            <p className="text-[#1A1A1A] font-bold text-sm mb-3">Link Your Partner's Account</p>
+            <div className="bg-white rounded-2xl border-2 border-[#E8E8E8] p-4 mb-3">
+              <label className="text-[#767676] text-[10px] font-black uppercase tracking-widest block mb-2">Partner's Account Number</label>
+              <input
+                value={partnerAccount}
+                onChange={e => setPartnerAccount(e.target.value)}
+                placeholder="e.g.  360-123-456-7"
+                inputMode="numeric"
+                style={{width:'100%', background:'#F5F4F0', border:'none', borderRadius:12, padding:'12px 14px', fontSize:16, outline:'none', fontFamily:'inherit', color:'#1A1A1A', letterSpacing:'0.05em'}}
+              />
+              {partnerAccount.length > 0 && !canSubmit && (
+                <p className="text-amber-600 text-[10px] mt-2">Enter at least 6 digits to continue</p>
+              )}
+            </div>
+            <p className="text-[#767676] text-[10px] text-center">Your partner will receive an in-app invitation to join your shared plan.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom action */}
+      <div className="px-4 pb-10">
+        {goalType === 'personal' && (
+          <button onClick={onPersonal} className="w-full py-4 rounded-2xl bg-[#D81E05] text-white font-bold text-base tap shadow-sm">
+            Continue →
+          </button>
+        )}
+        {goalType === 'shared' && canSubmit && (
+          <button onClick={() => onShared(partnerAccount)}
+            className="w-full py-4 rounded-2xl bg-[#D81E05] text-white font-bold text-base tap shadow-sm pop">
+            Submit Invitation →
+          </button>
+        )}
+        {(!goalType || (goalType === 'shared' && !canSubmit)) && (
+          <div className="w-full py-4 rounded-2xl bg-[#E8E8E8] text-[#AAAAAA] font-bold text-base text-center">
+            {goalType === 'shared' ? 'Enter account number above' : 'Select a goal type above'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCREEN 5 — Partner Invitation Waiting (5-second countdown)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function PlannerWaiting({ partnerAccount, onComplete }) {
+  const [secs, setSecs] = useState(5);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setSecs(s => {
+        if (s <= 1) { clearInterval(iv); onComplete(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return (
+    <div className="panel bg-[#F5F4F0] flex flex-col">
+      <StatusBar dark={false} />
+      <div className="px-5 pb-3">
+        <p className="text-[#1A1A1A] font-bold text-base">Invitation Sent</p>
+        <p className="text-[#767676] text-[10px]">Account {partnerAccount}</p>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center px-8">
+        {/* Pulsing ring spinner */}
+        <div className="relative flex items-center justify-center mb-8" style={{width:120,height:120}}>
+          <div className="absolute inset-0 rounded-full bg-[#D81E05]/10 ping"/>
+          <div className="absolute rounded-full bg-[#D81E05]/20" style={{inset:16, animation:'pingRing 1.4s ease-out 0.4s infinite'}}/>
+          <div className="w-16 h-16 rounded-full bg-white border-2 border-[#D81E05] flex items-center justify-center" style={{zIndex:2}}>
+            <span className="text-3xl">👫</span>
+          </div>
+        </div>
+
+        <p className="text-[#1A1A1A] font-black text-xl text-center mb-2">Waiting for partner</p>
+        <p className="text-[#767676] text-sm text-center leading-relaxed mb-8">
+          Waiting for partner to accept invitation...
+        </p>
+
+      </div>
+    </div>
+  );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCREEN 6 — Contribution Split & Timeline Setup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function PlannerConfig({ goalType, onComplete, onBack }) {
+  const [split,    setSplit]    = useState(60);
+  const [timeline, setTimeline] = useState('5');
+  const [goals,    setGoals]    = useState(['BTO (Build-To-Order)', 'Car', 'Retirement Planning', 'Education']);
+  const [aiTier,   setAiTier]   = useState('medium');
+  const [dragIdx,  setDragIdx]  = useState(null);
+  const [overIdx,  setOverIdx]  = useState(null);
+  const partner    = 'Zayan';
+  const partnerPct = 100 - split;
+
+  function handleDragStart(e, i) {
+    setDragIdx(i);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  function handleDragEnter(i) { if (i !== dragIdx) setOverIdx(i); }
+  function handleDragEnd() {
+    if (dragIdx !== null && overIdx !== null && dragIdx !== overIdx) {
+      const next = [...goals];
+      const [moved] = next.splice(dragIdx, 1);
+      next.splice(overIdx, 0, moved);
+      setGoals(next);
+    }
+    setDragIdx(null); setOverIdx(null);
+  }
+
+  const AI_TIERS = [
+    { id:'low',    tag:'Plan Only', label:'Low Intervention',    desc:'AI only provides the personalised plan. You must manually execute all actions.',                             icon:'📋' },
+    { id:'medium', tag:'Co-Pilot',  label:'Medium Intervention', desc:'AI handles allocation logic, but all fund movements must be approved by you.',                               icon:'🤝' },
+    { id:'high',   tag:'Autopilot', label:'High Intervention',   desc:'AI moves funds freely to optimise goals. Includes a mandatory monthly review and check-in.',                icon:'🚀' },
+  ];
+
+  return (
+    <div className="panel bg-[#F5F4F0] sr">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3">
+        <BackBtn onClick={onBack} />
+        <div>
+          <p className="text-[#1A1A1A] font-bold text-base">Configure Your Plan</p>
+          <p className="text-[#767676] text-[10px]">Goals · AI tier · Split · Horizon</p>
+        </div>
+      </div>
+
+      <div className="flex-1 scrollable px-4 pb-4">
+
+        {/* ── SECTION 1: Financial Goals drag-to-reorder ── */}
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su">
+          <p className="text-[#1A1A1A] font-bold text-sm mb-1">What are your financial goals?</p>
+          <p className="text-[#767676] text-[10px] leading-relaxed mb-3">Drag and reorder your top priorities. Your contribution split will automatically weigh towards your highest-ranked items.</p>
+          <div className="space-y-2">
+            {goals.map((g, i) => (
+              <div
+                key={g}
+                draggable
+                onDragStart={e => handleDragStart(e, i)}
+                onDragEnter={() => handleDragEnter(i)}
+                onDragEnd={handleDragEnd}
+                onDragOver={e => e.preventDefault()}
+                style={{cursor:'grab', userSelect:'none'}}
+                className={`flex items-center gap-3 rounded-2xl px-3 py-3 border-2 transition-all ${
+                  dragIdx === i   ? 'opacity-40 border-dashed border-[#D81E05]' :
+                  overIdx === i   ? 'border-[#D81E05] bg-red-50 scale-[1.02]'  :
+                  i === 0         ? 'border-[#D81E05]/30 bg-red-50/40'          :
+                                    'border-[#F0EDE8] bg-[#FAFAF9]'
+                }`}>
+                {/* Rank number */}
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                  i === 0 ? 'bg-[#D81E05] text-white' : 'bg-[#F0EDE8] text-[#767676]'
+                }`}>{i + 1}</div>
+                {/* Goal label */}
+                <p className={`flex-1 text-sm font-semibold ${i === 0 ? 'text-[#1A1A1A]' : 'text-[#767676]'}`}>{g}</p>
+                {/* Highest priority badge */}
+                {i === 0 && (
+                  <span className="text-[7px] font-black text-[#D81E05] bg-white border border-[#D81E05]/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0">
+                    Highest Priority
+                  </span>
+                )}
+                {/* Drag handle dots */}
+                <div className="flex flex-col gap-[3px] flex-shrink-0 pl-1 opacity-35">
+                  {[0,1,2].map(r => (
+                    <div key={r} className="flex gap-[3px]">
+                      {[0,1].map(c => <div key={c} style={{width:3,height:3,borderRadius:'50%',background:'#767676'}}/>)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── SECTION 2: AI Intervention Tier ── */}
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su" style={{animationDelay:'0.05s'}}>
+          <p className="text-[#1A1A1A] font-bold text-sm mb-1">Choose your AI Intervention Tier</p>
+          <p className="text-[#767676] text-[10px] leading-relaxed mb-3">Select how much autonomy you want to grant your financial copilot.</p>
+          <div className="space-y-2">
+            {AI_TIERS.map(t => {
+              const active = aiTier === t.id;
+              return (
+                <button key={t.id} onClick={() => setAiTier(t.id)}
+                  className={`w-full p-3.5 rounded-2xl border-2 tap text-left transition-all ${active ? 'border-[#D81E05] bg-red-50' : 'border-[#F0EDE8] bg-[#FAFAF9]'}`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-base flex-shrink-0">{t.icon}</span>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0 ${active ? 'bg-[#D81E05] text-white' : 'bg-[#F0EDE8] text-[#767676]'}`}>{t.tag}</span>
+                    <p className={`font-black text-sm flex-1 ${active ? 'text-[#D81E05]' : 'text-[#1A1A1A]'}`}>{t.label}</p>
+                    {active && (
+                      <div className="w-5 h-5 rounded-full bg-[#D81E05] flex items-center justify-center flex-shrink-0">
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[#767676] text-[10px] leading-relaxed pl-7">{t.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Contribution split (shared goals only) ── */}
+        {goalType === 'shared' && (
+          <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su" style={{animationDelay:'0.1s'}}>
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-[#1A1A1A] font-bold text-sm">Contribution Split</p>
+              <span className="text-[9px] font-bold text-[#767676] bg-[#F5F4F0] px-2 py-1 rounded-full">Drag to adjust</span>
+            </div>
+            <div className="flex rounded-2xl overflow-hidden mb-3" style={{height:52}}>
+              <div className="flex items-center justify-center font-bold text-white text-sm" style={{width:`${split}%`, background:'#D81E05', transition:'width 0.05s'}}>
+                {split >= 20 && `Mary ${split}%`}
+              </div>
+              <div className="flex items-center justify-center font-bold text-white text-sm" style={{width:`${partnerPct}%`, background:'#7AB5E8', transition:'width 0.05s'}}>
+                {partnerPct >= 20 && `${partner} ${partnerPct}%`}
+              </div>
+            </div>
+            <input type="range" min="10" max="90" value={split}
+              onChange={e => setSplit(+e.target.value)}
+              style={{'--pct':`${(split-10)/80*100}%`}}
+            />
+            <div className="flex justify-between mt-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#D81E05]"/>
+                <span className="text-[#1A1A1A] text-xs font-semibold">Mary — {split}%</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#7AB5E8]"/>
+                <span className="text-[#1A1A1A] text-xs font-semibold">{partner} — {partnerPct}%</span>
+              </div>
+            </div>
+            <div className="flex justify-between mt-3 pt-3 border-t border-[#F0EDE8]">
+              <div className="text-center">
+                <p className="text-[#767676] text-[9px] uppercase tracking-wider">Mary / mo</p>
+                <p className="text-[#D81E05] font-black text-base">S${Math.round(1340*split/100)}</p>
+              </div>
+              <div className="w-px bg-[#F0EDE8]"/>
+              <div className="text-center">
+                <p className="text-[#767676] text-[9px] uppercase tracking-wider">{partner} / mo</p>
+                <p className="text-[#7AB5E8] font-black text-base">S${Math.round(1340*partnerPct/100)}</p>
+              </div>
+              <div className="w-px bg-[#F0EDE8]"/>
+              <div className="text-center">
+                <p className="text-[#767676] text-[9px] uppercase tracking-wider">Combined</p>
+                <p className="text-[#1A1A1A] font-black text-base">S$1,340</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Planning horizon ── */}
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su" style={{animationDelay:'0.14s'}}>
+          <p className="text-[#1A1A1A] font-bold text-sm mb-3">Planning Horizon</p>
+          <div className="flex gap-3">
+            {[
+              { val:'5',  label:'5-Year Plan',  sub:'Focused milestones · BTO, protection, growth'        },
+              { val:'10', label:'10-Year Plan', sub:'Long-term wealth · Family, property, retirement prep' },
+            ].map(o => (
+              <button key={o.val} onClick={() => setTimeline(o.val)}
+                className={`flex-1 p-4 rounded-2xl border-2 tap text-left transition-all ${timeline===o.val ? 'border-[#D81E05] bg-red-50' : 'border-[#E8E8E8]'}`}>
+                <p className={`font-black text-sm mb-1 ${timeline===o.val?'text-[#D81E05]':'text-[#1A1A1A]'}`}>{o.label}</p>
+                <p className="text-[#767676] text-[10px] leading-relaxed">{o.sub}</p>
+                {timeline===o.val && (
+                  <div className="w-4 h-4 rounded-full bg-[#D81E05] flex items-center justify-center mt-2">
+                    <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Summary ── */}
+        <div className="bg-[#EDE8DF] rounded-2xl p-4 su" style={{animationDelay:'0.18s'}}>
+          <p className="text-[#767676] text-[9px] font-black uppercase tracking-widest mb-2">Plan Summary</p>
+          <div className="space-y-1.5">
+            <div className="flex justify-between"><span className="text-[#767676] text-xs">Top Goal</span><span className="text-[#1A1A1A] text-xs font-semibold">{goals[0]}</span></div>
+            <div className="flex justify-between"><span className="text-[#767676] text-xs">AI Tier</span><span className="text-[#1A1A1A] text-xs font-semibold capitalize">{AI_TIERS.find(t=>t.id===aiTier)?.tag}</span></div>
+            <div className="flex justify-between"><span className="text-[#767676] text-xs">Goal Type</span><span className="text-[#1A1A1A] text-xs font-semibold capitalize">{goalType} Goals</span></div>
+            {goalType === 'shared' && <div className="flex justify-between"><span className="text-[#767676] text-xs">Split</span><span className="text-[#1A1A1A] text-xs font-semibold">Mary {split}% · {partner} {partnerPct}%</span></div>}
+            <div className="flex justify-between"><span className="text-[#767676] text-xs">Horizon</span><span className="text-[#1A1A1A] text-xs font-semibold">{timeline}-Year Plan</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 pb-10">
+        <button onClick={() => onComplete({ split, timeline, goals, aiTier })} className="w-full py-4 rounded-2xl bg-[#D81E05] text-white font-black text-base tap shadow-sm">
+          Generate Plan
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Screen 7: Loading — "AI is cooking" ── */
+function PlannerLoading({ onComplete }) {
+  useEffect(() => {
+    const t = setTimeout(onComplete, 2800);
+    return () => clearTimeout(t);
+  }, []);
+
+  const items = [
+    { text:'Analysing 6 months of transactions',    delay:'0s'    },
+    { text:'Mapping goal milestones & timelines',   delay:'0.55s' },
+    { text:'Optimising your surplus allocation',    delay:'1.1s'  },
+    { text:'Generating personalised roadmap',       delay:'1.65s' },
+  ];
+
+  return (
+    <div className="panel flex flex-col items-center justify-center" style={{background:'#1A1A1A'}}>
+      {/* Pulsing rings + icon */}
+      <div className="relative flex items-center justify-center mb-10" style={{width:120, height:120}}>
+        <div className="absolute inset-0 rounded-full pulse" style={{background:'rgba(216,30,5,0.12)'}}/>
+        <div className="absolute rounded-full pulse" style={{inset:12, background:'rgba(216,30,5,0.22)', animationDelay:'0.3s'}}/>
+        <div className="w-16 h-16 rounded-full bg-[#D81E05] flex items-center justify-center" style={{position:'relative', zIndex:2, boxShadow:'0 0 32px rgba(216,30,5,0.6)'}}>
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect x="4" y="7" width="20" height="14" rx="4.5" fill="white"/>
+            <circle cx="9.5" cy="14" r="2" fill="#D81E05"/>
+            <circle cx="14" cy="14" r="2" fill="#D81E05"/>
+            <circle cx="18.5" cy="14" r="2" fill="#D81E05"/>
+            <path d="M14 7V4M11.5 4h5" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        </div>
+        {/* Orbiting dot */}
+        <div style={{position:'absolute', inset:0, animation:'spin 2s linear infinite'}}>
+          <div style={{position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:10, height:10, borderRadius:'50%', background:'#D81E05'}}/>
+        </div>
+      </div>
+
+      <p className="text-white font-black text-2xl mb-2">AI is cooking</p>
+      <p className="text-white/40 text-sm mb-8">Generating your personalised roadmap…</p>
+
+      <div className="space-y-3" style={{width:260}}>
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-3 fi" style={{animationDelay:item.delay}}>
+            <div className="w-1.5 h-1.5 rounded-full bg-[#D81E05] flex-shrink-0 pulse" style={{animationDelay:item.delay}}/>
+            <p className="text-white/55 text-xs">{item.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Screen 8: Long-Term Plan Output ── */
+function PlannerOutput({ timeline, split=60, goalType='shared', onApprove, onBack }) {
+  const [morphing, setMorphing] = useState(false);
+  const milestones = timeline === '5' ? PLAN_MILESTONES_5YR : PLAN_MILESTONES_10YR;
+  const label = `${timeline}-Year Plan`;
+  const partnerSplit = 100 - split;
+
+  function handleApprove() {
+    setMorphing(true);
+    setTimeout(onApprove, 750);
+  }
+
+  return (
+    <div className="panel bg-[#F5F4F0] sr">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3 bg-[#F5F4F0]">
+        <BackBtn onClick={onBack} />
+        <div className="flex-1">
+          <p className="text-[#1A1A1A] font-bold text-base">Your {label}</p>
+          <p className="text-[#767676] text-[10px]">AI-generated · Tap Edit to customise</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 pulse"/>
+          <span className="text-[10px] text-green-600 font-semibold">Ready</span>
+        </div>
+      </div>
+
+      <div className="scrollable flex-1 px-4 pb-4">
+        {/* Dark header card */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 su">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-1.5 h-1.5 bg-[#D81E05] rounded-full pulse"/>
+            <span className="text-white/50 text-[9px] font-black uppercase tracking-widest">OWNLYplans AI</span>
+          </div>
+          <p className="text-white font-black text-xl mb-0.5">Your {label}</p>
+          <p className="text-white/40 text-xs mb-4">{goalType==='shared'?`Mary ${split}% · Zayan ${partnerSplit}%`:'Mary · Personal Goals'}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ['Timeline',    `${timeline} Years`,                       'text-blue-400'  ],
+              ['Est. Wealth', timeline==='5' ? '+S$200K' : '+S$500K',   'text-green-400' ],
+              ['Milestones',  `${milestones.length} Goals`,              'text-white'     ],
+            ].map(([l,v,c]) => (
+              <div key={l} className="bg-white/10 rounded-xl p-2.5 text-center">
+                <p className={`font-bold text-sm ${c}`}>{v}</p>
+                <p className="text-white/40 text-[9px] mt-0.5">{l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Milestone timeline */}
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su" style={{animationDelay:'0.06s'}}>
+          <p className="text-[#1A1A1A] font-bold text-sm mb-4">Your Roadmap</p>
+          <div className="relative">
+            <div className="absolute left-7 top-4 bottom-4 w-0.5 bg-[#F0EDE8]"/>
+            {milestones.map((m, i) => (
+              <div key={i} className="flex items-start gap-3 mb-5 last:mb-0 su" style={{animationDelay:`${0.1+i*0.07}s`}}>
+                <div className="flex flex-col items-center gap-1 flex-shrink-0 w-14 relative z-10">
+                  <div className="w-7 h-7 rounded-full bg-red-50 border-2 border-[#D81E05] flex items-center justify-center text-sm">{m.icon}</div>
+                  <span className="text-[8px] font-black text-[#D81E05] whitespace-nowrap">{m.year}</span>
+                </div>
+                <div className="flex-1 pt-1">
+                  <p className="text-[#1A1A1A] font-bold text-sm">{m.title}</p>
+                  <p className="text-[#767676] text-[10px] leading-relaxed mt-0.5">{m.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Key assumptions */}
+        <div className="bg-[#EDE8DF] rounded-2xl p-4 mb-4 su" style={{animationDelay:'0.16s'}}>
+          <p className="text-[#1A1A1A] font-bold text-sm mb-3">Key Assumptions</p>
+          {[['Monthly Surplus','S$1,340/mo'],['Contribution',goalType==='shared'?`${split}/${partnerSplit}`:'100% Mary'],['MMF Yield','3.85% p.a.'],['Inflation Buffer','2.5% annual']].map(([l,v]) => (
+            <div key={l} className="flex justify-between py-1.5 border-b border-black/5 last:border-0">
+              <span className="text-[#767676] text-xs">{l}</span>
+              <span className="text-[#1A1A1A] text-xs font-semibold">{v}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[#767676] text-[9px] px-0.5 mb-2">AI-generated plan. Not financial advice. Consult an OCBC adviser for personalised guidance.</p>
+      </div>
+
+      {/* Morphing approve row */}
+      <div className="flex gap-3 px-4 pb-10" style={{
+        transition:'transform 0.65s cubic-bezier(0.32,0.72,0,1), opacity 0.55s ease',
+        transformOrigin:'right bottom',
+        transform: morphing ? 'scale(0.08) translateX(120px) translateY(80px)' : 'scale(1)',
+        opacity: morphing ? 0 : 1,
+        pointerEvents: morphing ? 'none' : 'auto',
+      }}>
+        <button onClick={() => console.log('[Demo] Edit plan tapped')} className="flex-1 py-4 rounded-2xl border-2 border-[#E8E8E8] text-[#767676] font-bold text-base tap bg-white">
+          Edit
+        </button>
+        <button onClick={handleApprove} className="flex-1 py-4 rounded-2xl bg-[#D81E05] text-white font-bold text-base tap shadow-sm">
+          Approve Plan
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Chatbot Overlay — context-aware ── */
+function ChatbotOverlay({ onClose, setup }) {
+  const { timeline='5', split=60, goalType='shared' } = setup || {};
+  const planLabel    = `${timeline}-Year`;
+  const partnerSplit = 100 - split;
+  const maryMonthly  = Math.round(1340 * split / 100);
+  const zayanMonthly = Math.round(1340 * partnerSplit / 100);
+
+  function getResponse(msg) {
+    const m = msg.toLowerCase();
+    if (/split|contribut/.test(m))
+      return `Your plan has Mary contributing ${split}% (S$${maryMonthly}/mo) and ${goalType==='shared'?`Zayan ${partnerSplit}% (S$${zayanMonthly}/mo)`:'100% solo'}. This auto-routes into your shared MMF.`;
+    if (/bto|home|hdb/.test(m))
+      return `Your BTO Goal Pot is at S$40,800 (68% of S$60K target). On the current ${planLabel} plan you're on track to hit it 2 months early. OWNLYplans is routing +S$200/mo there.`;
+    if (/year|timeline|horizon/.test(m))
+      return `You're on a ${planLabel} plan. By Year ${timeline} the AI projects +S$${timeline==='5'?'200K':'500K'} in net wealth assuming 3.85% MMF yield and your current surplus.`;
+    if (/partner|zayan/.test(m))
+      return goalType==='shared'
+        ? `Zayan is linked and contributing ${partnerSplit}% (S$${zayanMonthly}/mo). Combined monthly contribution is S$1,340 routed via your shared pot.`
+        : `You're on a Personal Goals plan — no partner linked. You can add a partner later from Plan settings.`;
+    if (/protect|insur/.test(m))
+      return `OWNLYplans detected a S$160K protection gap. Great Eastern FlexiLife Term is recommended at S$28/mo. Tap the "OCBC Recommends" card to view the quote.`;
+    if (/surplus|mmf|cash/.test(m))
+      return `Your monthly surplus is S$1,340 — S$1,000 → LionGlobal MMF (3.85%), S$200 → BTO Goal Pot, S$140 → FRANK auto-pay. Nothing sits idle in your 360 Account.`;
+    if (/invest|portfolio/.test(m))
+      return `Your investment portfolio is at S$18,450 (37% of S$50K target). LionGlobal MMF is the primary vehicle at 3.85% p.a. You can upgrade to equity exposure via OWNLYplans at any time.`;
+    return CHATBOT_RESPONSES[Math.floor(Math.random() * CHATBOT_RESPONSES.length)];
+  }
+
+  const [messages, setMessages] = useState([
+    { from:'ai', text:`Hi Mary! 👋 Your ${planLabel} ${goalType==='shared'?'Shared ':''}AI Life Plan is active. You're contributing ${split}% (S$${maryMonthly}/mo)${goalType==='shared'?` and Zayan ${partnerSplit}% (S$${zayanMonthly}/mo)`:''} toward your goals. What would you like to know?` }
+  ]);
+  const [input, setInput]   = useState('');
+  const [typing, setTyping] = useState(false);
+  const endRef = useRef(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, typing]);
+
+  function send(txt) {
+    const text = (txt || input).trim();
+    if (!text) return;
+    setInput('');
+    const newMsgs = [...messages, { from:'user', text }];
+    setMessages(newMsgs);
+    setTyping(true);
+    setTimeout(() => {
+      setMessages(m => [...m, { from:'ai', text:getResponse(text) }]);
+      setTyping(false);
+    }, 900 + Math.random() * 300);
+  }
+
+  return (
+    <div className="help-overlay" style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.55)', zIndex:200}}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="chat-drawer" style={{position:'absolute', bottom:0, left:0, right:0, height:'84%', display:'flex', flexDirection:'column', background:'#F5F4F0'}}>
+
+        {/* Chat header */}
+        <div style={{background:'#1A1A1A', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0}}>
+          <div style={{width:38, height:38, borderRadius:'50%', background:'#D81E05', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:20}}>🤖</div>
+          <div style={{flex:1}}>
+            <p style={{color:'white', fontWeight:800, fontSize:14, margin:0}}>OWNLYplans AI</p>
+            <div style={{display:'flex', alignItems:'center', gap:6, marginTop:2}}>
+              <div style={{width:6, height:6, borderRadius:'50%', background:'#4ade80', animation:'pulse 1.8s ease-in-out infinite'}}/>
+              <p style={{color:'rgba(255,255,255,0.45)', fontSize:10, margin:0}}>Active · Your {planLabel} Plan</p>
+            </div>
+          </div>
+          <button onClick={onClose}
+            style={{width:32, height:32, borderRadius:'50%', background:'rgba(255,255,255,0.12)', border:'none', cursor:'pointer', color:'white', fontSize:14, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+            className="tap">✕</button>
+        </div>
+
+        {/* Messages */}
+        <div className="scrollable flex-1" style={{padding:'14px 14px 8px', display:'flex', flexDirection:'column', gap:12}}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{display:'flex', justifyContent:msg.from==='user'?'flex-end':'flex-start', alignItems:'flex-end', gap:8}}>
+              {msg.from==='ai' && (
+                <div style={{width:28, height:28, borderRadius:'50%', background:'#D81E05', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14}}>🤖</div>
+              )}
+              <div className={msg.from==='user' ? 'bubble-user' : 'bubble-ai'} style={{maxWidth:'76%'}}>
+                {msg.text}
+              </div>
+            </div>
+          ))}
+          {typing && (
+            <div style={{display:'flex', alignItems:'flex-end', gap:8}}>
+              <div style={{width:28, height:28, borderRadius:'50%', background:'#D81E05', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14}}>🤖</div>
+              <div className="bubble-ai" style={{padding:'10px 16px'}}>
+                <div style={{display:'flex', gap:4, alignItems:'center', height:16}}>
+                  {[0,1,2].map(j => (
+                    <div key={j} style={{width:6, height:6, borderRadius:'50%', background:'#BBBBBB', animation:`pulse 1.2s ease-in-out ${j*0.22}s infinite`}}/>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={endRef}/>
+        </div>
+
+        {/* Quick prompts */}
+        <div style={{padding:'8px 12px 0', display:'flex', gap:8, overflowX:'auto', flexShrink:0}} className="hscroll">
+          {['BTO progress?','Split breakdown?','Protection gap?','Monthly surplus?'].map(q => (
+            <button key={q} onClick={() => send(q)}
+              style={{flexShrink:0, background:'white', border:'1.5px solid #E8E8E8', borderRadius:20, padding:'6px 14px', fontSize:11, fontWeight:600, color:'#1A1A1A', cursor:'pointer', whiteSpace:'nowrap'}}
+              className="tap">
+              {q}
+            </button>
+          ))}
+        </div>
+
+        {/* Input row */}
+        <div style={{padding:'10px 14px 20px', background:'white', borderTop:'1px solid #E8E8E8', display:'flex', gap:10, alignItems:'center', flexShrink:0}}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && send(input)}
+            placeholder="Ask your AI planner…"
+            style={{flex:1, background:'#F5F4F0', border:'none', borderRadius:18, padding:'11px 16px', fontSize:13, outline:'none', fontFamily:'inherit', color:'#1A1A1A'}}
+          />
+          <button onClick={() => send()} disabled={!input.trim()}
+            style={{width:44, height:44, borderRadius:'50%', background:input.trim()?'#D81E05':'#E8E8E8', border:'none', cursor:input.trim()?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.2s'}}
+            className="tap">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M2 9h14M10 4l5 5-5 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Active Plan Dashboard (post-onboarding) ── */
+function AIPlanDashboard({ setup, onNav }) {
+  const { timeline='5', split=60, goalType='shared' } = setup || {};
+  const partnerSplit = 100 - split;
+  const maryMonthly  = Math.round(1340 * split / 100);
+  const zayanMonthly = Math.round(1340 * partnerSplit / 100);
+  const [showChat, setShowChat] = useState(false);
+  const label = `${timeline}-Year Plan`;
+
+  const RECOMMENDS = [
+    { id:'ge',    icon:'🛡️', brand:'Great Eastern', title:'FlexiLife Term Plan',  sub:'Closes your S$160K protection gap', grad:'from-purple-700 to-purple-900', cta:'Get Covered' },
+    { id:'frank', icon:'💳', brand:'OCBC FRANK',    title:'6% Dining Cashback',   sub:'Matches your top spending category', grad:'from-orange-500 to-rose-600',   cta:'Apply Now'  },
+    { id:'gl',    icon:'🌿', brand:'LionGlobal',    title:'SGD MMF · 3.85% p.a.', sub:'Your surplus is already earning here', grad:'from-emerald-500 to-teal-700', cta:'View Now'   },
+    { id:'cpp',   icon:'📊', brand:'CPF Board',     title:'CPF OA Top-Up',        sub:'Boost retirement with S$42K OA base',  grad:'from-sky-500 to-blue-700',     cta:'Learn More' },
+  ];
+
+  return (
+    <div className="panel bg-[#F5F4F0]">
+      <StatusBar dark={false} />
+      <TopActionBar />
+
+      <div className="scrollable flex-1 pb-28">
+        {/* Welcome header */}
+        <div className="px-4 mb-4 su">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-[#767676] text-xs font-semibold">{greeting()}</p>
+              <p className="text-[#1A1A1A] font-black text-2xl">Welcome, Mary! 👋</p>
+              <p className="text-[#767676] text-xs mt-0.5">{label} · Active</p>
+            </div>
+            {/* BTO progress ring */}
+            <div style={{width:64, height:64, position:'relative', flexShrink:0}}>
+              <svg width="64" height="64" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="26" stroke="#F0EDE8" strokeWidth="6" fill="none"/>
+                <circle cx="32" cy="32" r="26" stroke="#D81E05" strokeWidth="6" fill="none"
+                  strokeDasharray={`${2*Math.PI*26*0.68} ${2*Math.PI*26}`}
+                  strokeDashoffset={2*Math.PI*26*0.25}
+                  strokeLinecap="round"/>
+              </svg>
+              <div style={{position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+                <p className="text-[#D81E05] font-black" style={{fontSize:13, lineHeight:1}}>68%</p>
+                <p className="text-[#767676]" style={{fontSize:8, fontWeight:700}}>BTO</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Contribution split bar — reflects actual slider value */}
+          <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-3">
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-[#1A1A1A] font-bold text-sm">Contribution Split</p>
+              <span className="text-[#767676] text-[10px]">S$1,340 / mo combined</span>
+            </div>
+            <div className="flex rounded-2xl overflow-hidden mb-3" style={{height:48}}>
+              <div className="flex items-center justify-center text-white font-bold text-xs" style={{width:`${split}%`, background:'#D81E05'}}>
+                {split >= 18 && `Mary ${split}%`}
+              </div>
+              {goalType === 'shared' && (
+                <div className="flex items-center justify-center text-white font-bold text-xs" style={{width:`${partnerSplit}%`, background:'#7AB5E8'}}>
+                  {partnerSplit >= 18 && `Zayan ${partnerSplit}%`}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-[#D81E05]"/>
+                <span className="text-[#1A1A1A] text-[10px] font-semibold">Mary — S${maryMonthly}/mo</span>
+              </div>
+              {goalType === 'shared' && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[#7AB5E8]"/>
+                  <span className="text-[#1A1A1A] text-[10px] font-semibold">Zayan — S${zayanMonthly}/mo</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Goal progress tracker */}
+          <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4">
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-[#1A1A1A] font-bold text-sm">Goal Progress</p>
+              <span className="text-[#767676] text-[10px]">June 2026</span>
+            </div>
+            {[
+              { label:'BTO Goal Pot',        pct:68,  bar:'#D81E05', val:'S$40,800 / S$60K'  },
+              { label:'Emergency Fund',       pct:100, bar:'#4ade80', val:'S$24,000 ✓'        },
+              { label:'Investment Portfolio', pct:37,  bar:'#7AB5E8', val:'S$18,450 / S$50K'  },
+            ].map(g => (
+              <div key={g.label} className="mb-3 last:mb-0">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[#1A1A1A] text-xs font-medium">{g.label}</span>
+                  <span className="text-[#767676] text-[10px]">{g.val}</span>
+                </div>
+                <div className="h-1.5 bg-[#F0EDE8] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{width:`${g.pct}%`, background:g.bar, transition:'width 0.8s ease'}}/>
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-[#F0EDE8]">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full pulse"/>
+              <span className="text-green-600 text-[10px] font-semibold">All goals on track · Est. gain +S$340/mo</span>
+            </div>
+          </div>
+        </div>
+
+        {/* OCBC Recommends */}
+        <div className="px-4 mb-4 su" style={{animationDelay:'0.08s'}}>
+          <div className="flex justify-between items-center mb-3">
+            <div>
+              <p className="text-[#1A1A1A] font-bold text-sm">OCBC Recommends</p>
+              <p className="text-[#767676] text-[10px]">Personalised for your {label}</p>
+            </div>
+            <button className="text-[#D81E05] text-[10px] font-semibold tap">See all →</button>
+          </div>
+          <div className="hscroll flex gap-3 pb-1">
+            {RECOMMENDS.map(p => (
+              <div key={p.id} className={`flex-shrink-0 w-52 rounded-2xl bg-gradient-to-br ${p.grad} p-4 tap`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">{p.icon}</span>
+                  <p className="text-white/60 text-[8px] font-black uppercase tracking-widest">{p.brand}</p>
+                </div>
+                <p className="text-white font-bold text-sm leading-tight mb-1">{p.title}</p>
+                <p className="text-white/70 text-[10px] leading-snug mb-3">{p.sub}</p>
+                <button className="bg-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-bold">{p.cta} →</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick stat tiles */}
+        <div className="px-4 mb-4 su" style={{animationDelay:'0.14s'}}>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { icon:'💰', label:'Monthly Surplus',  value:'S$1,340',  sub:'Routed to MMF',          color:'text-blue-600'    },
+              { icon:'📈', label:'Portfolio Return',  value:'+3.2%',    sub:'This month',             color:'text-green-600'   },
+              { icon:'🛡️', label:'Protection Gap',   value:'S$160K',   sub:'GE plan available',      color:'text-purple-600'  },
+              { icon:'🏠', label:'BTO Countdown',    value:'18 mo',    sub:'On schedule ✓',          color:'text-[#D81E05]'   },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-2xl border border-[#EAEAEA] p-3.5">
+                <span className="text-xl block mb-2">{s.icon}</span>
+                <p className="text-[#767676] text-[9px] font-black uppercase tracking-wider mb-1">{s.label}</p>
+                <p className={`font-black text-base ${s.color}`}>{s.value}</p>
+                <p className="text-[#767676] text-[9px]">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <BottomNav active="plan" onNavigate={onNav} />
+
+      {/* Chatbot FAB */}
+      <button
+        onClick={() => setShowChat(true)}
+        className="fab"
+        style={{background:'#D81E05', bottom:96, right:16, zIndex:140, boxShadow:'0 6px 24px rgba(216,30,5,0.45)', transform:'scale(1)'}}
+        aria-label="Open AI planner chat">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="2" y="3" width="18" height="12" rx="4" fill="white" fillOpacity="0.92"/>
+          <circle cx="7"  cy="9" r="1.5" fill="#D81E05"/>
+          <circle cx="11" cy="9" r="1.5" fill="#D81E05"/>
+          <circle cx="15" cy="9" r="1.5" fill="#D81E05"/>
+          <path d="M5 19l4-4h6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {showChat && <ChatbotOverlay setup={setup} onClose={() => setShowChat(false)} />}
+    </div>
+  );
+}
+
+/* ── Plan Tab Landing (embedded, BottomNav visible, no back btn) ── */
+function PlanLandingTab({ onStart, onNav }) {
+  return (
+    <div className="panel bg-[#F5F4F0]">
+      <StatusBar dark={false} />
+      <div className="px-5 pb-2 pt-1">
+        <p className="text-[#1A1A1A] font-bold text-lg">Plan</p>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center px-8">
+        <div className="w-28 h-28 rounded-3xl bg-[#D81E05] flex items-center justify-center mb-7 su" style={{boxShadow:'0 20px 60px rgba(216,30,5,0.35)'}}>
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <rect x="10" y="16" width="44" height="30" rx="9" fill="white" fillOpacity="0.95"/>
+            <circle cx="22" cy="31" r="4.5" fill="#D81E05"/>
+            <circle cx="42" cy="31" r="4.5" fill="#D81E05"/>
+            <path d="M22 31c0 5.5 4.5 10 10 10s10-4.5 10-10" stroke="#D81E05" strokeWidth="2.8" strokeLinecap="round"/>
+            <path d="M32 16V9M27 9h10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <h1 className="text-[#1A1A1A] font-black text-3xl text-center leading-tight mb-3 su" style={{animationDelay:'0.08s'}}>
+          AI Life Planner
+        </h1>
+        <p className="text-[#767676] text-sm text-center leading-relaxed mb-6 su" style={{animationDelay:'0.14s'}}>
+          Your personalised AI-powered financial roadmap, built from your real OCBC data.
+        </p>
+        <div className="w-full space-y-2.5 su" style={{animationDelay:'0.2s'}}>
+          {[['🔒','Bank-grade security & PDPA compliant'],['🤖','4 AI agents working in parallel'],['⚡','Ready in under 30 seconds']].map(([ic,tx]) => (
+            <div key={tx} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-[#EAEAEA]">
+              <span className="text-lg flex-shrink-0">{ic}</span>
+              <p className="text-[#1A1A1A] text-xs font-semibold">{tx}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-6 su" style={{paddingBottom:96, animationDelay:'0.26s'}}>
+        <button onClick={onStart} className="w-full bg-[#D81E05] text-white font-black text-xl py-5 rounded-2xl tap shadow-lg" style={{boxShadow:'0 8px 24px rgba(216,30,5,0.35)'}}>
+          START
+        </button>
+      </div>
+
+      <BottomNav active="plan" onNavigate={onNav} />
+    </div>
+  );
+}
+
+/* ── AI Planner Flow Controller ── */
+function AIPlannerFlow({ onNav, onComplete, initialStep='terms', onBackToLanding }) {
+  const [step,           setStep]           = useState(initialStep);
+  const [goalType,       setGoalType]       = useState('shared');
+  const [partnerAccount, setPartnerAccount] = useState('');
+  const [split,          setSplit]          = useState(60);
+  const [timeline,       setTimeline]       = useState('5');
+  const [goals,          setGoals]          = useState(['BTO (Build-To-Order)', 'Car', 'Retirement Planning', 'Education']);
+  const [aiTier,         setAiTier]         = useState('medium');
+
+  if (step==='terms')      return <PlannerTerms    onAgree={()=>setStep('profile')} onBack={()=> onBackToLanding ? onBackToLanding() : onNav('home')} />;
+  if (step==='profile')    return <PlannerProfile  onNext={()=>setStep('goalSelect')} onBack={()=>setStep('terms')} />;
+  if (step==='goalSelect') return <PlannerGoalSelect
+                                    onPersonal={()=>{ setGoalType('personal'); setStep('config'); }}
+                                    onShared={acct=>{ setGoalType('shared'); setPartnerAccount(acct); setStep('waiting'); }}
+                                    onBack={()=>setStep('profile')} />;
+  if (step==='waiting')    return <PlannerWaiting  partnerAccount={partnerAccount} onComplete={()=>setStep('config')} />;
+  if (step==='config')     return <PlannerConfig   goalType={goalType}
+                                    onComplete={({split:s,timeline:t,goals:g,aiTier:a})=>{ setSplit(s); setTimeline(t); setGoals(g); setAiTier(a); setStep('loading'); }}
+                                    onBack={()=>setStep(goalType==='shared'?'waiting':'goalSelect')} />;
+  if (step==='loading')    return <PlannerLoading  onComplete={()=>setStep('output')} />;
+  if (step==='output')     return <PlannerOutput   timeline={timeline} split={split} goalType={goalType}
+                                    onApprove={()=>onComplete({ goalType, partnerAccount, split, timeline, goals, aiTier })}
+                                    onBack={()=>setStep('config')} />;
+  return null;
+}
+
+/* ─── HOME SCREEN ─── */
+function HomeScreen({ onOwnly, onNav }) {
+  const [tab, setTab] = useState('Accounts');
+
+  const list = tab==='Accounts' ? ACCOUNTS : tab==='Cards' ? CARDS : tab==='Investments' ? INVESTMENTS : [];
+
+  return (
+    <div className="panel">
+      <StatusBar dark={false} />
+      <TopActionBar />
+      <div className="scrollable flex-1 pb-24">
+        <HeroBanner onOwnly={onOwnly} />
+        <QuickActions />
+        <FilterTabs tab={tab} onTab={setTab} />
+        {list.length ? list.map((a,i) => <AccountCard key={a.id} acct={a} delay={i*0.05}/>) : (
+          <div className="mx-4 bg-[#EDE8DF] rounded-2xl p-6 text-center">
+            <p className="text-[#767676] text-sm">No {tab.toLowerCase()} linked yet.</p>
+          </div>
+        )}
+      </div>
+      <BottomNav active="home" onNavigate={onNav} />
+    </div>
+  );
+}
+
+/* ─── PLAN SCREEN (OWNLYplans hub) ─── */
+function PlanScreen({ onOwnly, onNav }) {
+  return (
+    <div className="panel bg-[#F5F4F0]">
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-2">
+        <p className="flex-1 text-[#1A1A1A] font-bold text-lg">Plan</p>
+        <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#D81E05] pulse"/><span className="text-[10px] text-[#767676]">AI Active</span></div>
+      </div>
+      <div className="scrollable flex-1 px-4 pb-24">
+
+        {/* OWNLYplans hero on Plan tab */}
+        <button onClick={onOwnly} className="w-full bg-[#D81E05] rounded-2xl p-5 mb-4 text-left tap su">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 bg-white rounded-full pulse"/>
+            <span className="text-white/70 text-[9px] font-black uppercase tracking-widest">New · OWNLYplans AI</span>
+          </div>
+          <p className="text-white font-black text-xl leading-tight">Your June 2026<br/>plan is ready.</p>
+          <div className="flex gap-3 mt-3">
+            {[['Est. gain','+S$340/mo'],['Agents','4 active'],['Actions','6 planned']].map(([l,v]) => (
+              <div key={l} className="bg-white/15 rounded-xl px-3 py-2">
+                <p className="text-white font-bold text-sm">{v}</p>
+                <p className="text-white/60 text-[9px]">{l}</p>
+              </div>
+            ))}
+          </div>
+        </button>
+
+        {/* Savings goal progress */}
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-3 su" style={{animationDelay:'0.05s'}}>
+          <p className="text-[#767676] text-[9px] font-bold uppercase tracking-widest mb-1">BTO Goal · Dec 2027</p>
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[#1A1A1A] font-bold text-sm">S$40,800 <span className="text-[#767676] font-normal text-xs">of S$60,000</span></p>
+            <span className="text-[#D81E05] font-bold text-sm">68%</span>
+          </div>
+          <div className="h-2 bg-[#F0EDE8] rounded-full overflow-hidden">
+            <div className="h-full bg-[#D81E05] rounded-full" style={{width:'68%'}}/>
+          </div>
+          <p className="text-[#767676] text-[10px] mt-2">On track · OWNLYplans suggests +S$200/mo to hit 2 months early</p>
+        </div>
+
+        {/* AI Life Planner entry card */}
+        <button onClick={() => onNav('aiPlanner')} className="w-full bg-[#1A1A1A] rounded-2xl p-5 mb-4 text-left tap su" style={{animationDelay:'0.1s'}}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="bg-[#D81E05] text-white text-[8px] font-black px-2 py-0.5 rounded-full tracking-wide">NEW</span>
+            <span className="text-white/50 text-[9px] font-black uppercase tracking-widest">AI Life Planner</span>
+          </div>
+          <p className="text-white font-black text-lg leading-tight mb-1">Build your long-term<br/>financial roadmap</p>
+          <p className="text-white/50 text-xs mb-4">Personalised 5 or 10-year plan · Powered by OWNLYplans AI</p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-3 py-2">
+              <span className="text-sm">🤖</span>
+              <span className="text-white/70 text-[10px] font-semibold">4 AI Agents</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-3 py-2">
+              <span className="text-sm">⚡</span>
+              <span className="text-white/70 text-[10px] font-semibold">Ready in 30s</span>
+            </div>
+            <div className="ml-auto">
+              <span className="text-white/60 text-sm font-bold">Get started →</span>
+            </div>
+          </div>
+        </button>
+
+        {/* Step 2: Smart allocation flow + timing conflict alert */}
+        <AllocationFlow />
+      </div>
+      <BottomNav active="plan" onNavigate={onNav} />
+    </div>
+  );
+}
+
+/* ─── OWNLYPLANS REVIEW — AGENT CARD ─── */
+function AgentCard({ a, i }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div onClick={() => setOpen(o=>!o)} className={`rounded-2xl border p-3.5 mb-2.5 tap su ${a.color}`} style={{animationDelay:`${i*0.05}s`}}>
+      <div className="flex items-start gap-2.5">
+        <span className="text-xl mt-0.5">{a.icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-[9px] font-black uppercase tracking-widest ${a.text}`}>{a.label}</span>
+            <span className="text-[9px] text-[#767676]">· {a.conf}% conf.</span>
+          </div>
+          <p className="text-[#1A1A1A] text-xs font-medium leading-snug">{a.finding}</p>
+          {open && (
+            <div className="mt-2 pt-2 border-t border-black/10">
+              <p className="text-[9px] text-[#767676] uppercase tracking-wider font-bold mb-1">Action</p>
+              <p className="text-xs text-[#1A1A1A] font-semibold leading-snug">{a.action}</p>
+            </div>
+          )}
+        </div>
+        <span className={`text-[10px] font-bold ${a.text}`}>{open?'▲':'▼'}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── OWNLYPLANS REVIEW SCREEN ─── */
+function OwnlyScreen({ onNav }) {
+  const [mode, setMode] = useState('Medium');   // PDF slide 12 default
+  const [approved, setApproved] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const m = MODES[mode];
+
+  // Pitch Script Step 4 — All pending transfer values flip to "Completed" on approval.
+  // Higgsfield animation hook fires here immediately before state transition.
+  function approve() {
+    setLoading(true);
+
+    /* ── HIGGSFIELD EXECUTION HOOK ─────────────────────────────────────────
+       Fire the approval burst micro-animation from Higgsfield connector here.
+       Replace the comment below with the actual Higgsfield SDK call once
+       the animation asset is exported and the connector is initialised.
+
+       Example integration:
+         higgsfield.triggerAnimation('approval-burst', {
+           target: '#approve-btn',
+           duration: 600,
+           onComplete: () => { setLoading(false); setApproved(true); }
+         });
+
+       For now, the setTimeout below simulates the animation delay.
+    ─────────────────────────────────────────────────────────────────────── */
+    setTimeout(() => { setLoading(false); setApproved(true); }, 1400);
+  }
+
+  // Completed transfer records — all statuses resolve to "Completed" post-approval
+  const COMPLETED_ACTIONS = [
+    { action: 'MMF Route: S$1,000 → LionGlobal',    status: '✅ Completed' },
+    { action: 'Spend cap S$420/mo activated',         status: '✅ Completed' },
+    { action: 'BTO Goal Pot +S$200 allocation',       status: '✅ Completed' },
+    { action: 'FRANK Card auto-pay S$1,240',          status: '✅ Completed' },
+    { action: 'GE FlexiLife Health quote dispatched', status: '✅ Completed' },
+    { action: 'Audit trail logged & immutable',       status: '✅ Completed' },
+  ];
+
+  if (approved) return (
+    <div className="panel bg-[#F5F4F0] scrollable" id="approval-success">
+      <div className="flex flex-col items-center px-8 pt-16 pb-12 text-center">
+        <div className="w-20 h-20 rounded-full bg-[#D81E05] flex items-center justify-center mb-5 pop">
+          <svg width="36" height="28" viewBox="0 0 36 28" fill="none"><path d="M2 14L13 25L34 2" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <h2 className="text-[#1A1A1A] font-black text-2xl mb-2">Plan Activated!</h2>
+        <p className="text-[#767676] text-sm leading-relaxed mb-1">
+          OWNLYplans executed your June 2026 strategy in
+        </p>
+        <span className={`text-sm font-black mb-5 ${m.cls}`}>{m.pill}</span>
+
+        {/* All transfer statuses — every item shows Completed */}
+        <div className="w-full bg-white rounded-2xl border border-[#EAEAEA] p-4 text-left mb-4">
+          <p className="text-[9px] font-black uppercase text-[#767676] tracking-widest mb-3">Execution Summary</p>
+          {COMPLETED_ACTIONS.map((item, i) => (
+            <div key={i} className="flex justify-between items-center py-2 border-b border-[#F5F5F5] last:border-0">
+              <span className="text-xs font-medium text-[#1A1A1A] flex-1 pr-2 leading-snug">{item.action}</span>
+              <span className="text-[10px] text-green-600 font-bold flex-shrink-0">{item.status}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* FEAT audit confirmation */}
+        <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 text-left mb-6">
+          <p className="text-[9px] font-black uppercase text-white/40 tracking-widest mb-2">Governance</p>
+          {[
+            'Immutable audit trail recorded',
+            'FEAT compliance confirmed',
+            'Manual override remains available',
+          ].map((g, i) => (
+            <div key={i} className="flex items-center gap-2 py-1">
+              <span className="text-green-400 text-xs">✓</span>
+              <span className="text-white/70 text-[10px]">{g}</span>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={() => onNav('home')} className="w-full bg-[#D81E05] text-white font-bold text-base py-4 rounded-2xl tap">
+          Back to Home
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="panel" id="ownlyplans-review">
+      {/* Header */}
+      <StatusBar dark={false} />
+      <div className="flex items-center px-5 pb-3 gap-3 bg-[#F5F4F0]">
+        <button onClick={() => onNav('plan')} className="w-8 h-8 flex items-center justify-center tap">
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#D81E05" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <div className="flex-1">
+          <p className="text-[#1A1A1A] font-bold text-base">OWNLYplans</p>
+          <p className="text-[#767676] text-[10px]">June 2026 Monthly Review</p>
+        </div>
+        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#D81E05] pulse"/><span className="text-[9px] text-[#767676] font-semibold">AI Active</span></div>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="scrollable flex-1 px-4 pt-2 pb-44" id="ownly-scroll">
+
+        {/* Dark plan header */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 su">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#D81E05] pulse"/>
+            <span className="text-white/50 text-[9px] font-black uppercase tracking-widest">OCBC AI Monthly Plan</span>
+          </div>
+          <p className="text-white font-black text-lg">June 2026 Strategy</p>
+          <p className="text-white/40 text-xs mt-0.5">{USER.first} & {USER.partner} · {USER.segment}</p>
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {[['Est. Gain','+S$340/mo','text-green-400'],['Actions','6 planned','text-white'],['Source','Financial.pdf','text-blue-400']].map(([l,v,c])=>(
+              <div key={l} className="bg-white/10 rounded-xl p-2.5 text-center">
+                <p className={`font-bold text-sm ${c}`}>{v}</p>
+                <p className="text-white/40 text-[9px] mt-0.5">{l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* We Guide, U Decide — pills only, short mode label */}
+        <div className="bg-white rounded-2xl border border-[#EAEAEA] p-4 mb-4 su" style={{animationDelay:'0.05s'}} id="autonomy-control">
+          <div className="flex justify-between items-center mb-3">
+            <p className="text-[#1A1A1A] font-bold text-sm">We Guide, U Decide</p>
+            <button className="text-[#767676] text-[10px] tap" onClick={() => {/* opens help portal */}}>
+              What's this?
+            </button>
+          </div>
+          {/* Segmented pills */}
+          <div className="flex bg-[#F5F4F0] rounded-xl p-1 gap-1 mb-3">
+            {['Low','Medium','High'].map(lv => (
+              <button key={lv} id={`autonomy-${lv.toLowerCase()}`} onClick={() => setMode(lv)}
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all duration-150 ${mode===lv ? `${m.bg} text-white shadow-sm` : 'text-[#767676]'}`}>
+                {lv}
+              </button>
+            ))}
+          </div>
+          {/* Short active mode label only */}
+          <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${m.ring}`}>
+            <p className="text-[#767676] text-xs">Current mode</p>
+            <p className={`text-sm font-black ${m.cls}`}>{m.style}</p>
+          </div>
+        </div>
+
+        {/* Step 3: Agent orchestration dashboard + FEAT compliance bar */}
+        <AgentOrchestration />
+
+        {/* Expandable agent detail cards — tap for recommended actions */}
+        <p className="text-[#1A1A1A] font-bold text-sm mb-2 flex items-center gap-2">
+          Agent Recommendations
+          <span className="text-[#767676] font-normal text-xs">Tap to expand</span>
+        </p>
+        <div id="agent-plan">
+          {AGENTS.map((a,i) => <AgentCard key={a.id} a={a} i={i} />)}
+        </div>
+
+        {/* Cross-product For You carousel — PDF slide 20 */}
+        <div id="promo-carousel" className="mb-4 mt-2">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[#1A1A1A] font-bold text-sm">For You</p>
+            <span className="text-[#767676] text-[9px]">Curated by OWNLYplans</span>
+          </div>
+          <div className="hscroll flex gap-3 pb-1">
+            {PROMOS.map(p => (
+              <div key={p.id} id={`promo-${p.id}`} className={`flex-shrink-0 w-52 rounded-2xl bg-gradient-to-br ${p.grad} p-4 tap`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">{p.logo}</span>
+                  <div>
+                    <p className="text-white/60 text-[8px] font-black uppercase tracking-widest">{p.brand}</p>
+                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${p.tagCls}`}>{p.tag}</span>
+                  </div>
+                </div>
+                <p className="text-white font-bold text-sm leading-tight mb-1">{p.title}</p>
+                <p className="text-white/70 text-[10px] leading-snug mb-3">{p.sub}</p>
+                <button className="bg-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-bold">{p.cta} →</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Surplus routing — clean rows */}
+        <div className="bg-[#EDE8DF] rounded-2xl p-4 mb-4">
+          <div className="flex justify-between items-center mb-3">
+            <p className="text-[#1A1A1A] font-bold text-sm">Surplus Routing</p>
+            <span className="text-[9px] font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">0.05% → 3.85%</span>
+          </div>
+          {ALLOC_ROUTES.map((r, i) => (
+            <div key={i} className="flex items-center gap-3 py-2.5 border-b border-black/8 last:border-0">
+              <span className="text-lg flex-shrink-0">{r.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#1A1A1A] font-semibold truncate">{r.to}</p>
+                <p className="text-[9px] text-[#767676]">{r.yield}</p>
+              </div>
+              <p className={`text-sm font-bold flex-shrink-0 ${r.color}`}>{r.amt}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-[#767676] text-[9px] px-0.5 mb-2">For information only. Not financial advice.</p>
+      </div>
+
+      {/* Sticky Approve Drawer — id="approve-drawer" Higgsfield anchor */}
+      <div className="approve-drawer" id="approve-drawer">
+        <div className="flex justify-between items-center mb-2.5">
+          <div>
+            <p className="text-[10px] text-[#767676]">Mode: <strong className={m.cls}>{mode} Autonomy</strong></p>
+            <p className="text-[10px] text-[#767676]">Est. monthly gain: <strong className="text-green-600">+S$340</strong></p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500"/>
+            <span className="text-[9px] text-[#767676]">Plan verified</span>
+          </div>
+        </div>
+        <button id="approve-btn" onClick={approve} disabled={loading}
+          className={`w-full py-4 rounded-2xl font-bold text-base text-white tap ${loading?'bg-[#D81E05]/70':'bg-[#D81E05]'}`}>
+          {loading
+            ? <span className="flex items-center justify-center gap-2">
+                <svg className="spin" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="white" strokeOpacity="0.3" strokeWidth="3"/><path d="M9 2a7 7 0 017 7" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>
+                Executing Plan…
+              </span>
+            : 'Approve & Execute Plan'
+          }
+        </button>
+      </div>
+
+      <BottomNav active="ownly" onNavigate={onNav} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ROOT APP — manages screen routing + global help portal state
+═══════════════════════════════════════════════════════════════════ */
+function App() {
+  const [screen,       setScreen]       = useState('home');
+  const [showHelp,     setShowHelp]     = useState(false);
+  const [planSetup,    setPlanSetup]    = useState(null);
+  const [planStarted,  setPlanStarted]  = useState(false);
+
+  function nav(to) {
+    setScreen(to);
+    // Leaving the plan tab resets the wizard so landing shows fresh next visit
+    if (to !== 'plan') setPlanStarted(false);
+  }
+
+  const onPlan        = screen === 'plan';
+  const inWizard      = onPlan && planStarted && !planSetup;
+  const onDashboard   = onPlan && !!planSetup;
+  const onLanding     = onPlan && !planStarted && !planSetup;
+
+  return (
+    <div style={{position:'absolute', inset:0}}>
+      {screen === 'ownly' && <OwnlyScreen onNav={nav} onHelp={() => setShowHelp(true)} />}
+      {screen === 'home'  && <HomeScreen  onOwnly={() => nav('ownly')} onNav={nav} />}
+
+      {/* Plan tab — landing: embedded with BottomNav, no back btn */}
+      {onLanding && (
+        <PlanLandingTab onStart={() => setPlanStarted(true)} onNav={nav} />
+      )}
+
+      {/* Plan tab — wizard: full-screen, BottomNav hidden */}
+      {inWizard && (
+        <AIPlannerFlow
+          onNav={nav}
+          onComplete={setup => { setPlanSetup(setup); }}
+          onBackToLanding={() => setPlanStarted(false)}
+        />
+      )}
+
+      {/* Plan tab — active dashboard */}
+      {onDashboard && (
+        <AIPlanDashboard setup={planSetup} onNav={nav} />
+      )}
+
+      {/* Help FAB — hidden during wizard and on dashboard (has its own chatbot FAB) */}
+      {!inWizard && !onDashboard && <HelpFAB onClick={() => setShowHelp(true)} />}
+
+      {showHelp && <HelpPortal onClose={() => setShowHelp(false)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+<script>
+  window.addEventListener('load', function() {
+    var src = document.getElementById('jsx-source').textContent;
+    window.__babelTransformAndRun(src);
+  });
+</script>
+</body>
+</html>
