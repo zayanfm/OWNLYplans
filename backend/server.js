@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const { GoogleGenAI } = require('@google/genai');
 
+const financeRoutes = require('./routes/finance');
+app.use('/api/finance', financeRoutes);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 

@@ -1,95 +1,67 @@
-import { useAssets } from 'expo-asset';
+import React, { useState } from 'react';
 import axios from 'axios';
-import { useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { WebView } from 'react-native-webview';
-import type { WebViewMessageEvent } from 'react-native-webview';
+import { View } from 'react-native';
 
+// Import your custom TSX screen components
+import { OwnlyScreen } from './src/components/whatever';
+
+// Configure API base URL
 const API_BASE = 'http://192.168.1.5:5000';
 
-type NativeRequest = {
-  type?: string;
-  userFinancialData?: unknown;
-  userPrompt?: string;
-  prompt?: string;
-  bankData?: unknown;
-};
-
 export default function App() {
-  const webViewRef = useRef<WebView>(null);
-  const [assets] = useAssets([require('./assets/index.html')]);
+  const [screen, setScreen] = useState<string>('home');
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const sendToWebView = (response: unknown) => {
-    webViewRef.current?.postMessage(JSON.stringify(response));
-  };
-
-  const onMessage = async (event: WebViewMessageEvent) => {
-    let message: NativeRequest;
+  // API Helper: SGFindex Data Fetching
+  const fetchSgfIndexData = async () => {
     try {
-      message = JSON.parse(event.nativeEvent.data);
-    } catch {
-      return;
-    }
-
-    const { type } = message;
-
-    try {
-      if (type === 'FETCH_SGFINDEX') {
-        const { data } = await axios.get(`${API_BASE}/api/sgfindex/aggregate`);
-        sendToWebView({ type: 'SGFINDEX_DATA', payload: data });
-        return;
-      }
-
-      if (type === 'ASK_AI') {
-        const { data } = await axios.post(`${API_BASE}/api/ai-insights`, {
-          userFinancialData: message.userFinancialData ?? message.bankData,
-          userPrompt: message.userPrompt ?? message.prompt,
-        });
-        sendToWebView({ type: 'ASK_AI', payload: data });
-        return;
-      }
-
-      if (type === 'MOCKPASS_LOGIN') {
-        const { data } = await axios.post(`${API_BASE}/api/auth/mockpass`);
-        sendToWebView({ type: 'MOCKPASS_LOGIN', payload: data });
-      }
+      setLoading(true);
+      const { data } = await axios.get(`${API_BASE}/api/sgfindex/aggregate`);
+      return data;
     } catch (error) {
-      const errorMessage = axios.isAxiosError(error)
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : 'Request failed';
-      sendToWebView({ type, error: errorMessage });
+      console.error('SGFindex Fetch Error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!assets?.[0]?.localUri) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-      </View>
-    );
+  // API Helper: AI Insights Engine
+  const askAI = async (financialData: any, promptText: string) => {
+    try {
+      setLoading(true);
+      const { data } = await axios.post(`${API_BASE}/api/ai-insights`, {
+        userFinancialData: financialData,
+        userPrompt: promptText,
+      });
+      return data;
+    } catch (error) {
+      console.error('AI Insights Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // API Helper: MockPass Auth
+  const handleMockpassLogin = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.post(`${API_BASE}/api/auth/mockpass`);
+      return data;
+    } catch (error) {
+      console.error('Mockpass Login Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  function nav(to: string) {
+    setScreen(to);
   }
 
   return (
-    <WebView
-      ref={webViewRef}
-      source={{ uri: assets[0].localUri }}
-      onMessage={onMessage}
-      originWhitelist={['*']}
-      javaScriptEnabled
-      style={styles.flex}
-    />
+    <View style={{ flex: 1 }}>
+      {/* Direct component rendering without WebView */}
+      <OwnlyScreen onNav={nav} />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
