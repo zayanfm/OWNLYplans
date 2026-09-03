@@ -7,10 +7,15 @@ interface Screen1Props {
   onBack?: () => void;
 }
 
-export const Screen1_Anomaly: React.FC<Screen1Props> = ({ onNext }) => {
+export const Screen1_Anomaly: React.FC<Screen1Props> = ({ onNext, onBack }) => {
   return (
     <View style={styles.container}>
       {/* Top Warning Banner */}
+      {onBack && (
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity 
         style={styles.badgeCard} 
         onPress={onNext}
@@ -49,7 +54,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F4F0',
     paddingHorizontal: 16,
     paddingTop: 16,
-    justify: 'space-between',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    color: '#1A1A1A',
+    fontSize: 13,
+    fontWeight: '700',
   },
   badgeCard: {
     flexDirection: 'row',

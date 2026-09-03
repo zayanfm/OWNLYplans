@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import {
   ALLOCATION_NOTICE,
   FINANCE,
@@ -7,7 +7,12 @@ import {
   ALLOC_ROUTES,
 } from '../constants/mockData';
 
-export const Screen2_AllocationFlow: React.FC = () => {
+interface Screen2Props {
+  onNext: () => void;
+  onBack: () => void;
+}
+
+export const Screen2_AllocationFlow: React.FC<Screen2Props> = ({ onNext, onBack }) => {
   return (
     <View style={styles.container}>
       {/* Timing Conflict Alert */}
@@ -16,7 +21,6 @@ export const Screen2_AllocationFlow: React.FC = () => {
         <Text style={styles.noticeText}>{ALLOCATION_NOTICE.text}</Text>
         <Text style={styles.noticeBadge}>{ALLOCATION_NOTICE.badge}</Text>
       </View>
-
       {/* Routing Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
@@ -56,15 +60,25 @@ export const Screen2_AllocationFlow: React.FC = () => {
           );
         })}
       </View>
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.secondaryButton} onPress={onBack}>
+          <Text style={styles.secondaryButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.primaryButton} onPress={onNext}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     paddingHorizontal: 16,
     marginBottom: 16,
     gap: 12,
+    justifyContent: 'center',
   },
   noticeBar: {
     flexDirection: 'row',
@@ -186,6 +200,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  actions: { flexDirection: 'row', gap: 12 },
+  secondaryButton: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 12, backgroundColor: '#E8E8E8' },
+  secondaryButtonText: { color: '#1A1A1A', fontWeight: '700' },
+  primaryButton: { flex: 2, paddingVertical: 14, alignItems: 'center', borderRadius: 12, backgroundColor: '#D81E05' },
+  primaryButtonText: { color: '#FFFFFF', fontWeight: '700' },
 });
 
 export default Screen2_AllocationFlow;

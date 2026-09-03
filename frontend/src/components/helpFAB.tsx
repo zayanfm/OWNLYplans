@@ -11,8 +11,8 @@ export const HelpFAB: React.FC<HelpFABProps> = ({ onPress, onClick }) => {
   const insets = useSafeAreaInsets();
   const handlePress = onPress || onClick || (() => {});
 
-  // 64px (BottomNav base height) + inset + 16px offset gap
-  const bottomPosition = 64 + Math.max(insets.bottom, 8) + 16;
+  // Mirrors the prototype: 10px above the 82px navigation surface.
+  const bottomPosition = 82 + insets.bottom + 10;
 
   return (
     <TouchableOpacity
@@ -29,10 +29,10 @@ export const HelpFAB: React.FC<HelpFABProps> = ({ onPress, onClick }) => {
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',

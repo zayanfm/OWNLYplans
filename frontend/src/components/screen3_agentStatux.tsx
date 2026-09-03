@@ -1,8 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { AGENT_STATUSES } from '../constants/mockData';
 
-export const Screen3_AgentStatus: React.FC = () => {
+interface Screen3Props {
+  onNext: () => void;
+  onBack: () => void;
+}
+
+export const Screen3_AgentStatus: React.FC<Screen3Props> = ({ onNext, onBack }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -11,7 +16,6 @@ export const Screen3_AgentStatus: React.FC = () => {
           <Text style={styles.statusPillText}>4 / 4 Active</Text>
         </View>
       </View>
-
       <View style={styles.grid}>
         {AGENT_STATUSES.map((agent) => (
           <View key={agent.id} style={styles.agentCard}>
@@ -23,14 +27,24 @@ export const Screen3_AgentStatus: React.FC = () => {
           </View>
         ))}
       </View>
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.secondaryButton} onPress={onBack}>
+          <Text style={styles.secondaryButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.primaryButton} onPress={onNext}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     marginHorizontal: 16,
     marginBottom: 20,
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -90,6 +104,11 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '700',
   },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  secondaryButton: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 12, backgroundColor: '#E8E8E8' },
+  secondaryButtonText: { color: '#1A1A1A', fontWeight: '700' },
+  primaryButton: { flex: 2, paddingVertical: 14, alignItems: 'center', borderRadius: 12, backgroundColor: '#D81E05' },
+  primaryButtonText: { color: '#FFFFFF', fontWeight: '700' },
 });
 
 export default Screen3_AgentStatus;

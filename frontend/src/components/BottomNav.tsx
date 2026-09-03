@@ -98,7 +98,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const handlePress = onNavigate || onNav || (() => {});
 
   return (
-    <View style={[styles.navContainer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.navContainer, { height: 82 + insets.bottom, paddingBottom: insets.bottom }]}>
       {NAV.map((item) => {
         const isActive = currentTab === item.id || (currentTab === 'ownly' && item.id === 'plan');
         return (
@@ -127,18 +127,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
 const styles = StyleSheet.create({
   navContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#EAEAEA',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-around',
-    paddingTop: 8,
+    paddingTop: 10,
+    zIndex: 100,
+    elevation: 10,
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 2,
   },
   bigButtonWrapper: {
     width: 48,

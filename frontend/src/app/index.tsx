@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import type { PlannerConfigData } from '../components/Screen6_PlannerConfig';
 
 // Main Screen Components
 import { HomeScreen } from '../components/homescreen';
@@ -24,12 +25,25 @@ import { HelpPortal } from '../components/helpPortal';
 import { ChatbotOverlay } from '../components/chatbotoverlay';
 import { BottomNav } from '../components/BottomNav';
 
+type PlanSetup = PlannerConfigData & {
+  goalType: 'personal' | 'shared';
+  partnerAccount: string;
+};
+
 export default function MainApp() {
   const [screen, setScreen] = useState<string>('home'); // 'home' | 'ownly' | 'plan'
   const [wizardStep, setWizardStep] = useState<number>(0); // 0 = landing, 1-8 = wizard screens, 9 = dashboard
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [showChat, setShowChat] = useState<boolean>(false);
-  const [planSetup, setPlanSetup] = useState<any>(null);
+  const [planSetup, setPlanSetup] = useState<PlanSetup | null>(null);
+  const [goalType, setGoalType] = useState<'personal' | 'shared'>('shared');
+  const [partnerAccount, setPartnerAccount] = useState<string>('');
+  const [plannerConfig, setPlannerConfig] = useState<PlannerConfigData>({
+    split: 60,
+    timeline: '5',
+    goals: ['BTO (Build-To-Order)', 'Car', 'Retirement Planning', 'Education'],
+    aiTier: 'medium',
+  });
 
   // Global Navigation Handler
   function nav(to: string) {
@@ -43,15 +57,22 @@ export default function MainApp() {
   const handleNextStep = () => setWizardStep((prev) => prev + 1);
   const handlePrevStep = () => setWizardStep((prev) => Math.max(0, prev - 1));
 
-  const handleWizardComplete = (setupData: any) => {
+  const handleWizardComplete = (setupData: PlanSetup) => {
     setPlanSetup(setupData);
     setWizardStep(9); // Render AIPlanDashboard
   };
 
+  const handleConfigComplete = (config: PlannerConfigData) => {
+    setPlannerConfig(config);
+    setWizardStep(7);
+  };
+
+  const showBottomNav = wizardStep === 0 || (screen === 'plan' && wizardStep === 9);
+  const showHelpFab = wizardStep === 0;
+
   return (
     <SafeAreaProvider>
-      {/* Restrict safe area padding to top edges so BottomNav handles its own bottom insets */}
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.safeArea}>
         <View style={styles.container}>
           
           {/* Main Content Viewport */}
@@ -67,7 +88,10 @@ export default function MainApp() {
 
             {/* 2. Planning Tab & 8-Step Wizard Engine */}
             {screen === 'plan' && (
-              <View style={styles.wizardContainer}>
+              <SafeAreaView
+                style={styles.wizardContainer}
+                edges={wizardStep > 0 && wizardStep < 9 ? ['top', 'left', 'right'] : ['left', 'right']}
+              >
                 {wizardStep === 0 && (
                   <PlanLandingTab onStart={() => setWizardStep(1)} onNav={nav} />
                 )}
@@ -75,46 +99,72 @@ export default function MainApp() {
                   <Screen1_Anomaly onNext={handleNextStep} onBack={handlePrevStep} />
                 )}
                 {wizardStep === 2 && (
-                  <Screen2_allocationFlow {...({ onNext: handleNextStep, onBack: handlePrevStep } as any)} />
+                  <Screen2_allocationFlow onNext={handleNextStep} onBack={handlePrevStep} />
                 )}
                 {wizardStep === 3 && (
-                  <Screen3_agentStatux {...({ onNext: handleNextStep, onBack: handlePrevStep } as any)} />
+                  <Screen3_agentStatux onNext={handleNextStep} onBack={handlePrevStep} />
                 )}
                 {wizardStep === 4 && (
-                  <Screen4_GoalSelect {...({ onNext: handleNextStep, onBack: handlePrevStep } as any)} />
+                  <Screen4_GoalSelect
+                    onPersonal={() => {
+                      setGoalType('personal');
+                      setPartnerAccount('');
+                      setWizardStep(6);
+                    }}
+                    onShared={(account) => {
+                      setGoalType('shared');
+                      setPartnerAccount(account);
+                      setWizardStep(5);
+                    }}
+                    onBack={handlePrevStep}
+                  />
                 )}
                 {wizardStep === 5 && (
-                  <Screen5_Waiting {...({ onNext: handleNextStep, onBack: handlePrevStep } as any)} />
+                  <Screen5_Waiting partnerAccount={partnerAccount} onComplete={handleNextStep} />
                 )}
                 {wizardStep === 6 && (
-                  <Screen6_PlannerConfig {...({ onNext: handleNextStep, onBack: handlePrevStep } as any)} />
+                  <Screen6_PlannerConfig
+                    goalType={goalType}
+                    onComplete={handleConfigComplete}
+                    onBack={() => setWizardStep(goalType === 'shared' ? 5 : 4)}
+                  />
                 )}
                 {wizardStep === 7 && (
-                  <Screen7_PlannerLoading {...({ onNext: handleNextStep, onBack: handlePrevStep } as any)} />
+                  <Screen7_PlannerLoading onComplete={handleNextStep} />
                 )}
                 {wizardStep === 8 && (
-                  <Screen8_PlannerOutput {...({ onComplete: handleWizardComplete, onBack: handlePrevStep } as any)} />
+                  <Screen8_PlannerOutput
+                    timeline={plannerConfig.timeline}
+                    split={plannerConfig.split}
+                    goalType={goalType}
+                    onApprove={() => handleWizardComplete({
+                      goalType,
+                      partnerAccount,
+                      ...plannerConfig,
+                    })}
+                    onBack={() => setWizardStep(6)}
+                  />
                 )}
                 {wizardStep === 9 && (
                   <AIPlanDashboard setup={planSetup} onNav={nav} />
                 )}
-              </View>
+              </SafeAreaView>
             )}
           </View>
 
           {/* 3. Global Overlays & Bottom Navigation */}
-          {wizardStep === 0 && (
+          {showBottomNav && (
             <BottomNav active={screen} onNavigate={nav} />
           )}
 
-          {wizardStep === 0 && (
+          {showHelpFab && (
             <HelpFAB onPress={() => setShowHelp(true)} />
           )}
 
-          {showHelp && <HelpPortal onClose={() => setShowHelp(false)} visible={false} />}
+          <HelpPortal onClose={() => setShowHelp(false)} visible={showHelp} />
           {showChat && <ChatbotOverlay onClose={() => setShowChat(false)} />}
         </View>
-      </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ==========================================
 // 1. DATA TYPES & INTERFACES
@@ -178,6 +179,7 @@ export const AgentCard: React.FC<{ a: AgentData; i: number }> = ({ a }) => {
 // ==========================================
 
 export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?: () => void }> = ({ onNav }) => {
+  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<string>('Medium');
   const [approved, setApproved] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -377,7 +379,7 @@ export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?
       </ScrollView>
 
       {/* Sticky Approve Drawer */}
-      <View style={styles.approveDrawer}>
+      <View style={[styles.approveDrawer, { bottom: 82 + insets.bottom }]}>
         <View style={styles.approveDrawerMeta}>
           <View>
             <Text style={styles.drawerMetaText}>Mode: <Text style={{ fontWeight: '700' }}>{mode} Autonomy</Text></Text>
@@ -521,14 +523,14 @@ const styles = StyleSheet.create({
   routeYieldText: { fontSize: 9, color: '#767676' },
   routeAmtText: { fontSize: 14, fontWeight: '700' },
   disclaimerText: { color: '#767676', fontSize: 9, marginBottom: 8 },
-  approveDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, borderWidth: 1, borderColor: '#EAEAEA', elevation: 10 },
+  approveDrawer: { position: 'absolute', left: 0, right: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, borderWidth: 1, borderColor: '#EAEAEA', elevation: 10 },
   approveDrawerMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   drawerMetaText: { fontSize: 10, color: '#767676' },
   greenDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E' },
   approveButton: { backgroundColor: '#D81E05', borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
   approveButtonDisabled: { opacity: 0.7 },
   approveButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  successContent: { alignItems: 'center', paddingHorizontal: 32, paddingTop: 64, paddingBottom: 48 },
+  successContent: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 32, paddingTop: 64, paddingBottom: 110 },
   successIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#D81E05', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   successTitle: { color: '#1A1A1A', fontWeight: '900', fontSize: 24, marginBottom: 8 },
   successSub: { color: '#767676', fontSize: 14, textAlign: 'center', marginBottom: 4 },
