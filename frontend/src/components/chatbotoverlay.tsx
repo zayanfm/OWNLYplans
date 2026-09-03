@@ -22,6 +22,7 @@ export interface SetupProps {
 export interface ChatbotOverlayProps {
   onClose: () => void;
   setup?: SetupProps;
+  visible?: boolean;
 }
 
 interface Message {
@@ -35,7 +36,7 @@ const CHATBOT_RESPONSES = [
   'Feel free to adjust your contribution split or target timeline in your plan settings.',
 ];
 
-export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup }) => {
+export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, visible = false }) => {
   const timeline = setup?.timeline || '5';
   const split = setup?.split ?? 60;
   const goalType = setup?.goalType || 'shared';
@@ -136,7 +137,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup }
   };
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}

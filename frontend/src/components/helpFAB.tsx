@@ -1,6 +1,5 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface HelpFABProps {
   onPress?: () => void;
@@ -8,15 +7,11 @@ interface HelpFABProps {
 }
 
 export const HelpFAB: React.FC<HelpFABProps> = ({ onPress, onClick }) => {
-  const insets = useSafeAreaInsets();
   const handlePress = onPress || onClick || (() => {});
-
-  // Mirrors the prototype: 10px above the 82px navigation surface.
-  const bottomPosition = 82 + insets.bottom + 10;
 
   return (
     <TouchableOpacity
-      style={[styles.fab, { bottom: bottomPosition }]}
+      style={styles.fab}
       onPress={handlePress}
       activeOpacity={0.85}
       accessibilityLabel="Help and transparency"
@@ -29,10 +24,11 @@ export const HelpFAB: React.FC<HelpFABProps> = ({ onPress, onClick }) => {
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
+    bottom: 90,
     right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
@@ -41,12 +37,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    zIndex: 99,
+    zIndex: 999,
   },
   questionMark: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
-    fontStyle: 'italic',
+    fontSize: 22,
+    fontWeight: '600',
   },
 });

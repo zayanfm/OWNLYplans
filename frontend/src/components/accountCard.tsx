@@ -6,37 +6,40 @@ import { FinancialAccount } from '../constants/mockData';
 interface AccountCardProps {
   acct: FinancialAccount;
   delay?: number;
+  onPress?: () => void;
 }
 
-export const AccountCard: React.FC<AccountCardProps> = ({ acct }) => {
+export const AccountCard: React.FC<AccountCardProps> = ({ acct, onPress }) => {
+  const avatarLabel = acct.label.substring(0, 3).toUpperCase();
+
   return (
-    <TouchableOpacity style={styles.cardContainer} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={styles.cardContainer}
+      activeOpacity={0.85}
+      onPress={onPress}
+    >
       <View style={styles.innerPadding}>
-        {/* Header Row */}
         <View style={styles.headerRow}>
           <View style={styles.accountInfo}>
-            <View style={[styles.avatar, { backgroundColor: acct.avatarBg }]}>
-              <Text style={styles.avatarText}>{acct.avatar}</Text>
+            <View style={[styles.avatarBubble, { backgroundColor: acct.avatarBg || '#D81E05' }]}>
+              <Text style={styles.avatarText}>{avatarLabel}</Text>
             </View>
             <View>
               <Text style={styles.label}>{acct.label}</Text>
-              <Text style={styles.subText}>{acct.sub}</Text>
+              <Text style={styles.maskedAccount}>
+                {acct.accountNumber ? `•••• ${acct.accountNumber.slice(-4)}` : '•••• ••••'}
+              </Text>
             </View>
           </View>
           <Svg width={8} height={14} viewBox="0 0 8 14" fill="none">
-            <Path d="M1 1l6 6-6 6" stroke="#767676" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M1 1l6 6-6 6" stroke="#666666" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </View>
 
-        {/* Balance Section */}
         <View style={styles.balanceSection}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>{acct.field}</Text>
-            <Text style={styles.balanceValue}>{acct.bal}</Text>
-          </View>
-          <View style={[styles.fieldRow, styles.borderTopLight]}>
-            <Text style={styles.fieldLabel}>{acct.field2}</Text>
-            <Text style={styles.fieldValue}>{acct.field2val}</Text>
+            <Text style={styles.fieldLabel}>Available Balance</Text>
+            <Text style={styles.balanceValue}>{acct.balance}</Text>
           </View>
         </View>
       </View>
@@ -49,8 +52,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 16,
-    backgroundColor: '#EDE8DF',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    backgroundColor: '#F5F3EF',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   innerPadding: {
     padding: 16,
@@ -59,61 +69,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   accountInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  avatarBubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   label: {
     color: '#1A1A1A',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 16,
+    marginBottom: 2,
   },
-  subText: {
-    color: '#767676',
+  maskedAccount: {
+    color: '#888888',
     fontSize: 12,
   },
   balanceSection: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-    paddingTop: 12,
+    borderTopColor: 'rgba(0,0,0,0.06)',
+    paddingTop: 14,
   },
   fieldRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
-  },
-  borderTopLight: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingVertical: 4,
   },
   fieldLabel: {
-    color: '#767676',
-    fontSize: 12,
+    color: '#888888',
+    fontSize: 13,
   },
   balanceValue: {
     color: '#1A1A1A',
     fontWeight: '700',
-    fontSize: 14,
-  },
-  fieldValue: {
-    color: '#1A1A1A',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 20,
   },
 });

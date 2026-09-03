@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,80 +8,68 @@ import {
   StyleSheet,
 } from 'react-native';
 
-interface Screen4Props {
+interface PlanningForProps {
   onPersonal: () => void;
-  onShared: (partnerAccount: string) => void;
+  onShared: (partnerAccount?: string) => void;
   onBack: () => void;
 }
 
-type GoalType = 'personal' | 'shared';
-
-interface GoalOption {
-  val: GoalType;
-  icon: string;
-  label: string;
-  sub: string;
-}
-
-const GOAL_OPTIONS: GoalOption[] = [
+const GOAL_OPTIONS = [
   {
     val: 'personal',
-    icon: '👤',
-    label: 'Personal Goals',
+    label: 'Myself',
     sub: 'Plan for yourself — savings, investments, protection',
   },
   {
     val: 'shared',
-    icon: '👫',
-    label: 'Shared Goals',
+    label: 'With Partner / Couple',
     sub: 'Plan together with a partner toward joint milestones',
   },
 ];
 
-export const Screen4_GoalSelect: React.FC<Screen4Props> = ({
+export const Screen4_GoalSelect: React.FC<PlanningForProps> = ({
   onPersonal,
   onShared,
   onBack,
 }) => {
-  const [goalType, setGoalType] = useState<GoalType | null>(null);
-  const [partnerAccount, setPartnerAccount] = useState<string>('');
+  const [selectedGoal, setSelectedGoal] = React.useState<'personal' | 'shared' | null>(null);
+  const [partnerAccount, setPartnerAccount] = React.useState<string>('');
 
-  const canSubmit = partnerAccount.replace(/\s/g, '').length >= 6;
+  const canSubmit = selectedGoal === 'personal' || (selectedGoal === 'shared' && partnerAccount.replace(/\s/g, '').length >= 6);
 
   return (
     <View style={styles.container}>
-      {/* Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Your Goal</Text>
-          <Text style={styles.headerSub}>Choose how you'd like to plan</Text>
-        </View>
       </View>
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>What are you planning for?</Text>
+        <Text style={styles.title}>Who are you planning for?</Text>
         <Text style={styles.subtitle}>
-          Your choice shapes the AI's recommendations and timeline.
+          Choose your planning mode to personalise your AI roadmap.
         </Text>
 
-        {/* Goal Type Selector */}
         <View style={styles.optionGroup}>
           {GOAL_OPTIONS.map((o) => {
-            const isSelected = goalType === o.val;
+            const isSelected = selectedGoal === o.val;
             return (
               <TouchableOpacity
                 key={o.val}
                 activeOpacity={0.8}
-                onPress={() => setGoalType(o.val)}
+                onPress={() => {
+                  setSelectedGoal(o.val);
+                  if (o.val === 'shared') {
+                    setPartnerAccount('');
+                  }
+                }}
                 style={[
                   styles.optionCard,
                   isSelected ? styles.optionSelected : styles.optionUnselected,
                 ]}
               >
-                <Text style={styles.optionIcon}>{o.icon}</Text>
+                <Text style={styles.optionIcon}>{o.label === 'Myself' ? '👤' : '👫'}</Text>
                 <View style={styles.optionContent}>
                   <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
                     {o.label}
@@ -99,12 +87,10 @@ export const Screen4_GoalSelect: React.FC<Screen4Props> = ({
           })}
         </View>
 
-        {/* Dynamic Partner Input */}
-        {goalType === 'shared' && (
+        {selectedGoal === 'shared' && (
           <View style={styles.partnerContainer}>
-            <Text style={styles.partnerTitle}>Link Your Partner's Account</Text>
+            <Text style={styles.partnerTitle}>Partner's OCBC 360 Account</Text>
             <View style={styles.inputCard}>
-              <Text style={styles.inputLabel}>Partner's Account Number</Text>
               <TextInput
                 value={partnerAccount}
                 onChangeText={(text: string) => setPartnerAccount(text)}
@@ -126,30 +112,37 @@ export const Screen4_GoalSelect: React.FC<Screen4Props> = ({
         )}
       </ScrollView>
 
-      {/* Bottom Action Footer */}
       <View style={styles.footer}>
-        {goalType === 'personal' && (
-          <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtn} onPress={onPersonal}>
+        {selectedGoal === 'personal' && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.primaryBtn}
+            onPress={() => {
+              onPersonal();
+            }}
+          >
             <Text style={styles.primaryBtnText}>Continue →</Text>
           </TouchableOpacity>
         )}
 
-        {goalType === 'shared' && canSubmit && (
+        {selectedGoal === 'shared' && canSubmit && (
           <TouchableOpacity
             activeOpacity={0.85}
             style={styles.primaryBtn}
-            onPress={() => onShared(partnerAccount)}
+            onPress={() => {
+              onShared(partnerAccount);
+            }}
           >
-            <Text style={styles.primaryBtnText}>Submit Invitation →</Text>
+            <Text style={styles.primaryBtnText}>Continue →</Text>
           </TouchableOpacity>
         )}
 
-        {(!goalType || (goalType === 'shared' && !canSubmit)) && (
+        {!canSubmit && (
           <View style={styles.disabledBtn}>
             <Text style={styles.disabledBtnText}>
-              {goalType === 'shared'
-                ? 'Enter account number above'
-                : 'Select a goal type above'}
+              {selectedGoal === 'shared'
+                ? 'Enter partner account number above'
+                : 'Select a planning mode above'}
             </Text>
           </View>
         )}
@@ -161,14 +154,14 @@ export const Screen4_GoalSelect: React.FC<Screen4Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F4F0',
+    backgroundColor: '#F5F3EF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 12,
-    gap: 12,
   },
   backBtn: {
     width: 36,
@@ -178,21 +171,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E8E8E8',
+    borderColor: '#E0E0E0',
   },
   backBtnText: {
-    fontSize: 16,
-    color: '#1A1A1A',
+    fontSize: 20,
+    color: '#D81E05',
     fontWeight: '700',
-  },
-  headerTitle: {
-    color: '#1A1A1A',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  headerSub: {
-    color: '#767676',
-    fontSize: 10,
   },
   scrollArea: {
     flex: 1,
@@ -202,15 +186,15 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   title: {
-    color: '#1A1A1A',
+    fontSize: 24,
     fontWeight: '900',
-    fontSize: 20,
+    color: '#1A1A1A',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#767676',
     fontSize: 14,
-    marginBottom: 20,
+    color: '#666666',
+    marginBottom: 24,
   },
   optionGroup: {
     gap: 16,
@@ -233,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   optionIcon: {
-    fontSize: 36,
+    fontSize: 24,
   },
   optionContent: {
     flex: 1,
@@ -252,17 +236,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#D81E05',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkMark: {
+    fontSize: 16,
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   partnerContainer: {
     marginTop: 20,
@@ -280,13 +264,6 @@ const styles = StyleSheet.create({
     borderColor: '#E8E8E8',
     padding: 16,
     marginBottom: 12,
-  },
-  inputLabel: {
-    color: '#767676',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    marginBottom: 8,
   },
   textInput: {
     width: '100%',
@@ -318,6 +295,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#D81E05',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryBtnText: {
     color: '#FFFFFF',

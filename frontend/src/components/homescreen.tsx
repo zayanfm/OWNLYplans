@@ -5,10 +5,9 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
-
-// --- Interfaces & Types ---
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 
 export interface AccountItem {
   id: string;
@@ -23,470 +22,539 @@ export interface HomeScreenProps {
   onNav?: (screenKey: string) => void;
 }
 
-export interface PlanScreenProps {
-  onOwnly?: () => void;
-  onNav?: (screenKey: string) => void;
-}
+type TabCategory = 'Accounts' | 'Cards' | 'Investments' | 'Loans';
 
-type TabCategory = 'Accounts' | 'Cards' | 'Investments';
-
-// --- Mock Data & Component Placeholders ---
-// Replace these with your actual imported components and data constants
-
-const ACCOUNTS: AccountItem[] = [
-  { id: '1', name: '360 Account', balance: 'S$42,500.00', accountNumber: '588-123456-001' },
-  { id: '2', name: 'Frank Account', balance: 'S$3,240.50', accountNumber: '588-987654-001' },
+const ACCOUNTS_DATA = [
+  {
+    id: '1',
+    label: 'OCBC FRANK Account',
+    accountNumber: '•••• ••••',
+    balance: 'S$ •,•••.••',
+    subFields: [
+      { label: 'Available balance', value: 'S$ •,•••.••' },
+      { label: 'Debit card no.', value: '•••• •••• 1234' },
+    ],
+    avatarLabel: 'FRA',
+    avatarBg: '#EE6C4D',
+  },
+  {
+    id: '2',
+    label: 'OCBC 360 Account',
+    accountNumber: '•••• 4892',
+    balance: 'S$24,180.33',
+    subFields: [
+      { label: 'Available balance', value: 'S$24,180.33' },
+      { label: 'Savings bonus', value: 'S$12.80' },
+    ],
+    avatarLabel: '360',
+    avatarBg: '#60A5FA',
+  },
 ];
 
-const CARDS: AccountItem[] = [
-  { id: 'c1', name: 'OCBC 365 Credit Card', balance: 'S$1,240.00' },
+const QUICK_ACTIONS = [
+  { id: 'paynow', label: 'PayNow' },
+  { id: 'scan', label: 'Scan & Pay' },
+  { id: 'fx', label: 'Foreign Exchange' },
+  { id: 'customise', label: 'Customise' },
 ];
 
-const INVESTMENTS: AccountItem[] = [
-  { id: 'i1', name: 'LionGlobal SGD MMF', balance: 'S$18,450.00' },
-];
-
-const TopActionBar = () => <View style={styles.placeholderBar} />;
-const HeroBanner = ({ onOwnly }: { onOwnly?: () => void }) => (
-  <TouchableOpacity style={styles.heroPlaceholder} onPress={onOwnly}>
-    <Text style={styles.heroPlaceholderText}>Hero Banner (Tap for OWNLY)</Text>
-  </TouchableOpacity>
+const EyeIcon = ({ visible }: { visible: boolean }) => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+    {visible ? (
+      <>
+        <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="#666666" strokeWidth={1.8} />
+        <Circle cx={12} cy={12} r={3} stroke="#666666" strokeWidth={1.8} />
+      </>
+    ) : (
+      <>
+        <Path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="#666666" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    )}
+  </Svg>
 );
-const QuickActions = () => <View style={styles.placeholderBar} />;
-const FilterTabs = ({ tab, onTab }: { tab: TabCategory; onTab: (t: TabCategory) => void }) => (
-  <View style={styles.filterRow}>
-    {(['Accounts', 'Cards', 'Investments'] as TabCategory[]).map((t) => (
-      <TouchableOpacity
-        key={t}
-        style={[styles.tabButton, tab === t && styles.tabButtonActive]}
-        onPress={() => onTab(t)}
-      >
-        <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
-      </TouchableOpacity>
+
+const QuickActionIcon = ({ type }: { type: string }) => {
+  switch (type) {
+    case 'paynow':
+      return (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+          <Rect x={2} y={2} width={9} height={9} rx={1.5} stroke="#D81E05" strokeWidth={1.8} />
+          <Rect x={13} y={2} width={9} height={9} rx={1.5} stroke="#D81E05" strokeWidth={1.8} />
+          <Rect x={2} y={13} width={9} height={9} rx={1.5} stroke="#D81E05" strokeWidth={1.8} />
+          <Path d="M18.5 13.5v6M15.5 16.5h6" stroke="#D81E05" strokeWidth={1.8} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'scan':
+      return (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+          <Path d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2M16 4h2a2 2 0 012 2v2M16 20h2a2 2 0 002-2v-2" stroke="#60A5FA" strokeWidth={1.8} strokeLinecap="round" />
+          <Circle cx={12} cy={12} r={3} stroke="#60A5FA" strokeWidth={1.8} />
+        </Svg>
+      );
+    case 'fx':
+      return (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 2v20M17 7l-5-5-5 5M7 17l5 5 5-5" stroke="#10B981" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    default:
+      return (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+          <Circle cx={12} cy={12} r={3} stroke="#666666" strokeWidth={1.8} />
+          <Path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="#666666" strokeWidth={1.8} />
+        </Svg>
+      );
+  }
+};
+
+const ChevronRightIcon = () => (
+  <Svg width={8} height={14} viewBox="0 0 8 14" fill="none">
+    <Path d="M1 1l6 6-6 6" stroke="#666666" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const NavIcon = ({ name, active }: { name: string; active: boolean }) => {
+  const color = active ? '#D81E05' : '#888888';
+  switch (name) {
+    case 'home':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'plan':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Rect x={3} y={4} width={18} height={18} rx={2} stroke={color} strokeWidth={1.8} />
+          <Line x1={16} y1={2} x2={16} y2={6} stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+          <Line x1={8} y1={2} x2={8} y2={6} stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+          <Line x1={3} y1={10} x2={21} y2={10} stroke={color} strokeWidth={1.8} />
+        </Svg>
+      );
+    case 'rewards':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    default:
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Circle cx={12} cy={12} r={1} fill={color} />
+          <Circle cx={19} cy={12} r={1} fill={color} />
+          <Circle cx={5} cy={12} r={1} fill={color} />
+        </Svg>
+      );
+  }
+};
+
+const AccountCard = ({
+  account,
+  hidden,
+}: {
+  account: (typeof ACCOUNTS_DATA)[0];
+  hidden: boolean;
+}) => (
+  <View style={styles.accountCard}>
+    <View style={styles.accountHeader}>
+      <View style={styles.accountInfo}>
+        <View style={[styles.avatarBadge, { backgroundColor: account.avatarBg }]}>
+          <Text style={styles.avatarText}>{account.avatarLabel}</Text>
+        </View>
+        <View>
+          <Text style={styles.accountLabel}>{account.label}</Text>
+          <Text style={styles.accountNumber}>{account.accountNumber}</Text>
+        </View>
+      </View>
+      <ChevronRightIcon />
+    </View>
+    {account.subFields.map((field, index) => (
+      <View key={index} style={[styles.fieldRow, index > 0 && styles.fieldRowBorder]}>
+        <Text style={styles.fieldLabel}>{field.label}</Text>
+        <Text style={[styles.fieldValue, hidden && styles.fieldValueHidden]}>
+          {hidden ? '••••••' : field.value}
+        </Text>
+      </View>
     ))}
   </View>
 );
-const AccountCard = ({ acct }: { acct: AccountItem; delay?: number }) => (
-  <View style={styles.accountCard}>
-    <Text style={styles.accountName}>{acct.name}</Text>
-    <Text style={styles.accountBalance}>{acct.balance}</Text>
+
+const HeroBanner = ({ onOwnly }: { onOwnly?: () => void }) => (
+  <TouchableOpacity style={styles.heroBanner} onPress={onOwnly} activeOpacity={0.9}>
+    <View style={styles.heroGradient}>
+      <View style={styles.heroBadge}>
+        <View style={styles.heroDot} />
+        <Text style={styles.heroBadgeText}>OWNLYplans Ready</Text>
+      </View>
+      <Text style={styles.heroWelcome}>Welcome</Text>
+      <Text style={styles.heroPromoText}>
+        Score S$20 cash for every friend you refer to OCBC FRANK! No limit! ›
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const QuickActionsGrid = () => (
+  <View style={styles.quickActionsCard}>
+    <View style={styles.quickActionsGrid}>
+      {QUICK_ACTIONS.map((action) => (
+        <TouchableOpacity key={action.id} style={styles.quickActionItem} activeOpacity={0.7}>
+          <View style={styles.quickActionIconWrap}>
+            <QuickActionIcon type={action.id} />
+          </View>
+          <Text style={styles.quickActionLabel}>{action.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
   </View>
 );
-const AllocationFlow = () => <View style={styles.placeholderBar} />;
-const BottomNav = ({ active, onNavigate }: { active: string; onNavigate?: (key: string) => void }) => <View />;
 
-// --- Component 1: HomeScreen ---
+const FilterTabs = ({
+  tab,
+  onTab,
+  privacyMode,
+  onTogglePrivacy,
+}: {
+  tab: TabCategory;
+  onTab: (t: TabCategory) => void;
+  privacyMode: boolean;
+  onTogglePrivacy: () => void;
+}) => {
+  const tabs: TabCategory[] = ['Accounts', 'Cards', 'Investments', 'Loans'];
+  return (
+    <View style={styles.tabsSection}>
+      <TouchableOpacity style={styles.privacyToggle} onPress={onTogglePrivacy} activeOpacity={0.7}>
+        <EyeIcon visible={!privacyMode} />
+      </TouchableOpacity>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+        {tabs.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.tabPill, tab === t && styles.tabPillActive]}
+            onPress={() => onTab(t)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabPillText, tab === t && styles.tabPillTextActive]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const BottomNav = ({ active, onNavigate }: { active: string; onNavigate?: (key: string) => void }) => (
+  <View style={styles.bottomNav}>
+    <TouchableOpacity style={styles.navItem} onPress={() => onNavigate?.('home')} activeOpacity={0.7}>
+      <NavIcon name="home" active={active === 'home'} />
+      <Text style={active === 'home' ? styles.navLabelActive : styles.navLabel}>Home</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.navItem} onPress={() => onNavigate?.('plan')} activeOpacity={0.7}>
+      <NavIcon name="plan" active={active === 'plan'} />
+      <Text style={active === 'plan' ? styles.navLabelActive : styles.navLabel}>Plan</Text>
+    </TouchableOpacity>
+
+    <View style={styles.centerActionWrapper}>
+      <TouchableOpacity style={styles.centerAction} activeOpacity={0.8}>
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      </TouchableOpacity>
+      <Text style={styles.centerActionLabel}>Pay & Transfer</Text>
+    </View>
+
+    <TouchableOpacity style={styles.navItem} onPress={() => onNavigate?.('rewards')} activeOpacity={0.7}>
+      <NavIcon name="rewards" active={active === 'rewards'} />
+      <Text style={active === 'rewards' ? styles.navLabelActive : styles.navLabel}>Rewards</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.navItem} onPress={() => onNavigate?.('more')} activeOpacity={0.7}>
+      <NavIcon name="more" active={active === 'more'} />
+      <Text style={active === 'more' ? styles.navLabelActive : styles.navLabel}>More</Text>
+    </TouchableOpacity>
+  </View>
+);
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly, onNav }) => {
   const [tab, setTab] = useState<TabCategory>('Accounts');
-
-  const list: AccountItem[] =
-    tab === 'Accounts' ? ACCOUNTS : tab === 'Cards' ? CARDS : tab === 'Investments' ? INVESTMENTS : [];
+  const [privacyMode, setPrivacyMode] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
-      <TopActionBar />
-      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <HeroBanner onOwnly={onOwnly} />
-        <QuickActions />
-        <FilterTabs tab={tab} onTab={setTab} />
-        {list.length > 0 ? (
-          list.map((a, i) => (
-            <AccountCard key={a.id} acct={a} delay={i * 0.05} />
-          ))
-        ) : (
-          <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>No {tab.toLowerCase()} linked yet.</Text>
-          </View>
-        )}
+        <QuickActionsGrid />
+        <FilterTabs
+          tab={tab}
+          onTab={setTab}
+          privacyMode={privacyMode}
+          onTogglePrivacy={() => setPrivacyMode(!privacyMode)}
+        />
+        <View style={styles.accountsStack}>
+          {ACCOUNTS_DATA.map((account) => (
+            <AccountCard key={account.id} account={account} hidden={privacyMode} />
+          ))}
+        </View>
+        <View style={styles.bottomSpacer} />
       </ScrollView>
+
       <BottomNav active="home" onNavigate={onNav} />
     </SafeAreaView>
   );
 };
 
-// --- Component 2: PlanScreen ---
-
-export const PlanScreen: React.FC<PlanScreenProps> = ({ onOwnly, onNav }) => {
-  return (
-    <SafeAreaView style={styles.containerBg}>
-      {/* Header Row */}
-      <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Plan</Text>
-        <View style={styles.statusBadge}>
-          <View style={styles.pulseDot} />
-          <Text style={styles.statusBadgeText}>AI Active</Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        {/* OWNLYplans Hero Card */}
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={onOwnly}
-          style={styles.ownlyHeroCard}
-        >
-          <View style={styles.badgeRow}>
-            <View style={styles.whiteDot} />
-            <Text style={styles.badgeText}>New · OWNLYplans AI</Text>
-          </View>
-          <Text style={styles.ownlyTitle}>Your June 2026{'\n'}plan is ready.</Text>
-          <View style={styles.metricsRow}>
-            {[
-              ['Est. gain', '+S$340/mo'],
-              ['Agents', '4 active'],
-              ['Actions', '6 planned'],
-            ].map(([l, v]) => (
-              <View key={l} style={styles.metricItem}>
-                <Text style={styles.metricValue}>{v}</Text>
-                <Text style={styles.metricLabel}>{l}</Text>
-              </View>
-            ))}
-          </View>
-        </TouchableOpacity>
-
-        {/* Savings Goal Progress */}
-        <View style={styles.card}>
-          <Text style={styles.cardSubHeader}>BTO Goal · Dec 2027</Text>
-          <View style={styles.progressHeaderRow}>
-            <Text style={styles.goalValue}>
-              S$40,800 <Text style={styles.goalTarget}>of S$60,000</Text>
-            </Text>
-            <Text style={styles.goalPct}>68%</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: '68%' }]} />
-          </View>
-          <Text style={styles.progressFooter}>
-            On track · OWNLYplans suggests +S$200/mo to hit 2 months early
-          </Text>
-        </View>
-
-        {/* AI Life Planner Entry Card */}
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={() => onNav?.('aiPlanner')}
-          style={styles.aiPlannerCard}
-        >
-          <View style={styles.badgeRow}>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>NEW</Text>
-            </View>
-            <Text style={styles.aiPlannerTag}>AI Life Planner</Text>
-          </View>
-
-          <Text style={styles.aiPlannerTitle}>
-            Build your long-term{'\n'}financial roadmap
-          </Text>
-          <Text style={styles.aiPlannerSub}>
-            Personalised 5 or 10-year plan · Powered by OWNLYplans AI
-          </Text>
-
-          <View style={styles.aiPlannerFeaturesRow}>
-            <View style={styles.featurePill}>
-              <Text style={styles.featureEmoji}>🤖</Text>
-              <Text style={styles.featurePillText}>4 AI Agents</Text>
-            </View>
-            <View style={styles.featurePill}>
-              <Text style={styles.featureEmoji}>⚡</Text>
-              <Text style={styles.featurePillText}>Ready in 30s</Text>
-            </View>
-            <View style={styles.ctaRight}>
-              <Text style={styles.ctaText}>Get started →</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Step 2: Smart Allocation Flow */}
-        <AllocationFlow />
-      </ScrollView>
-
-      <BottomNav active="plan" onNavigate={onNav} />
-    </SafeAreaView>
-  );
-};
-
-// --- StyleSheet ---
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F3EF',
   },
-  containerBg: {
-    flex: 1,
-    backgroundColor: '#F5F4F0',
-  },
-  scrollArea: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 96,
+    paddingBottom: 120,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  heroBanner: {
+    marginBottom: 0,
+  },
+  heroGradient: {
+    backgroundColor: '#D81E05',
+    paddingTop: 24,
+    paddingBottom: 48,
     paddingHorizontal: 20,
-    paddingBottom: 12,
-    gap: 8,
   },
-  headerTitle: {
-    flex: 1,
-    color: '#1A1A1A',
-    fontWeight: '700',
-    fontSize: 18,
-  },
-  statusBadge: {
+  heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    gap: 6,
   },
-  pulseDot: {
+  heroDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#D81E05',
+    backgroundColor: '#FFFFFF',
   },
-  statusBadgeText: {
-    fontSize: 10,
-    color: '#767676',
-  },
-  placeholderBar: {
-    height: 16,
-    marginBottom: 12,
-  },
-  heroPlaceholder: {
-    backgroundColor: '#EAEAEA',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  heroPlaceholderText: {
-    color: '#767676',
-    fontWeight: '600',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  tabButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F4F0',
-  },
-  tabButtonActive: {
-    backgroundColor: '#1A1A1A',
-  },
-  tabText: {
-    fontSize: 12,
-    color: '#767676',
-    fontWeight: '600',
-  },
-  tabTextActive: {
+  heroBadgeText: {
     color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  accountCard: {
+  heroWelcome: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  heroPromoText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  quickActionsCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    padding: 16,
-    marginBottom: 10,
-  },
-  accountName: {
-    fontSize: 12,
-    color: '#767676',
-    marginBottom: 4,
-  },
-  accountBalance: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  emptyStateContainer: {
     marginHorizontal: 16,
-    backgroundColor: '#EDE8DF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
+    marginTop: -36,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  emptyStateText: {
-    color: '#767676',
-    fontSize: 14,
-  },
-  ownlyHeroCard: {
-    backgroundColor: '#D81E05',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  badgeRow: {
+  quickActionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  quickActionItem: {
+    width: '25%',
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 8,
+  },
+  quickActionIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F5F3EF',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
-  whiteDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
+  quickActionLabel: {
+    color: '#1A1A1A',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  badgeText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  ownlyTitle: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  metricsRow: {
+  tabsSection: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
-  metricItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  metricValue: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  metricLabel: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 9,
-  },
-  card: {
+  privacyToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
     borderWidth: 1,
     borderColor: '#EAEAEA',
+  },
+  tabsScroll: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  tabPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginRight: 8,
+  },
+  tabPillActive: {
+    backgroundColor: '#D81E05',
+    borderColor: '#D81E05',
+  },
+  tabPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  tabPillTextActive: {
+    color: '#FFFFFF',
+  },
+  accountsStack: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  accountCard: {
+    backgroundColor: '#F5F3EF',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
-  cardSubHeader: {
-    color: '#767676',
-    fontSize: 9,
+  accountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  accountInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 4,
   },
-  progressHeaderRow: {
+  accountLabel: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  accountNumber: {
+    color: '#888888',
+    fontSize: 12,
+  },
+  fieldRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 10,
   },
-  goalValue: {
+  fieldRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
+  },
+  fieldLabel: {
+    color: '#888888',
+    fontSize: 13,
+  },
+  fieldValue: {
     color: '#1A1A1A',
-    fontWeight: '700',
     fontSize: 14,
-  },
-  goalTarget: {
-    color: '#767676',
-    fontWeight: '400',
-    fontSize: 12,
-  },
-  goalPct: {
-    color: '#D81E05',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  progressTrack: {
-    height: 8,
-    backgroundColor: '#F0EDE8',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#D81E05',
-    borderRadius: 4,
-  },
-  progressFooter: {
-    color: '#767676',
-    fontSize: 10,
-    marginTop: 8,
-  },
-  aiPlannerCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  newBadge: {
-    backgroundColor: '#D81E05',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  newBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  aiPlannerTag: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  aiPlannerTitle: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 18,
-    lineHeight: 24,
-    marginBottom: 4,
-  },
-  aiPlannerSub: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-    marginBottom: 16,
-  },
-  aiPlannerFeaturesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featurePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  featureEmoji: {
-    fontSize: 14,
-  },
-  featurePillText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 10,
     fontWeight: '600',
   },
-  ctaRight: {
-    marginLeft: 'auto',
+  fieldValueHidden: {
+    letterSpacing: 2,
   },
-  ctaText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
+  bottomSpacer: {
+    height: 20,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EAEAEA',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  navLabel: {
+    fontSize: 10,
+    color: '#888888',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  navLabelActive: {
+    fontSize: 10,
+    color: '#D81E05',
     fontWeight: '700',
+    marginTop: 4,
+  },
+  centerActionWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -20,
+  },
+  centerAction: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#D81E05',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#D81E05',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  centerActionLabel: {
+    fontSize: 9,
+    color: '#888888',
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
