@@ -1,75 +1,64 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { GoogleGenAI } = require('@google/genai');
+const env = require('./config/env');
 
+const authRoutes = require('./routes/auth');
+const sgfindexRoutes = require('./routes/sgfindex');
 const financeRoutes = require('./routes/finance');
+const configRoutes = require('./routes/config');
+const agentsRoutes = require('./routes/agents');
+const rmRoutes = require('./routes/rm');
 
-// 1. Initialize Express FIRST
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Initialize Google Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// 2. Middlewares
-app.use(cors());
+// Middleware
+app.use(cors({ origin: env.CORS_ORIGIN }));
 app.use(express.json());
 
-// 3. Routes
-app.use('/api/finance', financeRoutes);
-
-// 1. Gemini AI Insights Endpoint
-app.post('/api/ai-insights', async (req, res) => {
-  try {
-    const { userPrompt, userFinancialData } = req.body;
-
-    let prompt = userPrompt;
-
-    // Only attach financial data context if actual balance data is provided
-    if (userFinancialData && Object.keys(userFinancialData).length > 0) {
-      prompt = `Context Data: ${JSON.stringify(userFinancialData)}\n\nQuestion: ${userPrompt}`;
-    }
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    res.json({ success: true, advice: response.text });
-  } catch (error) {
-    console.error('Gemini API Error:', error);
-    res.status(500).json({ success: false, error: 'Failed to generate AI insights.' });
+// Request logging in development
+app.use((req, res, next) => {
+  if (env.NODE_ENV !== 'test') {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   }
+  next();
 });
 
-// 2. Mock SGFinDex Aggregation Endpoint
-app.get('/api/sgfindex/aggregate', (req, res) => {
+// Health check endpoint
+app.get('/api/health', (req, res) => {
   res.json({
-    success: true,
-    lastUpdated: new Date().toISOString(),
-    accounts: [
-      { bank: 'OCBC', accountType: '360 Account', balance: 12450.80, currency: 'SGD' },
-      { bank: 'DBS', accountType: 'Multiplier', balance: 5300.20, currency: 'SGD' },
-      { bank: 'UOB', accountType: 'One Account', balance: 8120.00, currency: 'SGD' },
-    ],
-    cpf: { oa: 24000.00, sa: 18000.00, ma: 12000.00 },
+    status: 'UP',
+    version: '1.0.0',
+    service: 'OWNLYplans AI Core Backend',
+    timestamp: new Date().toISOString()
   });
 });
 
-// 3. MockPass Authentication Endpoint
-app.post('/api/auth/mockpass', (req, res) => {
-  res.json({
-    success: true,
-    user: {
-      nric: 'S****123A',
-      name: 'Alex Tan',
-      singpassVerified: true,
-    },
+// Mount Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/sgfindex', sgfindexRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/config', configRoutes);
+app.use('/api/agents', agentsRoutes);
+app.use('/api/rm', rmRoutes);
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('[Unhandled Server Error]:', err);
+  res.status(500).json({
+    success: false,
+    error: err.message || 'Internal Server Error'
   });
 });
 
-// Bind to 0.0.0.0 so devices on your local network (like your phone) can connect
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend server running on http://192.168.1.5:${PORT}`);
-});
+// Export app for testing
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = env.PORT;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`=========================================`);
+    console.log(`  OWNLYplans API Engine Running on port ${PORT}`);
+    console.log(`  Local:   http://localhost:${PORT}`);
+    console.log(`=========================================`);
+  });
+}
+
+module.exports = app;

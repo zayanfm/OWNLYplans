@@ -138,10 +138,10 @@ export default function MainApp() {
                     setPartnerAccount('');
                     setOnboardingStep('agent-status');
                   }}
-                  onShared={(account) => {
+                  onShared={(account = '') => {
                     setGoalType('shared');
                     setPartnerAccount(account);
-                    if (account.replace(/\s/g, '').length >= 6) {
+                    if (account && account.replace(/\s/g, '').length >= 6) {
                       setOnboardingStep('agent-status');
                     } else {
                       setOnboardingStep('waiting');
@@ -169,7 +169,7 @@ export default function MainApp() {
                 <Screen6_PlannerConfig
                   goalType={goalType}
                   onComplete={handleConfigComplete}
-                  onBack={() => setOnboardingStep(onboardingStep === 'waiting' ? 'waiting' : 'planning')}
+                  onBack={() => setOnboardingStep('planning')}
                 />
               )}
 
@@ -211,7 +211,7 @@ export default function MainApp() {
         )}
 
         <HelpPortal onClose={() => setShowHelp(false)} visible={showHelp} />
-        <ChatbotOverlay onClose={() => setShowChat(false)} visible={showChat} setup={planSetup} />
+        <ChatbotOverlay onClose={() => setShowChat(false)} visible={showChat} setup={planSetup || undefined} />
       </View>
     </SafeAreaProvider>
   );

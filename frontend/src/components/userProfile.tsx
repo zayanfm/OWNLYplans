@@ -1,80 +1,152 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import api, { MockPassAuthResponse, PersonaInfo } from '../services/api';
 
-const BackArrowIcon = () => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Circle cx={12} cy={12} r="11" fill="#D81E05" />
-    <path d="M12 7v10M8 12h8" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-  </Svg>
-);
+export const UserProfile: React.FC<{
+  onNext?: () => void;
+  onBack?: () => void;
+  onEdit?: () => void;
+}> = ({ onNext, onBack, onEdit }) => {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [profile, setProfile] = useState<MockPassAuthResponse | null>(null);
+  const [personas, setPersonas] = useState<PersonaInfo[]>([]);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
 
-export const UserProfile: React.FC<{ onNext?: () => void; onBack?: () => void; onEdit?: () => void }> = ({
-  onNext,
-  onBack,
-  onEdit,
-}) => {
+  const fetchProfile = async (personaId?: string) => {
+    try {
+      setLoading(true);
+      const res = await api.mockpassLogin(personaId);
+      setProfile(res);
+      const pList = await api.getPersonas();
+      if (pList.success) {
+        setPersonas(pList.personas);
+      }
+    } catch (e) {
+      console.warn('Failed to load MockPass profile:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleSelectPersona = async (id: string) => {
+    setModalVisible(false);
+    await fetchProfile(id);
+  };
+
+  const user = profile?.user;
+  const partner = profile?.partner;
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.personaSwitchBtn} onPress={() => setModalVisible(true)}>
+          <Text style={styles.personaSwitchBtnText}>🔄 Switch Persona</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Your Profile</Text>
-        <Text style={styles.subtitle}>Verify your baseline before we build your plan</Text>
+        <Text style={styles.title}>Your Household Profile</Text>
+        <Text style={styles.subtitle}>Verified Singpass & SGFinDex baseline for OWNLYplans</Text>
 
-        <View style={styles.card}>
-          <View style={styles.statusBanner}>
-            <Text style={styles.statusText}>AI-sourced from your OCBC data | LIVE</Text>
+        {loading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#D81E05" />
+            <Text style={{ marginTop: 12, color: '#666' }}>Syncing with Singpass MockPass...</Text>
           </View>
-
-          <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>M</Text>
-              </View>
-              <Text style={styles.name}>Mary Tan</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>OCBC 360 Verified</Text>
-              </View>
+        ) : (
+          <View style={styles.card}>
+            <View style={styles.statusBanner}>
+              <Text style={styles.statusText}>🔒 Singpass MyInfo Verified | SGFinDex Connected</Text>
             </View>
 
-            <View style={styles.fieldContainer}>
-              {_renderField('Full Name', 'Mary Tan')}
-              {_renderField('Age', '32 years old')}
-              {_renderField('Occupation', 'Senior Marketing Manager')}
-              {_renderField('Monthly Income', 'S$6,200 (take-home)')}
-              {_renderField('OCBC Account', '360 Account · •••• 4892')}
-              {_renderField('Savings Balance', 'S$24,180.33')}
-              {_renderField('Risk Profile', 'Balanced (MAS FAIR)')}
-              {_renderField('CPF OA Balance', 'S$42,000')}
-            </View>
+            <View style={styles.profileSection}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'A'}</Text>
+                </View>
+                <Text style={styles.name}>{profile?.personaName || user?.name}</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>Verified Household • {profile?.segment}</Text>
+                </View>
+              </View>
 
-            <Text style={styles.disclaimer}>
-              These details power your personalised plan. Tap Edit to update any field.
-            </Text>
+              <View style={styles.fieldContainer}>
+                {_renderField('Primary Applicant', `${user?.name} (${user?.nric})`)}
+                {_renderField('Employment', `${user?.employment}`)}
+                {_renderField('Monthly Take-Home', `S$${user?.monthlyTakeHome?.toLocaleString()}`)}
+                {_renderField('CPF Ordinary (OA)', `S$${user?.cpf?.oa?.toLocaleString()}`)}
+                {_renderField('CPF Special (SA)', `S$${user?.cpf?.sa?.toLocaleString()}`)}
+                {partner && (
+                  <>
+                    <View style={styles.divider} />
+                    {_renderField('Linked Partner', `${partner?.name} (${partner?.nric})`)}
+                    {_renderField('Partner Take-Home', `S$${partner?.monthlyTakeHome?.toLocaleString()}`)}
+                    {_renderField('Partner CPF OA', `S$${partner?.cpf?.oa?.toLocaleString()}`)}
+                  </>
+                )}
+                <View style={styles.divider} />
+                {_renderField('Housing Milestone', `${profile?.household?.housing?.type || '4-Room BTO'}`)}
+                {_renderField('Dependents', `${profile?.household?.dependentsCount || 0} dependent(s)`)}
+              </View>
+
+              <Text style={styles.disclaimer}>
+                These details are auto-synced via MockPass & SGFinDex. Tap "Switch Persona" to test different Singapore family life stages.
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.editButton} onPress={onEdit}>
-            <Text style={styles.editButtonText}>Edit</Text>
+          <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
+            <Text style={styles.editButtonText}>Switch Persona</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.nextButton} onPress={onNext}>
-            <Text style={styles.nextButtonText}>Next</Text>
+            <Text style={styles.nextButtonText}>Confirm & Proceed</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Persona Selector Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Select Singpass MockPass Persona</Text>
+            <Text style={styles.modalSubtitle}>Test OWNLYplans with authentic Singapore household archetypes</Text>
+
+            {personas.map(p => (
+              <TouchableOpacity
+                key={p.id}
+                style={[styles.personaOption, profile?.personaId === p.id && styles.personaOptionActive]}
+                onPress={() => handleSelectPersona(p.id)}
+              >
+                <Text style={styles.personaOptionTitle}>{p.name}</Text>
+                <Text style={styles.personaOptionDesc}>{p.segment} • {p.housing}</Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCloseBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -94,8 +166,10 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 0,
-    paddingBottom: 0,
-    marginTop: -8, // Shifts back button directly below the status bar
+    paddingBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   backButton: {
     width: 32,
@@ -111,6 +185,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#D81E05',
     fontWeight: '700',
+  },
+  personaSwitchBtn: {
+    backgroundColor: '#FFF0EE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  personaSwitchBtnText: {
+    color: '#D81E05',
+    fontWeight: '700',
+    fontSize: 12,
   },
   scrollArea: {
     flex: 1,
@@ -134,7 +221,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E0E0E0',
     shadowColor: '#000',
@@ -154,7 +241,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     color: '#1A73E8',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   profileSection: {
     alignItems: 'center',
@@ -215,6 +302,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#1A1A1A',
     fontWeight: '600',
+    maxWidth: '55%',
+    textAlign: 'right',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#EAEAEA',
+    marginVertical: 4,
   },
   disclaimer: {
     fontSize: 11,
@@ -255,6 +349,61 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 16,
+  },
+  personaOption: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 10,
+  },
+  personaOptionActive: {
+    borderColor: '#D81E05',
+    backgroundColor: '#FFF8F8',
+  },
+  personaOptionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  personaOptionDesc: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    marginTop: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+  modalCloseBtnText: {
+    color: '#767676',
+    fontWeight: '600',
   },
 });
 

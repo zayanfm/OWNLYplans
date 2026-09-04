@@ -19,14 +19,16 @@ export interface AgentRecommendation extends AgentStatus {
 
 export interface FinancialAccount {
   id: string;
-  avatar: string;
-  avatarBg: string;
+  avatar?: string;
+  avatarBg?: string;
   label: string;
-  sub: string;
-  bal: string;
-  field: string;
-  field2: string;
-  field2val: string;
+  sub?: string;
+  bal?: string;
+  balance?: string;
+  accountNumber?: string;
+  field?: string;
+  field2?: string;
+  field2val?: string;
 }
 
 export interface PromoCard {

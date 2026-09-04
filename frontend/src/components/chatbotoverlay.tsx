@@ -12,6 +12,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import api, { ChatMessage } from '../services/api';
 
 export interface SetupProps {
   timeline?: string;
@@ -30,12 +31,6 @@ interface Message {
   text: string;
 }
 
-const CHATBOT_RESPONSES = [
-  "I'm continuously monitoring your financial cash flows to keep your roadmap on target.",
-  'Your surplus allocation is optimized to balance liquid security with compound returns.',
-  'Feel free to adjust your contribution split or target timeline in your plan settings.',
-];
-
 export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, visible = false }) => {
   const timeline = setup?.timeline || '5';
   const split = setup?.split ?? 60;
@@ -43,17 +38,11 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
 
   const planLabel = `${timeline}-Year`;
   const partnerSplit = 100 - split;
-  const maryMonthly = Math.round((1340 * split) / 100);
-  const zayanMonthly = Math.round((1340 * partnerSplit) / 100);
 
   const [messages, setMessages] = useState<Message[]>([
     {
       from: 'ai',
-      text: `Hi Mary! 👋 Your ${planLabel} ${
-        goalType === 'shared' ? 'Shared ' : ''
-      }AI Life Plan is active. You're contributing ${split}% (S$${maryMonthly}/mo)${
-        goalType === 'shared' ? ` and Zayan ${partnerSplit}% (S$${zayanMonthly}/mo)` : ''
-      } toward your goals. What would you like to know?`,
+      text: `Hello! 👋 I am your OWNLYplans AI Assistant, connected to your OCBC 360, SGFinDex, and CPF data. Ask me anything about your BTO downpayment, MMF yield sweeps, government grants, or protection gaps!`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -89,39 +78,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
     }
   }, [typing, dotAnims]);
 
-  const getResponse = (msg: string): string => {
-    const m = msg.toLowerCase();
-    if (/split|contribut/.test(m)) {
-      return `Your plan has Mary contributing ${split}% (S$${maryMonthly}/mo) and ${
-        goalType === 'shared' ? `Zayan ${partnerSplit}% (S$${zayanMonthly}/mo)` : '100% solo'
-      }. This auto-routes into your shared MMF.`;
-    }
-    if (/bto|home|hdb/.test(m)) {
-      return `Your BTO Goal Pot is at S$40,800 (68% of S$60K target). On the current ${planLabel} plan you're on track to hit it 2 months early. OWNLYplans is routing +S$200/mo there.`;
-    }
-    if (/year|timeline|horizon/.test(m)) {
-      return `You're on a ${planLabel} plan. By Year ${timeline} the AI projects +S$${
-        timeline === '5' ? '200K' : '500K'
-      } in net wealth assuming 3.85% MMF yield and your current surplus.`;
-    }
-    if (/partner|zayan/.test(m)) {
-      return goalType === 'shared'
-        ? `Zayan is linked and contributing ${partnerSplit}% (S$${zayanMonthly}/mo). Combined monthly contribution is S$1,340 routed via your shared pot.`
-        : `You're on a Personal Goals plan — no partner linked. You can add a partner later from Plan settings.`;
-    }
-    if (/protect|insur/.test(m)) {
-      return `OWNLYplans detected a S$160K protection gap. Great Eastern FlexiLife Term is recommended at S$28/mo. Tap the "OCBC Recommends" card to view the quote.`;
-    }
-    if (/surplus|mmf|cash/.test(m)) {
-      return `Your monthly surplus is S$1,340 — S$1,000 → LionGlobal MMF (3.85%), S$200 → BTO Goal Pot, S$140 → FRANK auto-pay. Nothing sits idle in your 360 Account.`;
-    }
-    if (/invest|portfolio/.test(m)) {
-      return `Your investment portfolio is at S$18,450 (37% of S$50K target). LionGlobal MMF is the primary vehicle at 3.85% p.a. You can upgrade to equity exposure via OWNLYplans at any time.`;
-    }
-    return CHATBOT_RESPONSES[Math.floor(Math.random() * CHATBOT_RESPONSES.length)];
-  };
-
-  const send = (txt?: string) => {
+  const send = async (txt?: string) => {
     const text = (txt || input).trim();
     if (!text) return;
 
@@ -130,10 +87,27 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
     setMessages(newMsgs);
     setTyping(true);
 
-    setTimeout(() => {
-      setMessages((m) => [...m, { from: 'ai', text: getResponse(text) }]);
+    try {
+      // Map to ChatMessage format for API
+      const history: ChatMessage[] = newMsgs.map(m => ({
+        sender: m.from === 'user' ? 'user' : 'bot',
+        text: m.text
+      }));
+
+      const response = await api.sendChatMessage(text, history);
+      setMessages((m) => [...m, { from: 'ai', text: response.reply }]);
+    } catch (err) {
+      console.warn('Chat error, using fallback:', err);
+      setMessages((m) => [
+        ...m,
+        {
+          from: 'ai',
+          text: `By sweeping your idle cash into LionGlobal SGD Money Market Fund, you increase your annual yield to 3.85% p.a. while keeping full liquidity. Your BTO downpayment accumulation remains on track for 2027.`
+        }
+      ]);
+    } finally {
       setTyping(false);
-    }, 900 + Math.random() * 300);
+    }
   };
 
   return (
@@ -154,10 +128,10 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 <Text style={styles.avatarEmoji}>🤖</Text>
               </View>
               <View style={styles.headerTitleContainer}>
-                <Text style={styles.botName}>OWNLYplans AI</Text>
+                <Text style={styles.botName}>OWNLYplans AI Assistant</Text>
                 <View style={styles.statusRow}>
                   <View style={styles.activeDot} />
-                  <Text style={styles.statusText}>Active · Your {planLabel} Plan</Text>
+                  <Text style={styles.statusText}>Multi-Agent Active · Live SGFinDex Context</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -245,17 +219,20 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.quickPromptsContainer}
               >
-                {['BTO progress?', 'Split breakdown?', 'Protection gap?', 'Monthly surplus?'].map(
-                  (q) => (
-                    <TouchableOpacity
-                      key={q}
-                      style={styles.promptChip}
-                      onPress={() => send(q)}
-                    >
-                      <Text style={styles.promptChipText}>{q}</Text>
-                    </TouchableOpacity>
-                  )
-                )}
+                {[
+                  'Why sweep to LionGlobal MMF?',
+                  'What grants are we eligible for?',
+                  'How is our BTO progress?',
+                  'Tell me about our protection gap'
+                ].map((q) => (
+                  <TouchableOpacity
+                    key={q}
+                    style={styles.promptChip}
+                    onPress={() => send(q)}
+                  >
+                    <Text style={styles.promptChipText}>{q}</Text>
+                  </TouchableOpacity>
+                ))}
               </ScrollView>
             </View>
 
@@ -266,7 +243,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 value={input}
                 onChangeText={setInput}
                 onSubmitEditing={() => send(input)}
-                placeholder="Ask your AI planner…"
+                placeholder="Ask about grants, MMF yields, BTO goals..."
                 placeholderTextColor="#A0A0A0"
                 returnKeyType="send"
               />
@@ -488,3 +465,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default ChatbotOverlay;

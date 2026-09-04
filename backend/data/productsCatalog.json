@@ -1,0 +1,53 @@
+{
+  "products": [
+    {
+      "id": "lionglobal_mmf",
+      "name": "LionGlobal SGD Money Market Fund",
+      "provider": "Lion Global Investors (OCBC Group)",
+      "category": "CASH_SWEEP",
+      "expectedYield": "3.85% p.a.",
+      "riskLevel": "Very Low (Class 1)",
+      "liquidity": "T+0 Instant Withdrawal to OCBC Account",
+      "minInvestment": 1,
+      "description": "Auto-sweep idle cash balances to earn institutional-grade money market yields without lock-in."
+    },
+    {
+      "id": "ocbc_360_account",
+      "name": "OCBC 360 Account",
+      "provider": "OCBC Bank",
+      "category": "HIGH_YIELD_SAVINGS",
+      "maxInterest": "Up to 7.65% p.a.",
+      "baseInterest": "0.05% p.a.",
+      "bonusCategories": ["Salary Credit", "Save (Increase balance by S$500)", "Spend", "Insure", "Invest"],
+      "description": "Flagship high-yield savings account tailored for salary crediting and goal accumulation."
+    },
+    {
+      "id": "ge_flexilife_term",
+      "name": "Great Eastern GREAT FlexiLife Term",
+      "provider": "Great Eastern",
+      "category": "PROTECTION",
+      "coverageType": "Term Life & Total Permanent Disability (TPD)",
+      "startingPremium": "S$28/month for S$200,000 coverage",
+      "keyFeature": "Multi-generational family rider and mortgage protection",
+      "description": "Cost-effective term protection closing family mortgage and income replacement gaps."
+    },
+    {
+      "id": "ocbc_cda",
+      "name": "OCBC Child Development Account (CDA)",
+      "provider": "OCBC Bank",
+      "category": "FAMILY_SAVINGS",
+      "interestRate": "2.00% p.a. on matched funds",
+      "perks": "Direct integration with Baby Bonus portal and OCBC Baby Bonus Card discounts",
+      "description": "Special co-savings account for children with government dollar-for-dollar matching."
+    },
+    {
+      "id": "ocbc_roboinvest",
+      "name": "OCBC RoboInvest",
+      "provider": "OCBC Bank",
+      "category": "WEALTH_GROWTH",
+      "minInvestment": 100,
+      "portfolios": ["Global Balanced", "Singapore Dividend", "US Tech Leaders", "Sustainability Future"],
+      "description": "Algorithmic portfolio rebalancing aligned with multi-year life goals like child education and retirement."
+    }
+  ]
+}
