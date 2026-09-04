@@ -143,6 +143,14 @@ class ApiService {
     return this.request<MockPassAuthResponse>(`/api/auth/mockpass/session/${encodeURIComponent(sessionId)}`);
   }
 
+  async getMockpassLoginResult(state: string): Promise<{
+    success: boolean;
+    status: 'PENDING' | 'COMPLETED';
+    sessionId?: string;
+  }> {
+    return this.request(`/api/auth/mockpass/result?state=${encodeURIComponent(state)}`);
+  }
+
   /** @deprecated MockPass authentication must be completed interactively. */
   async mockpassLogin(): Promise<MockPassAuthResponse> {
     return this.request<MockPassAuthResponse>('/api/auth/mockpass', {

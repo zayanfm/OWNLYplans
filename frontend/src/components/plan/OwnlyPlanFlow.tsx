@@ -29,8 +29,8 @@ const buildFallbackPlan = (preferences?: PlanPreferences): OwnlyPlan => {
   const monthlySurplus = 1340;
   const investableSurplus = monthlySurplus - monthlyPremium;
   const routeDetails = {
-    housing: ['r1', 'Home Loan Safety Reserve', 'OCBC 360 Savings Goal', 'Build a mortgage-payment buffer outside the emergency fund'],
-    education: ['r2', '2-Child Education Fund', 'OCBC Savings Goal + RoboInvest', 'Build education funding by the selected goal horizon'],
+    housing: ['r1', 'BTO Home Purchase Fund', 'OCBC 360 Savings Goal', 'Build the remaining BTO purchase amount by the selected horizon'],
+    education: ['r2', 'Percy’s Education Fund', 'OCBC Savings Goal + RoboInvest', 'Build education funding by the selected goal horizon'],
     wealth: ['r3', 'Retirement & Liquid Wealth', 'OCBC RoboInvest + CPF', 'Grow retirement-ready assets while retaining liquidity'],
   } as const;
   const months = timelineYears * 12;
@@ -112,9 +112,10 @@ export interface OwnlyPlanFlowProps {
   onNav?: (screenKey: string) => void;
   initialPlan?: OwnlyPlan | null;
   onPlanActivated?: (plan: OwnlyPlan) => void;
+  authenticatedProfile?: MockPassAuthResponse | null;
 }
 
-export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated }) => {
+export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated, authenticatedProfile }) => {
   const [step, setStep] = useState<OwnlyStep>(initialPlan ? 'cockpit' : 'intro');
   const [myInfo, setMyInfo] = useState<MockPassAuthResponse | null>(null);
   const [aggregate, setAggregate] = useState<any>(null);
@@ -136,6 +137,12 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     setFamily(buildFamilyFromProfile(profile));
     setStep('myinfo');
   };
+
+  useEffect(() => {
+    if (authenticatedProfile && authenticatedProfile.authenticatedAt !== myInfo?.authenticatedAt) {
+      handleAuthenticated(authenticatedProfile);
+    }
+  }, [authenticatedProfile, myInfo?.authenticatedAt]);
 
   const handleToggleMember = (id: string) => {
     setFamily((prev) => prev.map((m) => (m.id === id ? { ...m, selected: !m.selected } : m)));

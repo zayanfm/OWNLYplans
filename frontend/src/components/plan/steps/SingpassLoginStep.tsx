@@ -14,27 +14,52 @@ export const SingpassLoginStep: React.FC<{
   const handleLogin = async () => {
     setLoading(true);
     setErrorMessage(null);
+    let keepPolling = true;
     try {
       const returnUrl = Linking.createURL('mockpass');
       const auth = await api.beginMockpassLogin(returnUrl);
-      const browserResult = await WebBrowser.openAuthSessionAsync(auth.authorizationUrl, returnUrl, {
+      const browserSession = WebBrowser.openAuthSessionAsync(auth.authorizationUrl, returnUrl, {
         preferEphemeralSession: true,
+      }).then((browserResult) => {
+        if (browserResult.type !== 'success') {
+          throw new Error('Login was cancelled before sandbox consent was completed.');
+        }
+        const callback = Linking.parse(browserResult.url);
+        const rawError = callback.queryParams?.error;
+        const rawSession = callback.queryParams?.session;
+        const callbackError = Array.isArray(rawError) ? rawError[0] : rawError;
+        const sessionId = Array.isArray(rawSession) ? rawSession[0] : rawSession;
+        if (callbackError) throw new Error(String(callbackError));
+        if (!sessionId) return new Promise<string>(() => undefined);
+        return String(sessionId);
       });
-      if (browserResult.type !== 'success') {
-        throw new Error('Login was cancelled before MyInfo consent was completed.');
+
+      const polledSession = (async () => {
+        for (let attempt = 0; attempt < 160 && keepPolling; attempt += 1) {
+          try {
+            const result = await api.getMockpassLoginResult(auth.state);
+            if (result.status === 'COMPLETED' && result.sessionId) return result.sessionId;
+          } catch {
+            // A momentary LAN failure should not cancel an otherwise valid login.
+          }
+          await new Promise((resolve) => setTimeout(resolve, 750));
+        }
+        throw new Error('MockPass login timed out. Please start a fresh login.');
+      })();
+
+      const sessionId = await Promise.race([browserSession, polledSession]);
+      keepPolling = false;
+      try {
+        WebBrowser.dismissAuthSession();
+      } catch {
+        // The browser may already have closed through the normal deep link.
       }
-      const callback = Linking.parse(browserResult.url);
-      const rawError = callback.queryParams?.error;
-      const rawSession = callback.queryParams?.session;
-      const callbackError = Array.isArray(rawError) ? rawError[0] : rawError;
-      const sessionId = Array.isArray(rawSession) ? rawSession[0] : rawSession;
-      if (callbackError) throw new Error(String(callbackError));
-      if (!sessionId) throw new Error('MockPass returned no login session.');
       const profile = await api.completeMockpassLogin(String(sessionId));
       onAuthenticated(profile);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Unable to complete MockPass login.');
     } finally {
+      keepPolling = false;
       setLoading(false);
     }
   };
@@ -49,19 +74,19 @@ export const SingpassLoginStep: React.FC<{
         <View style={styles.singpassCard}>
           <View style={styles.singpassLogoRow}>
             <View style={styles.singpassMark}>
-              <Text style={styles.singpassMarkText}>sp</Text>
+              <Text style={styles.singpassMarkText}>mp</Text>
             </View>
-            <Text style={styles.singpassWordmark}>singpass</Text>
+            <Text style={styles.singpassWordmark}>MockPass</Text>
           </View>
 
-          <Text style={styles.singpassTitle}>Log in with Singpass</Text>
+          <Text style={styles.singpassTitle}>Continue with MockPass</Text>
           <Text style={styles.singpassBody}>
-            OWNLYplan will retrieve your verified MyInfo profile — identity, marital status,
-            employment income and CPF balances — so you never have to type them in.
+            OWNLYplan will open a secure development consent window and retrieve Alex Lim’s
+            test household profile through a one-time authorization code.
           </Text>
 
           <View style={styles.scopeStack}>
-            {['Name, NRIC & citizenship', 'Marital status & dependents', 'Employment & assessable income', 'CPF OA / SA / MediSave balances'].map((scope) => (
+            {['Name, NRIC & citizenship', 'Lila Tan & Percy Lim', 'Employment & household income', 'CPF balances & BTO milestone'].map((scope) => (
               <View key={scope} style={styles.scopeRow}>
                 <Text style={styles.scopeTick}>✓</Text>
                 <Text style={styles.scopeText}>{scope}</Text>
@@ -70,7 +95,7 @@ export const SingpassLoginStep: React.FC<{
           </View>
 
           <Text style={styles.simulationNote}>
-            Development login is provided by the official @opengovsg/mockpass service.
+            This MockPass-style sandbox is for prototype testing only and does not connect to real Singpass.
           </Text>
         </View>
 
@@ -91,7 +116,7 @@ export const SingpassLoginStep: React.FC<{
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.singpassButtonText}>Log in with Singpass</Text>
+            <Text style={styles.singpassButtonText}>Open secure test login</Text>
           )}
         </TouchableOpacity>
       </View>

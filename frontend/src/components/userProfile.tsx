@@ -60,7 +60,7 @@ export const UserProfile: React.FC<{
         ) : (
           <View style={styles.card}>
             <View style={styles.statusBanner}>
-              <Text style={styles.statusText}>🔒 Singpass MyInfo Verified | SGFinDex Connected</Text>
+              <Text style={styles.statusText}>🔒 MockPass Sandbox | SGFinDex Connected</Text>
             </View>
 
             <View style={styles.profileSection}>

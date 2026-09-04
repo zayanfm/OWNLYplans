@@ -4,18 +4,18 @@ class GrantsAgent {
     const isSingaporeCitizen = citizenship.includes('singapore');
     const grants = [];
 
-    if (!isSingaporeCitizen) {
-      grants.push({
-        id: 'government_support_review', name: 'Government Support Eligibility Review', category: 'FAMILY',
-        amount: 0, status: 'VERIFY_ELIGIBILITY', agency: 'LifeSG / relevant agencies',
-        reason: `Freya's MockPass profile records citizenship as ${household.primaryUser.citizenship || 'unavailable'}; child and co-owner citizenship is not present in the consented dataset.`,
-        action: 'Verify each household member’s citizenship and scheme criteria before counting any benefit'
-      });
-    }
+    grants.push({
+      id: 'government_support_review', name: 'Government Support Eligibility Review', category: 'FAMILY',
+      amount: 0, status: 'VERIFY_ELIGIBILITY', agency: 'LifeSG / relevant agencies',
+      reason: isSingaporeCitizen
+        ? 'Alex and Lila are Singapore Citizens, but scheme eligibility still depends on current income, property, child and application criteria.'
+        : `The MockPass profile records citizenship as ${household.primaryUser.citizenship || 'unavailable'}; household-level eligibility needs verification.`,
+      action: 'Verify the household against current agency criteria before counting any benefit'
+    });
 
     return {
       agentId: 'grants_agent', agentName: 'Grants & Government Benefits Agent',
-      status: isSingaporeCitizen ? 'NO_MATCHES_CONFIRMED' : 'VERIFICATION_REQUIRED', confidence: 0.99,
+      status: 'VERIFICATION_REQUIRED', confidence: 0.99,
       totalGrantValue: 0, unclaimedCount: 0, grants,
       findings: [
         'No government benefit has been counted as confirmed from the currently consented data.',

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { HomeScreen } from '../components/homescreen';
 import { PlanTabShell } from '../components/plan/PlanTabShell';
@@ -9,6 +10,7 @@ import { HelpPortal } from '../components/helpPortal';
 import { ChatbotOverlay } from '../components/chatbotoverlay';
 import { BottomNav } from '../components/BottomNav';
 import api from '../services/api';
+import type { MockPassAuthResponse } from '../services/api';
 import type { OwnlyPlan } from '../components/plan/types';
 
 type Screen = 'home' | 'plan' | 'rewards' | 'more';
@@ -23,18 +25,38 @@ export default function MainApp() {
 
 function MainAppContent() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const callbackParams = useLocalSearchParams<{ mockpassSession?: string | string[] }>();
+  const handledSession = useRef<string | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [planMounted, setPlanMounted] = useState<boolean>(false);
   const [planEntryPill, setPlanEntryPill] = useState<'OCBC' | 'OWNLYplan'>('OCBC');
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [showChat, setShowChat] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<OwnlyPlan | null>(null);
+  const [authenticatedProfile, setAuthenticatedProfile] = useState<MockPassAuthResponse | null>(null);
 
   useEffect(() => {
     api.getFinanceOverview()
       .then((overview) => setActivePlan(overview?.activePlan || null))
       .catch(() => setActivePlan(null));
   }, []);
+
+  useEffect(() => {
+    const session = Array.isArray(callbackParams.mockpassSession)
+      ? callbackParams.mockpassSession[0]
+      : callbackParams.mockpassSession;
+    if (!session || handledSession.current === session) return;
+
+    handledSession.current = session;
+    setPlanEntryPill('OWNLYplan');
+    setPlanMounted(true);
+    setScreen('plan');
+    api.completeMockpassLogin(session)
+      .then(setAuthenticatedProfile)
+      .catch((error) => console.warn('[MockPass] Could not retrieve completed login:', error?.message || error))
+      .finally(() => router.setParams({ mockpassSession: undefined }));
+  }, [callbackParams.mockpassSession, router]);
 
   const nav = (to: string) => {
     if (to === 'ownly') {
@@ -58,7 +80,7 @@ function MainAppContent() {
               OWNLYplan progress instead of restarting onboarding. */}
           {planMounted && (
             <View style={[styles.fill, screen !== 'plan' && styles.hidden]}>
-              <PlanTabShell initialPill={planEntryPill} activePlan={activePlan} onPlanActivated={setActivePlan} onNav={nav} onHelp={() => setShowHelp(true)} />
+              <PlanTabShell authenticatedProfile={authenticatedProfile} initialPill={planEntryPill} activePlan={activePlan} onPlanActivated={setActivePlan} onNav={nav} onHelp={() => setShowHelp(true)} />
             </View>
           )}
         </View>

@@ -18,15 +18,15 @@ async function testApi() {
     // 2. Official MockPass authorization handoff
     const authRes = await fetch(`${baseUrl}/api/auth/mockpass/start?returnUrl=${encodeURIComponent('frontend://mockpass')}`).then(r => r.json());
     assert(authRes.success, 'Auth handoff should succeed');
-    assert.strictEqual(authRes.provider, '@opengovsg/mockpass');
-    assert(authRes.authorizationUrl.includes('/myinfo/v3/authorise'), 'MyInfo v3 authorization URL expected');
-    console.log('✓ MockPass MyInfo v3 Handoff OK');
+    assert.strictEqual(authRes.provider, 'OWNLYplans MockPass Sandbox');
+    assert(authRes.authorizationUrl.includes('/api/auth/mockpass/authorize'), 'Sandbox authorization URL expected');
+    console.log('✓ Custom MockPass authorization handoff OK');
 
     // 3. SGFinDex Aggregation
     const sgfRes = await fetch(`${baseUrl}/api/sgfindex/aggregate`).then(r => r.json());
     assert(sgfRes.success, 'SGFinDex should succeed');
     assert(Number.isFinite(sgfRes.summary.netWorth), 'Net worth should be calculated including the mortgage');
-    assert.strictEqual(sgfRes.summary.totalLiquidCash, 36000, 'Linked cash should match the Freya fixture');
+    assert.strictEqual(sgfRes.summary.totalLiquidCash, 36000, 'Linked cash should match the Alex fixture');
     console.log('✓ SGFinDex Aggregation OK');
 
     // 4. Multi-Agent Analysis
@@ -68,17 +68,17 @@ async function testApi() {
     console.log('✓ Editable Plan Configuration OK');
     console.log('✓ Finance Overview OK');
 
-    // 6. Persona selection belongs to the official MockPass login page
+    // 6. Persona selection belongs to the sandbox login page
     const personaRes = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
     assert.strictEqual(personaRes.personas.length, 0);
-    assert.strictEqual(personaRes.source, '@opengovsg/mockpass login page');
+    assert.strictEqual(personaRes.source, 'OWNLYplans MockPass Sandbox login page');
     console.log('✓ MockPass Owns Persona Selection');
 
     // 7. Family invite & consent status
     const inviteRes = await fetch(`${baseUrl}/api/auth/family/invite`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ members: [{ name: 'Lim Junhao', relation: 'Child', nric: 'T****09G' }] })
+      body: JSON.stringify({ members: [{ name: 'Percy Lim', relation: 'Child', nric: 'T****91Z' }] })
     }).then(r => r.json());
     assert(inviteRes.success, 'Family invite should succeed');
     assert.strictEqual(inviteRes.members[0].status, 'PENDING');

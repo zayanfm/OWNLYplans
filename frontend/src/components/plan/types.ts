@@ -40,6 +40,7 @@ export interface GoalOutlook {
 export interface HouseholdSnapshot {
   primaryName: string;
   firstName: string;
+  partnerName?: string;
   householdLabel: string;
   dependentNames: string[];
   dependentCount: number;

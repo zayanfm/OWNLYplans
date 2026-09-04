@@ -4,7 +4,7 @@ const grantsAgent = require('./grantsAgent');
 const geminiService = require('../services/geminiService');
 
 class OrchestratorAgent {
-  async runFullAnalysis(household) {
+  async runFullAnalysis(household, options = {}) {
     // 1. Run specialized agents in parallel
     const [healthRes, goalsRes, grantsRes] = await Promise.all([
       healthAgent.analyze(household),
@@ -139,13 +139,15 @@ class OrchestratorAgent {
     const deterministicSummary = `OWNLYplans completed financial diagnostics for ${household.name}, ${benefitSummary}, identified S$${healthRes.metrics.idleCashIdentified.toLocaleString()} in potentially idle cash, and assessed ${goalsRes.goals.length} family goals.`;
     const fallbackNarrative = {
       executiveSummary: deterministicSummary,
-      familyPriorities: ['Protect mortgage payments', 'Fund two children’s education', 'Strengthen retirement liquidity'],
+      familyPriorities: ['Prepare for the BTO purchase', 'Fund Percy’s education', 'Strengthen long-term family wealth'],
       watchouts: ['Investment returns are not guaranteed', 'Keep the emergency reserve liquid']
     };
-    const narrativeResult = await geminiService.generateJsonWithMeta(
-      `Synthesize an explainable family-finance narrative from these verified calculations. Do not alter, invent or recalculate any number.\n\nHousehold: ${JSON.stringify({ name: household.name, financials: household.financials, housing: household.housing, dependents: household.dependents })}\n\nAgent results: ${JSON.stringify({ health: healthRes, goals: goalsRes, grants: grantsRes })}\n\nReturn this schema: { "executiveSummary": "string", "familyPriorities": ["string"], "watchouts": ["string"] }`,
-      fallbackNarrative
-    );
+    const narrativeResult = options.skipNarrative
+      ? { data: fallbackNarrative, source: 'DETERMINISTIC_FALLBACK' }
+      : await geminiService.generateJsonWithMeta(
+        `Synthesize an explainable family-finance narrative from these verified calculations. Do not alter, invent or recalculate any number.\n\nHousehold: ${JSON.stringify({ name: household.name, financials: household.financials, housing: household.housing, dependents: household.dependents })}\n\nAgent results: ${JSON.stringify({ health: healthRes, goals: goalsRes, grants: grantsRes })}\n\nReturn this schema: { "executiveSummary": "string", "familyPriorities": ["string"], "watchouts": ["string"] }`,
+        fallbackNarrative
+      );
 
     const aiSynthesis = narrativeResult.data && typeof narrativeResult.data.executiveSummary === 'string'
       ? narrativeResult.data
@@ -175,7 +177,7 @@ class OrchestratorAgent {
 
   async handleChat(household, history, message) {
     // Check if Gemini can provide dynamic chat
-    const fullAnalysis = await this.runFullAnalysis(household);
+    const fullAnalysis = await this.runFullAnalysis(household, { skipNarrative: true });
     const geminiReply = await geminiService.generateChatResponse(fullAnalysis, history, message);
 
     if (geminiReply) {
@@ -195,9 +197,11 @@ class OrchestratorAgent {
     } else if (lower.includes('grant') || lower.includes('cda') || lower.includes('baby') || lower.includes('ehg') || lower.includes('housing grant')) {
       reply = fullAnalysis.totalGrantsAvailable > 0
         ? `We confirmed **S$${fullAnalysis.totalGrantsAvailable.toLocaleString()}** in support from the available household data. Review each scheme’s current agency criteria before acting.`
-        : `No grant value is included in your plan yet. Freya’s MockPass record shows American citizenship, while child and co-owner citizenship is not in the consented dataset, so citizen-only schemes must be verified first.`;
+        : `No grant value is included in your plan yet. Alex and Lila’s sandbox profiles establish citizenship, but current income, property, child and application criteria still need to be verified before support is counted.`;
     } else if (lower.includes('bto') || lower.includes('downpayment') || lower.includes('tengah') || lower.includes('house') || lower.includes('milestone')) {
-      reply = `Your current home-loan instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}/month. OWNLYplan uses a 12-month mortgage-payment reserve as the home goal and protects the separate S$${household.financials.emergencyFund.toLocaleString()} emergency floor.`;
+      reply = String(household.housing.type || '').includes('BTO')
+        ? `Your BTO purchase fund currently has S$${Number(household.housing.downpaymentAccumulated || 0).toLocaleString()} toward its S$${Number(household.housing.downpaymentRequired || 0).toLocaleString()} target. OWNLYplan tests the remaining amount against your selected 5- or 10-year horizon.`
+        : `Your current home-loan instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}/month. OWNLYplan uses a 12-month mortgage-payment reserve as the home goal and protects the separate S$${household.financials.emergencyFund.toLocaleString()} emergency floor.`;
     } else if (lower.includes('protection') || lower.includes('insurance') || lower.includes('great eastern') || lower.includes('gap')) {
       reply = `Our Household Health Agent identified a S$${(fullAnalysis.agents.health.metrics.protectionGap || 160000).toLocaleString()} life coverage gap against your outstanding mortgage commitments. Adding Great Eastern FlexiLife Term closes this 100% for approximately S$28/month.`;
     } else {

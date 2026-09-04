@@ -56,10 +56,8 @@ OWNLYplans is an AI-driven, multi-agent family financial cockpit embedded inside
 
 ### Household planning fixture
 
-Authentication identities come from the official `@opengovsg/mockpass` MyInfo v3 dataset. The financial-planning engine currently uses this separate household fixture for its simulated SGFinDex, transaction and goal data:
-- `freya_family`: **Freya Lim Guo En** — married household, two school-age children, existing 5-room HDB home and S$1,340 monthly surplus.
-- `sandwich_family`: **David Tan & Grace Wong** — 35-49 Sandwiched Generation Family, 2 school-going children + elderly parent, S$350,000 protection gap.
-- `single_achiever`: **Chloe Teo** — 21-29 Emerging Affluent Single, optimizing CPF OA + LionGlobal MMF for private property aspiration.
+The prototype has one coherent sandbox household used by login, SGFinDex, agents, plans and the homepage:
+- `alex_family`: **Alex Lim and Lila Tan**, with their child **Percy Lim**, a pending 4-room BTO and S$1,340 monthly surplus.
 
 ---
 
@@ -67,9 +65,10 @@ Authentication identities come from the official `@opengovsg/mockpass` MyInfo v3
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
 | `/api/health` | `GET` | Service status & health diagnostics |
-| `/api/auth/mockpass/start` | `GET` | Start interactive MockPass MyInfo v3 authorization |
-| `/api/auth/mockpass/callback` | `GET` | Exchange the MockPass authorization code |
-| `/api/auth/mockpass/session/:id` | `GET` | Consume the authenticated MyInfo profile |
+| `/api/auth/mockpass/start` | `GET` | Start the interactive sandbox authorization |
+| `/api/auth/mockpass/authorize` | `GET/POST` | Review and approve the Alex Lim test identity |
+| `/api/auth/mockpass/callback` | `GET` | Exchange the one-time authorization code |
+| `/api/auth/mockpass/session/:id` | `GET` | Consume the authenticated sandbox profile once |
 | `/api/sgfindex/aggregate` | `GET` | Aggregated multi-bank, CPF, and net worth data |
 | `/api/agents/analyze` | `POST` | Run 4-agent parallel financial analysis & NBAs |
 | `/api/agents/chat` | `POST` | Explainable, context-aware AI chatbot |
@@ -86,9 +85,7 @@ Authentication identities come from the official `@opengovsg/mockpass` MyInfo v3
 
 Run the backend and Expo in separate terminals. For a physical phone, keep the phone and computer on the same network and start Expo in LAN mode. The app automatically derives the API host from Expo's development host. Set `EXPO_PUBLIC_API_BASE_URL` from `frontend/.env.example` only for tunnel mode or a custom/deployed backend.
 
-`npm start` also launches the installed official MockPass service on port `5156`. Both ports `5000` and `5156` must be reachable from a physical phone. The browser login uses MockPass's real login, consent, authorization-code, token and MyInfo person endpoints. Configuration is documented in `backend/.env.example`.
-
-The default development identity is `S9812382B` (`FREYA LIM GUO EN`). MockPass selects it automatically and still presents the MyInfo disclosure-consent screen. Set `SHOW_LOGIN_PAGE=true` to manually choose another built-in `[MyInfo]` identity.
+The API also serves a clearly labelled MockPass-style development login on port `5000`. It displays Alex Lim, records consent, validates OAuth-style state, issues a single-use authorization code and redirects back to the Expo app. It never connects to real Singpass or real personal data, and no second MockPass port is required.
 
 ```powershell
 cd backend
@@ -101,7 +98,7 @@ npm start
 
 #### Optional Gemini enhancement
 
-The financial calculations and eligibility checks always run through the deterministic agents so their numbers remain reproducible. To enable Gemini 2.5 Flash for narrative synthesis and chatbot explanations, copy `backend/.env.example` to `backend/.env` and provide `GEMINI_API_KEY`. Without a key—or if Gemini is unavailable—the API explicitly reports `DETERMINISTIC_FALLBACK` and the journey continues with local explanations.
+The financial calculations and eligibility checks always run through deterministic agents so their numbers remain reproducible. Gemini 3.6 Flash provides narrative synthesis and chatbot explanations when `GEMINI_API_KEY` is configured. If Gemini is unavailable, the API explicitly reports `DETERMINISTIC_FALLBACK` and the journey continues with local explanations.
 
 ```powershell
 # Run backend test suites

@@ -42,17 +42,19 @@ export const personalizePlan = (
   aggregate: any | null,
 ): OwnlyPlan => {
   const now = new Date();
-  const rawName = profile?.user?.name || plan.householdSnapshot?.primaryName || 'Freya Lim Guo En';
+  const rawName = profile?.user?.name || plan.householdSnapshot?.primaryName || 'Alex Lim';
   const primaryName = titleCase(rawName);
-  const firstName = primaryName.split(' ')[0] || 'Freya';
+  const firstName = primaryName.split(' ')[0] || 'Alex';
   const dependentNames = (profile?.household?.dependents || []).map((dependent: any) => titleCase(dependent.name || 'Dependent'));
-  const primaryTakeHome = profile?.user?.monthlyTakeHome || 3600;
+  const partnerName = profile?.partner?.name ? titleCase(profile.partner.name) : undefined;
+  const primaryTakeHome = profile?.user?.monthlyTakeHome || 4400;
   const monthlyTakeHome = aggregate?.summary?.monthlyHouseholdTakeHome || primaryTakeHome;
   const monthlyExpenses = aggregate?.summary?.monthlyHouseholdExpenses || Math.max(0, monthlyTakeHome - plan.monthlySurplus);
   const otherIncome = Math.max(0, monthlyTakeHome - primaryTakeHome);
   const snapshot: HouseholdSnapshot = {
     primaryName,
     firstName,
+    partnerName,
     householdLabel: `${firstName}'s family`,
     dependentNames,
     dependentCount: profile?.household?.dependentsCount ?? dependentNames.length,
@@ -62,11 +64,13 @@ export const personalizePlan = (
     monthlySurplus: plan.monthlySurplus,
     contributors: [
       { label: firstName, amount: Math.min(primaryTakeHome, monthlyTakeHome) },
-      ...(otherIncome > 0 ? [{ label: 'Other linked income', amount: otherIncome }] : []),
+      ...(otherIncome > 0 ? [{ label: profile?.partner?.name ? titleCase(profile.partner.name).split(' ')[0] : 'Other linked income', amount: otherIncome }] : []),
     ],
     totalLiquidCash: aggregate?.summary?.totalLiquidCash || 0,
     totalInvestments: aggregate?.summary?.totalInvestments || 0,
-    cpfTotal: profile ? Object.values(profile.user.cpf || {}).reduce((sum, value) => sum + Number(value || 0), 0) : (aggregate?.summary?.householdCpfTotal || 0),
+    cpfTotal: aggregate?.summary?.householdCpfTotal || (profile
+      ? [profile.user.cpf, profile.partner?.cpf].filter(Boolean).reduce((total, cpf) => total + Object.values(cpf || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0)
+      : 0),
     emergencyFund: aggregate?.summary?.emergencyFund || 0,
     lastSynced: aggregate?.sgfindexConsent?.lastSynced || profile?.authenticatedAt || new Date().toISOString(),
   };
@@ -82,7 +86,7 @@ export const personalizePlan = (
   const baselines: Record<PlanRouteId, { label: string; current: number; target: number; date: Date; data: string[] }> = {
     housing: {
       label: snapshot.housingType.includes('BTO') ? 'Home purchase fund' : 'Home loan safety reserve',
-      current: excessCash,
+      current: snapshot.housingType.includes('BTO') ? Number(profile?.household?.housing?.downpaymentAccumulated || 0) : excessCash,
       target: snapshot.housingType.includes('BTO') ? 96000 : housingPayment * 12,
       date: selectedDeadline,
       data: [snapshot.housingType, `S$${snapshot.totalLiquidCash.toLocaleString()} liquid cash`, `S$${snapshot.emergencyFund.toLocaleString()} emergency floor`],
@@ -96,10 +100,10 @@ export const personalizePlan = (
     },
     wealth: {
       label: (profile?.user?.age || 0) >= 55 ? 'Retirement & liquid wealth' : 'Long-term family wealth',
-      current: snapshot.totalInvestments + Number(profile?.user?.cpf?.sa || 0),
+      current: snapshot.totalInvestments + Number(profile?.user?.cpf?.sa || 0) + Number(profile?.partner?.cpf?.sa || 0),
       target: 120000,
       date: selectedDeadline,
-      data: [`S$${snapshot.totalInvestments.toLocaleString()} investments`, `S$${Number(profile?.user?.cpf?.sa || 0).toLocaleString()} CPF SA`, `${plan.timelineYears}-year horizon`],
+      data: [`S$${snapshot.totalInvestments.toLocaleString()} investments`, `S$${(Number(profile?.user?.cpf?.sa || 0) + Number(profile?.partner?.cpf?.sa || 0)).toLocaleString()} household CPF SA`, `${plan.timelineYears}-year horizon`],
     },
   };
 

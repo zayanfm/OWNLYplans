@@ -1,5 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 
 // On web this page runs inside the auth popup and hands the callback URL back
@@ -7,6 +8,18 @@ import * as WebBrowser from 'expo-web-browser';
 WebBrowser.maybeCompleteAuthSession();
 
 export default function MockPassCallbackPage() {
+  const params = useLocalSearchParams<{ session?: string | string[]; error?: string | string[] }>();
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const session = Array.isArray(params.session) ? params.session[0] : params.session;
+    const error = Array.isArray(params.error) ? params.error[0] : params.error;
+    router.replace({
+      pathname: '/',
+      params: session ? { mockpassSession: session } : { mockpassError: error || 'MockPass login was not completed.' },
+    });
+  }, [params.error, params.session]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Returning to OWNLYplan…</Text>

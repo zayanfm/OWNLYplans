@@ -1,56 +1,59 @@
 {
-  "freya_family": {
-    "id": "freya_family",
-    "name": "Freya Lim Family",
-    "segment": "Mature Household with School-Age Children",
+  "alex_family": {
+    "id": "alex_family",
+    "name": "Alex Lim Family",
+    "segment": "Young Family with One Child",
     "primaryUser": {
-      "nric": "S****82B",
-      "name": "Freya Lim Guo En",
-      "age": 66,
-      "citizenship": "American",
+      "nric": "S****23A",
+      "name": "Alex Lim",
+      "age": 31,
+      "citizenship": "Singapore Citizen",
       "maritalStatus": "Married",
-      "employment": "IT Service Manager",
-      "monthlyGrossIncome": 4500,
-      "monthlyTakeHome": 3600,
-      "cpf": {
-        "oa": 49602.38,
-        "sa": 12939.75,
-        "ma": 17253
-      }
+      "employment": "Product Lead (Technology)",
+      "monthlyGrossIncome": 5500,
+      "monthlyTakeHome": 4400,
+      "cpf": { "oa": 42000, "sa": 28000, "ma": 18000 }
     },
-    "partner": null,
+    "partner": {
+      "nric": "S****56B",
+      "name": "Lila Tan",
+      "age": 29,
+      "citizenship": "Singapore Citizen",
+      "employment": "Marketing Manager",
+      "monthlyGrossIncome": 4800,
+      "monthlyTakeHome": 3840,
+      "linked": true,
+      "cpf": { "oa": 38000, "sa": 22000, "ma": 16000 }
+    },
     "dependents": [
       {
-        "name": "Lim Junhao",
+        "name": "Percy Lim",
         "relation": "Child",
-        "age": 11,
-        "birthDate": "2015-07-19",
-        "nric": "T****09G"
-      },
-      {
-        "name": "Tay Wei Qiang Messi",
-        "relation": "Child",
-        "age": 9,
-        "birthDate": "2017-07-18",
-        "nric": "T****92H"
+        "age": 3,
+        "birthDate": "2023-04-18",
+        "nric": "T****91Z",
+        "citizenship": "Singapore Citizen"
       }
     ],
     "housing": {
-      "type": "5-Room Flat (HDB)",
-      "town": "Jurong East",
-      "estimatedPrice": 450000,
-      "mortgageOutstanding": 349500,
-      "monthlyLoanInstalment": 1500,
+      "type": "4-Room BTO (Pending)",
+      "town": "Tengah Garden District",
+      "estimatedPrice": 480000,
+      "downpaymentRequired": 96000,
+      "downpaymentAccumulated": 80000,
+      "keyCollectionDate": "2028-09",
+      "mortgageOutstanding": 0,
+      "monthlyLoanInstalment": 0,
       "owners": 2,
-      "firstTimer": false
+      "firstTimer": true
     },
     "financials": {
-      "householdMonthlyIncome": 4500,
-      "householdTakeHome": 3600,
-      "householdMonthlyExpenses": 2260,
+      "householdMonthlyIncome": 10300,
+      "householdTakeHome": 8240,
+      "householdMonthlyExpenses": 6900,
       "monthlySurplus": 1340,
       "emergencyFund": 28000,
-      "totalLiabilities": 349500,
+      "totalLiabilities": 0,
       "insuranceCoverage": {
         "existingLifeCoverage": 250000,
         "recommendedLifeCoverage": 410000,
@@ -71,16 +74,16 @@
     },
     "accounts": {
       "ocbc": [
-        { "type": "OCBC 360 Account", "number": "512-882910-001", "holder": "Freya Lim Guo En", "balance": 18450.00, "interestRate": 0.05, "role": "Emergency / Salary credit" },
-        { "type": "OCBC Frank Account", "number": "512-441920-002", "holder": "Freya Lim Guo En", "balance": 4550.00, "interestRate": 0.05, "role": "Daily Expenses" }
+        { "type": "OCBC 360 Account", "number": "512-882910-001", "holder": "Alex Lim", "balance": 18450, "interestRate": 0.05, "role": "Emergency / Salary credit" },
+        { "type": "OCBC Frank Account", "number": "512-441920-002", "holder": "Lila Tan", "balance": 4550, "interestRate": 0.05, "role": "Daily Expenses" }
       ],
       "otherBanks": [
-        { "bank": "DBS", "type": "Multiplier Account", "number": "012-99381-2", "holder": "Freya Lim Guo En", "balance": 9200.00, "interestRate": 0.05 },
-        { "bank": "UOB", "type": "One Account", "number": "311-22819-5", "holder": "Freya Lim Guo En", "balance": 3800.00, "interestRate": 0.05 }
+        { "bank": "DBS", "type": "Multiplier Account", "number": "012-99381-2", "holder": "Alex Lim", "balance": 9200, "interestRate": 0.05 },
+        { "bank": "UOB", "type": "One Account", "number": "311-22819-5", "holder": "Lila Tan", "balance": 3800, "interestRate": 0.05 }
       ],
       "investments": [
-        { "platform": "OCBC RoboInvest", "name": "Global Balanced Growth Portfolio", "value": 14200.00, "unrealizedGain": "+6.4%" },
-        { "platform": "LionGlobal", "name": "LionGlobal SGD Money Market Fund", "value": 0.00, "yieldRate": 0.0385 }
+        { "platform": "OCBC RoboInvest", "name": "Global Balanced Growth Portfolio", "value": 14200, "unrealizedGain": "+6.4%" },
+        { "platform": "LionGlobal", "name": "LionGlobal SGD Money Market Fund", "value": 0, "yieldRate": 0.0385 }
       ]
     }
   }

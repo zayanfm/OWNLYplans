@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const mockpassService = require('../services/mockpass');
 
+router.use(express.urlencoded({ extended: false }));
+
 router.get('/mockpass/start', (req, res) => {
   try {
     if (!req.query.returnUrl) {
@@ -14,6 +16,28 @@ router.get('/mockpass/start', (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/mockpass/authorize', (req, res) => {
+  try {
+    res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'");
+    res.type('html').send(mockpassService.getAuthorizationPage(String(req.query.state || '')));
+  } catch (error) {
+    res.status(400).type('text').send(
+      `${error.message}. Return to OWNLYplan and tap "Open secure test login" to create a fresh request; do not reuse or refresh this page.`
+    );
+  }
+});
+
+router.post('/mockpass/authorize', (req, res) => {
+  try {
+    const redirectUrl = mockpassService.decideAuthorization({
+      state: String(req.body.state || ''), decision: String(req.body.decision || ''),
+    });
+    res.redirect(303, redirectUrl);
+  } catch (error) {
+    res.status(400).type('text').send(error.message);
   }
 });
 
@@ -44,6 +68,17 @@ router.get('/mockpass/session/:sessionId', (req, res) => {
   }
 });
 
+// Expo Go may not hand an exp:// redirect back from iOS' authentication sheet.
+// This signed-state status endpoint lets the still-mounted app complete the
+// same transaction without weakening the one-time profile session.
+router.get('/mockpass/result', (req, res) => {
+  try {
+    res.json(mockpassService.getAuthorizationResult(String(req.query.state || '')));
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/mockpass', (_req, res) => {
   res.status(410).json({
     success: false,
@@ -56,7 +91,7 @@ router.post('/mockpass', (_req, res) => {
  * List available Singapore MockPass personas.
  */
 router.get('/personas', (req, res) => {
-  res.json({ success: true, personas: [], source: '@opengovsg/mockpass login page' });
+  res.json({ success: true, personas: [], source: 'OWNLYplans MockPass Sandbox login page' });
 });
 
 /**

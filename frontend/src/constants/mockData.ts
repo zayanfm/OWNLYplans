@@ -51,9 +51,9 @@ export interface Milestone {
 }
 
 export const USER = {
-  first: 'Freya',
-  partner: '',
-  segment: 'Mature household with two children'
+  first: 'Alex',
+  partner: 'Lila',
+  segment: 'Young family with one child'
 };
 
 export const COPY = {
@@ -199,41 +199,45 @@ export const FINANCE_METRICS = {
   timelineDefault: '5',
 };
 
-// Offline fixtures mirror the Freya MockPass household.
+// Offline fixtures mirror the Alex MockPass sandbox household.
 export const FALLBACK_MYINFO = {
   success: true,
   authenticatedAt: '',
-  authMethod: 'MOCKPASS_MYINFO_V3',
-  personaId: 'freya_family',
-  personaName: 'Freya Lim Family',
-  segment: 'Mature Household with School-Age Children',
+  authMethod: 'OWNLY_MOCKPASS_OAUTH2',
+  authProvider: 'OWNLYplans MockPass Sandbox',
+  personaId: 'alex_family',
+  personaName: 'Alex Lim Family',
+  segment: 'Young Family with One Child',
   user: {
-    nric: 'S****82B',
-    name: 'Freya Lim Guo En',
-    age: 66,
-    citizenship: 'American',
+    nric: 'S****23A',
+    name: 'Alex Lim',
+    age: 31,
+    citizenship: 'Singapore Citizen',
     maritalStatus: 'Married',
-    employment: 'IT Service Manager',
-    monthlyGrossIncome: 4500,
-    monthlyTakeHome: 3600,
-    cpf: { oa: 49602.38, sa: 12939.75, ma: 17253 },
+    employment: 'Product Lead (Technology)',
+    monthlyGrossIncome: 5500,
+    monthlyTakeHome: 4400,
+    cpf: { oa: 42000, sa: 28000, ma: 18000 },
     verified: true,
   },
-  partner: null,
+  partner: {
+    nric: 'S****56B', name: 'Lila Tan', age: 29, citizenship: 'Singapore Citizen',
+    employment: 'Marketing Manager', monthlyGrossIncome: 4800, monthlyTakeHome: 3840,
+    cpf: { oa: 38000, sa: 22000, ma: 16000 }, linked: true,
+  },
   household: {
-    segment: 'Mature Household with School-Age Children',
-    dependentsCount: 2,
+    segment: 'Young Family with One Child',
+    dependentsCount: 1,
     dependents: [
-      { name: 'Lim Junhao', relation: 'Child', age: 11, birthDate: '2015-07-19', nric: 'T****09G' },
-      { name: 'Tay Wei Qiang Messi', relation: 'Child', age: 9, birthDate: '2017-07-18', nric: 'T****92H' },
+      { name: 'Percy Lim', relation: 'Child', age: 3, birthDate: '2023-04-18', nric: 'T****91Z' },
     ],
-    housing: { type: '5-Room Flat (HDB)', town: 'Jurong East', monthlyLoanInstalment: 1500, outstandingLoanBalance: 349500 },
+    housing: { type: '4-Room BTO (Pending)', town: 'Tengah Garden District', downpaymentRequired: 96000, downpaymentAccumulated: 80000, keyCollectionDate: '2028-09', monthlyLoanInstalment: 0, outstandingLoanBalance: 0 },
   },
 };
 
 export const FALLBACK_FAMILY_MEMBERS = [
-  { id: 'child-1', name: 'Lim Junhao', relation: 'Child', maskedNric: 'T****09G' },
-  { id: 'child-2', name: 'Tay Wei Qiang Messi', relation: 'Child', maskedNric: 'T****92H' },
+  { id: 'spouse', name: 'Lila Tan', relation: 'Spouse', maskedNric: 'S****56B' },
+  { id: 'child-1', name: 'Percy Lim', relation: 'Child', maskedNric: 'T****91Z' },
 ];
 
 export const FALLBACK_SGFINDEX_INSTITUTIONS = [
@@ -249,16 +253,16 @@ export const FALLBACK_SGFINDEX_AGGREGATE = {
   summary: {
     totalLiquidCash: 36000,
     totalInvestments: 14200,
-    householdCpfTotal: 79795.13,
-    totalAssets: 129995.13,
-    totalLiabilities: 349500,
-    netWorth: -219504.87,
-    monthlyHouseholdIncome: 4500,
-    monthlyHouseholdTakeHome: 3600,
-    monthlyHouseholdExpenses: 2260,
+    householdCpfTotal: 164000,
+    totalAssets: 214200,
+    totalLiabilities: 0,
+    netWorth: 214200,
+    monthlyHouseholdIncome: 10300,
+    monthlyHouseholdTakeHome: 8240,
+    monthlyHouseholdExpenses: 6900,
     monthlySurplus: 1340,
     emergencyFund: 28000,
-    emergencyBufferMonths: 12.4,
+    emergencyBufferMonths: 4.1,
   },
 };
 

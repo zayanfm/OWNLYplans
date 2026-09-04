@@ -5,6 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PlanOcbcTab } from './PlanOcbcTab';
 import { OwnlyPlanFlow } from './OwnlyPlanFlow';
 import type { OwnlyPlan } from './types';
+import type { MockPassAuthResponse } from '../../services/api';
 
 type PlanPill = 'OCBC' | 'OWNLYplan';
 
@@ -16,9 +17,10 @@ export interface PlanTabShellProps {
   initialPill?: PlanPill;
   activePlan?: OwnlyPlan | null;
   onPlanActivated?: (plan: OwnlyPlan) => void;
+  authenticatedProfile?: MockPassAuthResponse | null;
 }
 
-export const PlanTabShell: React.FC<PlanTabShellProps> = ({ onHelp, onNav, initialPill = 'OCBC', activePlan, onPlanActivated }) => {
+export const PlanTabShell: React.FC<PlanTabShellProps> = ({ onHelp, onNav, initialPill = 'OCBC', activePlan, onPlanActivated, authenticatedProfile }) => {
   const insets = useSafeAreaInsets();
   // OCBC stays the default pill so the Plan tab opens exactly as it does today.
   const [activePill, setActivePill] = useState<PlanPill>(initialPill);
@@ -58,7 +60,7 @@ export const PlanTabShell: React.FC<PlanTabShellProps> = ({ onHelp, onNav, initi
         <PlanOcbcTab />
       </View>
       <View style={[styles.pillBody, { paddingBottom: 82 + insets.bottom }, activePill !== 'OWNLYplan' && styles.pillBodyHidden]}>
-        <OwnlyPlanFlow initialPlan={activePlan} onHelp={onHelp} onNav={onNav} onPlanActivated={onPlanActivated} />
+        <OwnlyPlanFlow authenticatedProfile={authenticatedProfile} initialPlan={activePlan} onHelp={onHelp} onNav={onNav} onPlanActivated={onPlanActivated} />
       </View>
     </SafeAreaView>
   );

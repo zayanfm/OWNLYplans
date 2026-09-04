@@ -13,16 +13,16 @@ async function runE2ETests() {
 
   try {
     // -------------------------------------------------------------
-    // Scenario 1: Freya's household with two school-age children
+    // Scenario 1: Alex and Lila's young family
     // -------------------------------------------------------------
-    console.log('[Scenario 1] Testing Freya Lim Family...');
-    householdStore.reset('freya_family');
+    console.log('[Scenario 1] Testing Alex Lim Family...');
+    householdStore.reset('alex_family');
 
     // 1.1 MockPass handoff (the consent UI is exercised manually)
     const auth1 = await fetch(`${baseUrl}/api/auth/mockpass/start?returnUrl=${encodeURIComponent('frontend://mockpass')}`).then(r => r.json());
     assert(auth1.success, 'MockPass authorization handoff should succeed');
-    assert.strictEqual(auth1.protocol, 'MYINFO_V3');
-    console.log('  ✓ Official MockPass MyInfo v3 authorization handoff created');
+    assert.strictEqual(auth1.protocol, 'OAUTH2_AUTHORIZATION_CODE');
+    console.log('  ✓ Custom MockPass authorization handoff created');
 
     // 1.2 SGFinDex Aggregation
     const sgf1 = await fetch(`${baseUrl}/api/sgfindex/aggregate`).then(r => r.json());
@@ -66,16 +66,16 @@ async function runE2ETests() {
     // -------------------------------------------------------------
     // Scenario 2: Family consent journey (Send Invite -> Approved)
     // -------------------------------------------------------------
-    console.log('[Scenario 2] Testing family consent journey (Freya’s children)...');
-    householdStore.reset('freya_family');
+    console.log('[Scenario 2] Testing family consent journey (Lila and Percy)...');
+    householdStore.reset('alex_family');
 
     const invite = await fetch(`${baseUrl}/api/auth/family/invite`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         members: [
-          { name: 'Lim Junhao', relation: 'Child', nric: 'T****09G' },
-          { name: 'Tay Wei Qiang Messi', relation: 'Child', nric: 'T****92H' }
+          { name: 'Lila Tan', relation: 'Spouse', nric: 'S****56B' },
+          { name: 'Percy Lim', relation: 'Child', nric: 'T****91Z' }
         ]
       })
     }).then(r => r.json());

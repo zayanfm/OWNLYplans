@@ -73,10 +73,14 @@ class RMExportService {
           solutionProposal: 'Great Eastern GREAT FlexiLife Term or SupremeHealth rider'
         } : null,
         includeMilestones ? {
-          topic: 'Home Loan Resilience',
+          topic: String(household.housing.type).includes('BTO') ? 'BTO Purchase Readiness' : 'Home Loan Resilience',
           priority: 'MEDIUM',
-          context: `Current monthly instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}; the plan targets a 12-month payment reserve outside the emergency fund.`,
-          solutionProposal: 'Review reserve progress, repricing options and CPF OA versus cash servicing'
+          context: String(household.housing.type).includes('BTO')
+            ? `S$${Number(household.housing.downpaymentAccumulated || 0).toLocaleString()} of the S$${Number(household.housing.downpaymentRequired || 0).toLocaleString()} home-purchase target is accumulated.`
+            : `Current monthly instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}; the plan targets a 12-month payment reserve outside the emergency fund.`,
+          solutionProposal: String(household.housing.type).includes('BTO')
+            ? 'Review CPF OA and cash split, purchase costs and key-collection liquidity'
+            : 'Review reserve progress, repricing options and CPF OA versus cash servicing'
         } : null,
         shareGovernmentGrants ? {
           topic: 'Government Support Eligibility Review',
@@ -89,7 +93,9 @@ class RMExportService {
       ].filter(Boolean),
       recommendedNextSteps: [
         '1. Review household insurance coverage with licensed Great Eastern specialist.',
-        '2. Review the mortgage-payment reserve, repricing options and CPF OA versus cash servicing.',
+        String(household.housing.type).includes('BTO')
+          ? '2. Confirm the CPF OA and cash split for the BTO purchase milestone.'
+          : '2. Review the mortgage-payment reserve, repricing options and CPF OA versus cash servicing.',
         '3. Authorize automated monthly surplus routing into LionGlobal SGD MMF.'
       ]
     };

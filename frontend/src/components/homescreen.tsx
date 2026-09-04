@@ -102,7 +102,7 @@ const HomeHeader = () => (
   <View style={styles.homeHeader}>
     <View>
       <Text style={styles.homeEyebrow}>FRIDAY, 4 SEPTEMBER</Text>
-      <Text style={styles.homeGreeting}>Good morning, Freya</Text>
+      <Text style={styles.homeGreeting}>Good morning, Alex</Text>
     </View>
     <TouchableOpacity style={styles.notificationButton} activeOpacity={0.75}>
       <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
@@ -319,9 +319,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly, hasOwnlyPlan = 
           )}
           {tab === 'Loans' && (
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryEyebrow}>HDB HOME LOAN</Text>
-              <Text style={styles.categoryValue}>{privacyMode ? '••••••' : 'S$349,500.00'}</Text>
-              <Text style={styles.categoryDetail}>Outstanding balance · S$1,500 monthly instalment</Text>
+              <Text style={styles.categoryEyebrow}>LOANS</Text>
+              <Text style={styles.categoryValue}>No active loans</Text>
+              <Text style={styles.categoryDetail}>Your pending Tengah BTO has no disbursed mortgage yet.</Text>
             </View>
           )}
         </View>

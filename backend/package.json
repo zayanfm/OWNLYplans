@@ -14,7 +14,6 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^2.19.0",
-    "@opengovsg/mockpass": "^4.7.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

@@ -24,14 +24,14 @@ export const MyInfoReviewStep: React.FC<{
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Retrieved from MyInfo</Text>
+        <Text style={styles.title}>Retrieved from MockPass</Text>
         <Text style={styles.subtitle}>
-          Verified by Singpass — these fields are read-only and cannot be edited.
+          Returned by the development identity flow — these test fields are read-only.
         </Text>
 
         <View style={styles.card}>
           <View style={styles.verifiedBanner}>
-            <Text style={styles.verifiedText}>🔒 Singpass MyInfo Verified</Text>
+            <Text style={styles.verifiedText}>🔒 MockPass sandbox profile</Text>
           </View>
 
           <Field label="Name" value={user.name} />
@@ -51,7 +51,7 @@ export const MyInfoReviewStep: React.FC<{
           <Text style={styles.insightTitle}>Your verified profile</Text>
           <Text style={styles.insightBody}>
             OWNLYplan will next connect financial data through SGFinDex. Any eligible dependents
-            returned by MyInfo can then be invited with their own consent.
+            returned by the sandbox can then be invited through the simulated consent journey.
           </Text>
         </View>
       </ScrollView>

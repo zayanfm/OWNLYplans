@@ -11,6 +11,7 @@ class PlannerService {
     }
 
     const { financials, housing, dependents } = household;
+    const isPendingBto = String(housing?.type || '').includes('BTO') && Number(housing?.mortgageOutstanding || 0) === 0;
     const monthlySurplus = financials.monthlySurplus || 1340;
     const timeline = String(config.timeline || '5'); // '5' or '10' years
     const mode = config.mode || '24H_WINDOW'; // 'NOTIFY_AND_WAIT', '24H_WINDOW', 'FULL_AUTO'
@@ -65,12 +66,12 @@ class PlannerService {
       {
         id: 'r1',
         key: 'housing',
-        name: 'Home Loan Safety Reserve',
+        name: isPendingBto ? 'BTO Home Purchase Fund' : 'Home Loan Safety Reserve',
         targetProduct: 'OCBC 360 Savings Goal',
         monthlyAmount: Number((investableSurplus * housingSplit).toFixed(0)),
         percentage: Math.round(housingSplit * 100),
         status: 'ACTIVE_ROUTING',
-        purpose: 'Build 12 months of mortgage payments without using the emergency fund',
+        purpose: isPendingBto ? 'Build the remaining BTO downpayment by the selected goal horizon' : 'Build 12 months of mortgage payments without using the emergency fund',
         projectedAtEnd: project(investableSurplus * housingSplit)
       },
       {
@@ -101,7 +102,7 @@ class PlannerService {
     const targetYear = new Date().getFullYear() + Number(timeline);
     const milestones = [
       { year: 'Now', icon: 'shield', title: 'Protect the Base', detail: `Keep the S$${financials.emergencyFund.toLocaleString()} emergency floor separate and review the protection gap.` },
-      { year: String(targetYear), icon: 'home', title: 'Home Loan Safety Reserve', detail: `Target 12 months of mortgage payments with S$${routes.find(route => route.key === 'housing').monthlyAmount}/month.` },
+      { year: String(targetYear), icon: 'home', title: isPendingBto ? 'BTO Home Purchase Fund' : 'Home Loan Safety Reserve', detail: isPendingBto ? `Build the remaining home-purchase amount with S$${routes.find(route => route.key === 'housing').monthlyAmount}/month.` : `Target 12 months of mortgage payments with S$${routes.find(route => route.key === 'housing').monthlyAmount}/month.` },
       { year: String(targetYear), icon: 'graduation-cap', title: 'Children’s Education Goal', detail: `Build the education fund with S$${routes.find(route => route.key === 'education').monthlyAmount}/month.` },
       { year: String(targetYear), icon: 'trending-up', title: 'Retirement & Liquid Wealth', detail: `Grow linked investments and CPF with S$${routes.find(route => route.key === 'wealth').monthlyAmount}/month.` }
     ];

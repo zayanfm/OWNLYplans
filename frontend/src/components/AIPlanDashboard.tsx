@@ -123,7 +123,7 @@ const RECOMMENDATION_DETAILS: Record<string, RecommendationDetail> = {
     nextStep: 'Review fund factsheet',
   },
   cpp: {
-    why: 'At age 66, Freya needs a coordinated view of accessible cash, investments and CPF rather than a generic long-horizon top-up.',
+    why: 'Alex and Lila have a long planning horizon, so coordinating CPF, investments and liquid cash can compound meaningfully alongside near-term family goals.',
     impact: 'Shows whether retirement-ready assets can support family commitments without weakening near-term liquidity.',
     tradeoff: 'CPF top-ups have withdrawal restrictions and should not compromise near-term liquidity.',
     dataUsed: ['Verified age', 'CPF balances', 'Goal horizon', 'Emergency cash reserve'],
@@ -204,9 +204,9 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
   const goals = activePlan?.goalOutlooks || [];
   const selectedGoal = goals.find((goal) => goal.key === selectedGoalKey) || goals[0];
   const onTrackCount = goals.filter((goal) => goal.status !== 'AT_RISK').length;
-  const primaryName = snapshot?.firstName || profile?.user?.name?.split(' ')[0] || 'Freya';
+  const primaryName = snapshot?.firstName || profile?.user?.name?.split(' ')[0] || 'Alex';
   const familyDescription = snapshot?.dependentNames?.length
-    ? `${primaryName} and ${snapshot.dependentNames.join(' & ')}`
+    ? [primaryName, snapshot.partnerName, ...snapshot.dependentNames].filter(Boolean).join(', ')
     : `${primaryName}'s household`;
   const educationGoal = goals.find((goal) => goal.key === 'education');
   const liquidExcess = Math.max(0, (snapshot?.totalLiquidCash || 0) - (snapshot?.emergencyFund || 0));

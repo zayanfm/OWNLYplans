@@ -13,7 +13,7 @@ const requiredMonthly = (current, target, months, annualRate) => {
 
 class GoalsAgent {
   async analyze(household, options = {}) {
-    const { housing = {}, financials, dependents = [], primaryUser, accounts } = household;
+    const { housing = {}, financials, dependents = [], primaryUser, partner, accounts } = household;
     const monthlySurplus = Number(financials.monthlySurplus || 0);
     const timelineYears = Number(options.timelineYears || 5);
     const months = timelineYears * 12;
@@ -24,23 +24,29 @@ class GoalsAgent {
     const availableBeyondEmergency = Math.max(0, liquidCash - Number(financials.emergencyFund || 0));
     const split = { housing: 0.5, education: 0.3, wealth: 0.2 };
 
-    const homeTarget = Number(housing.monthlyLoanInstalment || 1500) * 12;
+    const isPendingBto = String(housing.type || '').includes('BTO') && Number(housing.mortgageOutstanding || 0) === 0;
+    const homeTarget = isPendingBto
+      ? Number(housing.downpaymentRequired || 96000)
+      : Number(housing.monthlyLoanInstalment || 1500) * 12;
+    const homeCurrent = isPendingBto
+      ? Number(housing.downpaymentAccumulated || 0)
+      : availableBeyondEmergency;
     const homeMonthly = Math.round(monthlySurplus * split.housing);
-    const homeNeeded = requiredMonthly(availableBeyondEmergency, homeTarget, months, 0.015);
+    const homeNeeded = requiredMonthly(homeCurrent, homeTarget, months, 0.015);
     const educationTarget = Math.max(30000, dependents.length * 30000);
     const educationCurrent = Math.min(8000, liquidCash * 0.2);
     const educationMonthly = Math.round(monthlySurplus * split.education);
     const educationNeeded = requiredMonthly(educationCurrent, educationTarget, months, 0.045);
-    const retirementCurrent = Number(primaryUser.cpf?.sa || 0) + investments;
+    const retirementCurrent = Number(primaryUser.cpf?.sa || 0) + Number(partner?.cpf?.sa || 0) + investments;
     const retirementTarget = 120000;
     const retirementMonthly = Math.round(monthlySurplus * split.wealth);
     const retirementNeeded = requiredMonthly(retirementCurrent, retirementTarget, months, 0.045);
 
     const goals = [
       {
-        id: 'goal_home_reserve', name: 'Home Loan Safety Reserve', category: 'HOUSING',
-        targetAmount: homeTarget, currentAmount: availableBeyondEmergency,
-        shortfall: Math.max(0, homeTarget - availableBeyondEmergency), deadline, monthsRemaining: months,
+        id: 'goal_home_reserve', name: isPendingBto ? 'BTO Home Purchase Fund' : 'Home Loan Safety Reserve', category: 'HOUSING',
+        targetAmount: homeTarget, currentAmount: homeCurrent,
+        shortfall: Math.max(0, homeTarget - homeCurrent), deadline, monthsRemaining: months,
         requiredMonthlyAllocation: homeNeeded, suggestedMonthlyAllocation: homeMonthly,
         onTrack: homeMonthly >= homeNeeded, icon: 'home', status: homeMonthly >= homeNeeded ? 'ON_TRACK' : 'AT_RISK'
       },
@@ -65,7 +71,9 @@ class GoalsAgent {
       agentId: 'goals_agent', agentName: 'Multi-Generational Goals Agent', status: 'ANALYZED', confidence: 0.9,
       timelineYears, totalGoalsCount: goals.length, goals,
       findings: [
-        `A S$${homeTarget.toLocaleString()} reserve would cover 12 months of current home-loan instalments.`,
+        isPendingBto
+          ? `The BTO purchase fund is S$${homeCurrent.toLocaleString()} of the S$${homeTarget.toLocaleString()} target.`
+          : `A S$${homeTarget.toLocaleString()} reserve would cover 12 months of current home-loan instalments.`,
         `The education target is S$30,000 per child and is tested against the selected ${timelineYears}-year horizon.`,
         'Retirement planning starts from linked investments and CPF SA; returns are assumptions, not guarantees.'
       ],
