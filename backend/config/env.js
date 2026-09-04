@@ -5,6 +5,7 @@ module.exports = {
   PORT: process.env.PORT || 5000,
   NODE_ENV: process.env.NODE_ENV || 'development',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
   APP_PUBLIC_URL: process.env.APP_PUBLIC_URL || '',

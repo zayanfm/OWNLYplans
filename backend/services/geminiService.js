@@ -11,7 +11,7 @@ try {
 class GeminiService {
   constructor() {
     this.ai = null;
-    if (GoogleGenAI && env.GEMINI_API_KEY) {
+    if (GoogleGenAI && env.GEMINI_API_KEY && env.NODE_ENV !== 'test') {
       try {
         this.ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
       } catch (err) {
@@ -27,10 +27,28 @@ class GeminiService {
   getStatus() {
     return {
       configured: this.isConfigured(),
-      model: 'gemini-2.5-flash',
+      model: env.GEMINI_MODEL,
       role: 'Narrative synthesis and conversational explanation',
       fallback: 'Deterministic explainable engine'
     };
+  }
+
+  async generateContent(contents) {
+    const maximumAttempts = 3;
+    for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+      try {
+        return await this.ai.models.generateContent({
+          model: env.GEMINI_MODEL,
+          contents
+        });
+      } catch (error) {
+        const description = String(error?.message || error);
+        const transient = /"code":(429|503)|RESOURCE_EXHAUSTED|UNAVAILABLE|high demand/i.test(description);
+        if (!transient || attempt === maximumAttempts) throw error;
+        await new Promise(resolve => setTimeout(resolve, attempt * 750));
+      }
+    }
+    throw new Error('Gemini request exhausted without a response');
   }
 
   async generateJsonWithMeta(prompt, fallbackData) {
@@ -39,10 +57,9 @@ class GeminiService {
     }
 
     try {
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `${prompt}\n\nIMPORTANT: Return ONLY a valid JSON object matching the requested schema. No markdown ticks, no commentary.`
-      });
+      const response = await this.generateContent(
+        `${prompt}\n\nIMPORTANT: Return ONLY a valid JSON object matching the requested schema. No markdown ticks, no commentary.`
+      );
       const text = response.text ? response.text.trim() : '';
       const cleanJson = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/, '').trim();
       return { data: JSON.parse(cleanJson), source: 'GEMINI_2_5_FLASH' };
@@ -71,10 +88,7 @@ class GeminiService {
         `Provide a helpful, precise, explainable response grounded in the consented household data and Singapore context (CPF, HDB home financing, cash management, OCBC, Great Eastern). Never invent grant eligibility, product rates, family members, or balances. Keep it warm, concise, and structured.`
       ].join('\n\n');
 
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents
-      });
+      const response = await this.generateContent(contents);
 
       return response.text ? response.text.trim() : null;
     } catch (error) {

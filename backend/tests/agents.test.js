@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 const assert = require('assert');
 const healthAgent = require('../agents/healthAgent');
 const goalsAgent = require('../agents/goalsAgent');
