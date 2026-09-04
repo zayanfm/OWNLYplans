@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HomeScreen } from '../components/homescreen';
-import { OwnlyScreen } from '../components/whatever';
 import { PlanTabShell } from '../components/plan/PlanTabShell';
 
-import { HelpFAB } from '../components/helpFAB';
 import { HelpPortal } from '../components/helpPortal';
 import { ChatbotOverlay } from '../components/chatbotoverlay';
 import { BottomNav } from '../components/BottomNav';
+import api from '../services/api';
+import type { OwnlyPlan } from '../components/plan/types';
 
-type Screen = 'home' | 'plan' | 'ownly' | 'rewards' | 'more';
+type Screen = 'home' | 'plan' | 'rewards' | 'more';
 
 export default function MainApp() {
   return (
@@ -25,10 +25,24 @@ function MainAppContent() {
   const insets = useSafeAreaInsets();
   const [screen, setScreen] = useState<Screen>('home');
   const [planMounted, setPlanMounted] = useState<boolean>(false);
+  const [planEntryPill, setPlanEntryPill] = useState<'OCBC' | 'OWNLYplan'>('OCBC');
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [showChat, setShowChat] = useState<boolean>(false);
+  const [activePlan, setActivePlan] = useState<OwnlyPlan | null>(null);
+
+  useEffect(() => {
+    api.getFinanceOverview()
+      .then((overview) => setActivePlan(overview?.activePlan || null))
+      .catch(() => setActivePlan(null));
+  }, []);
 
   const nav = (to: string) => {
+    if (to === 'ownly') {
+      setPlanEntryPill('OWNLYplan');
+      setPlanMounted(true);
+      setScreen('plan');
+      return;
+    }
     if (to === 'plan') setPlanMounted(true);
     setScreen(to as Screen);
   };
@@ -37,28 +51,19 @@ function MainAppContent() {
       <View style={styles.container}>
         <View style={styles.content}>
           {screen === 'home' && (
-            <HomeScreen onOwnly={() => nav('ownly')} onNav={nav} />
-          )}
-
-          {screen === 'ownly' && (
-            <OwnlyScreen onNav={nav} onHelp={() => setShowHelp(true)} />
+            <HomeScreen hasOwnlyPlan={Boolean(activePlan)} onOwnly={() => nav('ownly')} onNav={nav} />
           )}
 
           {/* The Plan tab stays mounted once visited so returning users keep their
               OWNLYplan progress instead of restarting onboarding. */}
           {planMounted && (
             <View style={[styles.fill, screen !== 'plan' && styles.hidden]}>
-              <PlanTabShell onNav={nav} onHelp={() => setShowHelp(true)} />
+              <PlanTabShell initialPill={planEntryPill} activePlan={activePlan} onPlanActivated={setActivePlan} onNav={nav} onHelp={() => setShowHelp(true)} />
             </View>
           )}
         </View>
 
         <BottomNav active={screen} onNavigate={nav} />
-
-        {/* Show Help FAB strictly on Home screen */}
-        {screen === 'home' && (
-          <HelpFAB onPress={() => setShowHelp(true)} />
-        )}
 
         {/* Floating AI Chatbot Button inside the Plan tab */}
         {screen === 'plan' && (

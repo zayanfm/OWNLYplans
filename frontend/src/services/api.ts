@@ -13,6 +13,7 @@ export interface MockPassAuthResponse {
   success: boolean;
   authenticatedAt: string;
   authMethod: string;
+  authProvider?: string;
   personaId: string;
   personaName: string;
   segment: string;
@@ -86,6 +87,13 @@ export interface AgentAnalysisData {
   };
   nextBestActions: NextBestAction[];
   executiveSummary: string;
+  intelligenceSource?: 'GEMINI_2_5_FLASH' | 'DETERMINISTIC_FALLBACK';
+  calculationSource?: 'DETERMINISTIC_RULE_ENGINE';
+  aiSynthesis?: {
+    executiveSummary: string;
+    familyPriorities: string[];
+    watchouts: string[];
+  };
 }
 
 export interface ChatMessage {
@@ -120,8 +128,22 @@ class ApiService {
     }
   }
 
-  // Auth & MockPass
-  // The prototype ships a single family persona, so no persona argument is needed.
+  // Auth & MockPass. The interactive flow is completed in the system browser.
+  async beginMockpassLogin(returnUrl: string): Promise<{
+    success: boolean;
+    authorizationUrl: string;
+    state: string;
+    provider: string;
+    protocol: string;
+  }> {
+    return this.request(`/api/auth/mockpass/start?returnUrl=${encodeURIComponent(returnUrl)}`);
+  }
+
+  async completeMockpassLogin(sessionId: string): Promise<MockPassAuthResponse> {
+    return this.request<MockPassAuthResponse>(`/api/auth/mockpass/session/${encodeURIComponent(sessionId)}`);
+  }
+
+  /** @deprecated MockPass authentication must be completed interactively. */
   async mockpassLogin(): Promise<MockPassAuthResponse> {
     return this.request<MockPassAuthResponse>('/api/auth/mockpass', {
       method: 'POST',

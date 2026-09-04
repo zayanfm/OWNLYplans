@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
+import { MOCK_OCBC_ACCOUNTS, MOCK_OCBC_POSITION } from '../constants/mockData';
 
 export interface AccountItem {
   id: string;
@@ -20,36 +21,20 @@ export interface AccountItem {
 export interface HomeScreenProps {
   onOwnly?: () => void;
   onNav?: (screenKey: string) => void;
+  hasOwnlyPlan?: boolean;
 }
 
 type TabCategory = 'Accounts' | 'Cards' | 'Investments' | 'Loans';
 
-const ACCOUNTS_DATA = [
-  {
-    id: '1',
-    label: 'OCBC FRANK Account',
-    accountNumber: '•••• ••••',
-    balance: 'S$ •,•••.••',
-    subFields: [
-      { label: 'Available balance', value: 'S$ •,•••.••' },
-      { label: 'Debit card no.', value: '•••• •••• 1234' },
-    ],
-    avatarLabel: 'FRA',
-    avatarBg: '#EE6C4D',
-  },
-  {
-    id: '2',
-    label: 'OCBC 360 Account',
-    accountNumber: '•••• 4892',
-    balance: 'S$24,180.33',
-    subFields: [
-      { label: 'Available balance', value: 'S$24,180.33' },
-      { label: 'Savings bonus', value: 'S$12.80' },
-    ],
-    avatarLabel: '360',
-    avatarBg: '#60A5FA',
-  },
-];
+const ACCOUNTS_DATA = MOCK_OCBC_ACCOUNTS.map((account) => ({
+  ...account,
+  accountNumber: account.maskedNumber,
+  balance: `S$${account.balance.toLocaleString()}.00`,
+  subFields: [
+    { label: 'Available balance', value: `S$${account.balance.toLocaleString()}.00` },
+    { label: 'Debit card no.', value: account.debitCardNumber },
+  ],
+}));
 
 const QUICK_ACTIONS = [
   { id: 'paynow', label: 'PayNow' },
@@ -94,7 +79,7 @@ const QuickActionIcon = ({ type }: { type: string }) => {
     case 'fx':
       return (
         <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-          <Path d="M12 2v20M17 7l-5-5-5 5M7 17l5 5 5-5" stroke="#10B981" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M3 8h16M15 4l4 4-4 4M21 16H5M9 12l-4 4 4 4" stroke="#10B981" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
     default:
@@ -111,6 +96,21 @@ const ChevronRightIcon = () => (
   <Svg width={8} height={14} viewBox="0 0 8 14" fill="none">
     <Path d="M1 1l6 6-6 6" stroke="#666666" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
+);
+
+const HomeHeader = () => (
+  <View style={styles.homeHeader}>
+    <View>
+      <Text style={styles.homeEyebrow}>FRIDAY, 4 SEPTEMBER</Text>
+      <Text style={styles.homeGreeting}>Good morning, Freya</Text>
+    </View>
+    <TouchableOpacity style={styles.notificationButton} activeOpacity={0.75}>
+      <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+        <Path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" stroke="#272522" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+      <View style={styles.notificationDot} />
+    </TouchableOpacity>
+  </View>
 );
 
 const NavIcon = ({ name, active }: { name: string; active: boolean }) => {
@@ -179,17 +179,23 @@ const AccountCard = ({
   </View>
 );
 
-const HeroBanner = ({ onOwnly }: { onOwnly?: () => void }) => (
+const HeroBanner = ({ onOwnly, hasOwnlyPlan }: { onOwnly?: () => void; hasOwnlyPlan: boolean }) => (
   <TouchableOpacity style={styles.heroBanner} onPress={onOwnly} activeOpacity={0.9}>
     <View style={styles.heroGradient}>
       <View style={styles.heroBadge}>
         <View style={styles.heroDot} />
-        <Text style={styles.heroBadgeText}>OWNLYplans Ready</Text>
+        <Text style={styles.heroBadgeText}>{hasOwnlyPlan ? 'OWNLYplan Active' : 'NEW · FAMILY PLANNING'}</Text>
       </View>
-      <Text style={styles.heroWelcome}>Welcome</Text>
+      <Text style={styles.heroWelcome}>{hasOwnlyPlan ? 'Your family plan is on track' : 'Plan your family’s next chapter'}</Text>
       <Text style={styles.heroPromoText}>
-        Score S$20 cash for every friend you refer to OCBC FRANK! No limit! ›
+        {hasOwnlyPlan
+          ? 'Review progress, recommendations and upcoming family milestones.'
+          : 'Connect your household securely and turn shared finances into a clear plan.'}
       </Text>
+      <View style={styles.heroCta}>
+        <Text style={styles.heroCtaText}>{hasOwnlyPlan ? 'View OWNLYplan' : 'Set up OWNLYplan'}</Text>
+        <Text style={styles.heroCtaArrow}>→</Text>
+      </View>
     </View>
   </TouchableOpacity>
 );
@@ -273,7 +279,7 @@ const BottomNav = ({ active, onNavigate }: { active: string; onNavigate?: (key: 
   </View>
 );
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly, hasOwnlyPlan = false }) => {
   const [tab, setTab] = useState<TabCategory>('Accounts');
   const [privacyMode, setPrivacyMode] = useState(false);
 
@@ -284,7 +290,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <HeroBanner onOwnly={onOwnly} />
+        <HomeHeader />
+        <HeroBanner onOwnly={onOwnly} hasOwnlyPlan={hasOwnlyPlan} />
         <QuickActionsGrid />
         <FilterTabs
           tab={tab}
@@ -293,9 +300,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly }) => {
           onTogglePrivacy={() => setPrivacyMode(!privacyMode)}
         />
         <View style={styles.accountsStack}>
-          {ACCOUNTS_DATA.map((account) => (
+          {tab === 'Accounts' && ACCOUNTS_DATA.map((account) => (
             <AccountCard key={account.id} account={account} hidden={privacyMode} />
           ))}
+          {tab === 'Cards' && (
+            <View style={styles.categoryCard}>
+              <Text style={styles.categoryEyebrow}>OCBC FRANK DEBIT CARD</Text>
+              <Text style={styles.categoryValue}>{privacyMode ? '••••••' : `S$${MOCK_OCBC_POSITION.cardBalance.toFixed(2)}`}</Text>
+              <Text style={styles.categoryDetail}>No outstanding card balance · Card ending 1234</Text>
+            </View>
+          )}
+          {tab === 'Investments' && (
+            <View style={styles.categoryCard}>
+              <Text style={styles.categoryEyebrow}>OCBC ROBOINVEST</Text>
+              <Text style={styles.categoryValue}>{privacyMode ? '••••••' : `S$${MOCK_OCBC_POSITION.investments.toLocaleString()}.00`}</Text>
+              <Text style={styles.categoryDetail}>Global Balanced Growth Portfolio · +6.4% unrealised</Text>
+            </View>
+          )}
+          {tab === 'Loans' && (
+            <View style={styles.categoryCard}>
+              <Text style={styles.categoryEyebrow}>HDB HOME LOAN</Text>
+              <Text style={styles.categoryValue}>{privacyMode ? '••••••' : 'S$349,500.00'}</Text>
+              <Text style={styles.categoryDetail}>Outstanding balance · S$1,500 monthly instalment</Text>
+            </View>
+          )}
         </View>
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -312,16 +340,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 128,
   },
+  homeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14 },
+  homeEyebrow: { color: '#8A857E', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  homeGreeting: { color: '#1A1A1A', fontSize: 23, lineHeight: 29, fontWeight: '900', marginTop: 2 },
+  notificationButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E9E5DE' },
+  notificationDot: { position: 'absolute', right: 9, top: 8, width: 7, height: 7, borderRadius: 4, backgroundColor: '#D81E05', borderWidth: 1.5, borderColor: '#FFFFFF' },
   heroBanner: {
+    marginHorizontal: 20,
     marginBottom: 0,
+    borderRadius: 24,
+    overflow: 'hidden',
   },
   heroGradient: {
-    backgroundColor: '#D81E05',
-    paddingTop: 24,
-    paddingBottom: 48,
-    paddingHorizontal: 20,
+    backgroundColor: '#B7190A',
+    paddingTop: 20,
+    paddingBottom: 22,
+    paddingHorizontal: 18,
+    minHeight: 178,
   },
   heroBadge: {
     flexDirection: 'row',
@@ -348,22 +385,27 @@ const styles = StyleSheet.create({
   },
   heroWelcome: {
     color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 25,
+    lineHeight: 30,
+    fontWeight: '900',
     marginBottom: 6,
   },
   heroPromoText: {
     color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 18,
+    maxWidth: '85%',
   },
+  heroCta: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', marginTop: 14, backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 8 },
+  heroCtaText: { color: '#B7190A', fontSize: 11, fontWeight: '800' },
+  heroCtaArrow: { color: '#B7190A', fontSize: 14, fontWeight: '800' },
   quickActionsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginHorizontal: 16,
-    marginTop: -36,
-    padding: 16,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginTop: 14,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -397,9 +439,9 @@ const styles = StyleSheet.create({
   tabsSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 16,
-    paddingHorizontal: 16,
+    marginTop: 22,
+    marginBottom: 14,
+    paddingHorizontal: 20,
   },
   privacyToggle: {
     width: 40,
@@ -438,16 +480,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   accountsStack: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 14,
   },
   accountCard: {
-    backgroundColor: '#F5F3EF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#EAEAEA',
   },
+  categoryCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#EAEAEA' },
+  categoryEyebrow: { color: '#888888', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  categoryValue: { color: '#1A1A1A', fontSize: 23, fontWeight: '900', marginTop: 5 },
+  categoryDetail: { color: '#6F6A64', fontSize: 11, lineHeight: 17, marginTop: 6 },
   accountHeader: {
     flexDirection: 'row',
     alignItems: 'center',

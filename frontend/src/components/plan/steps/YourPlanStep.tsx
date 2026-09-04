@@ -1,24 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
-import type { OwnlyPlan, PlanMode, PlanPreferences, PlanRouteId, PredictionScenario } from '../types';
+import type { OwnlyPlan, PlanPreferences, PlanRouteId, PredictionScenario } from '../types';
 
 const ROUTE_LABELS: Record<PlanRouteId, { title: string; subtitle: string; icon: string }> = {
-  housing: { title: 'BTO & home', subtitle: 'Downpayment and renovation reserve', icon: '🏠' },
-  education: { title: 'Child & education', subtitle: 'CDA matching and education fund', icon: '👶' },
-  wealth: { title: 'Liquid wealth', subtitle: 'High-yield cash and investments', icon: '📈' },
+  housing: { title: 'Home & mortgage', subtitle: 'Mortgage-payment safety reserve', icon: '🏠' },
+  education: { title: 'Children’s education', subtitle: 'Education funding before age 18', icon: '🎓' },
+  wealth: { title: 'Retirement & wealth', subtitle: 'CPF, investments and liquid wealth', icon: '📈' },
 };
 
 const SCENARIOS: Array<{ id: PredictionScenario; label: string; rate: string }> = [
   { id: 'conservative', label: 'Conservative', rate: '2.5%' },
   { id: 'balanced', label: 'Balanced', rate: '4.5%' },
   { id: 'growth', label: 'Growth', rate: '6.5%' },
-];
-
-const MODES: Array<{ id: PlanMode; label: string }> = [
-  { id: 'NOTIFY_AND_WAIT', label: 'Confirm each' },
-  { id: '24H_WINDOW', label: '24h window' },
-  { id: 'FULL_AUTO', label: 'Full auto' },
 ];
 
 export const YourPlanStep: React.FC<{
@@ -37,7 +31,6 @@ export const YourPlanStep: React.FC<{
   const [protectionTier, setProtectionTier] = useState<'essential' | 'enhanced'>(plan.protection.tier);
   const [predictionScenario, setPredictionScenario] = useState<PredictionScenario>(plan.predictionScenario);
   const [timeline, setTimeline] = useState<'5' | '10'>(String(plan.timelineYears) === '10' ? '10' : '5');
-  const [mode, setMode] = useState<PlanMode>(plan.autonomyMode);
 
   const monthlyPremium = protectionEnabled ? (protectionTier === 'enhanced' ? 52 : 28) : 0;
   const investable = Math.max(0, plan.monthlySurplus - monthlyPremium);
@@ -47,6 +40,27 @@ export const YourPlanStep: React.FC<{
     const monthlyRate = scenarioRate / 12;
     return Math.round(investable * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
   }, [investable, scenarioRate, timeline]);
+  const goalPreviews = useMemo(() => (plan.goalOutlooks || []).map((goal) => {
+    const monthlyContribution = Math.round(investable * split[goal.key] / 100);
+    const now = new Date();
+    const targetDate = new Date(now);
+    targetDate.setFullYear(targetDate.getFullYear() + Number(timeline));
+    const months = Math.max(1, (targetDate.getFullYear() - now.getFullYear()) * 12 + targetDate.getMonth() - now.getMonth());
+    const annualRate = goal.key === 'housing' ? 0.015 : scenarioRate;
+    const monthlyRate = annualRate / 12;
+    const rawProjected = goal.currentAmount * Math.pow(1 + monthlyRate, months)
+      + monthlyContribution * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+    const projectedAtTarget = Number.isFinite(rawProjected) ? Math.round(rawProjected) : goal.currentAmount + monthlyContribution * months;
+    const factor = (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate;
+    const rawRequired = (goal.targetAmount - goal.currentAmount * Math.pow(1 + monthlyRate, months)) / factor;
+    const requiredMonthly = Number.isFinite(rawRequired) ? Math.max(0, Math.ceil(rawRequired)) : 0;
+    const onTrack = projectedAtTarget >= goal.targetAmount;
+    return { ...goal, targetDate: targetDate.toLocaleDateString('en-SG', { month: 'short', year: 'numeric' }), monthlyContribution, projectedAtTarget, requiredMonthly, onTrack };
+  }), [investable, plan.goalOutlooks, scenarioRate, split, timeline]);
+  const goalsOnTrack = goalPreviews.filter((goal) => goal.onTrack).length;
+  const minimumGoalFunding = goalPreviews.reduce((sum, goal) => sum + goal.requiredMonthly, 0);
+  const flexibleCash = Math.max(0, investable - minimumGoalFunding);
+  const monthlyFundingGap = Math.max(0, minimumGoalFunding - investable);
 
   const movePriority = (index: number, direction: -1 | 1) => {
     const target = index + direction;
@@ -74,7 +88,7 @@ export const YourPlanStep: React.FC<{
     protection: { enabled: protectionEnabled, tier: protectionTier },
     predictionScenario,
     timeline,
-    mode,
+    mode: plan.autonomyMode || '24H_WINDOW',
   });
 
   return (
@@ -85,7 +99,7 @@ export const YourPlanStep: React.FC<{
         </TouchableOpacity>
         <View style={styles.headerCopy}>
           <Text style={styles.title}>Your Plan</Text>
-          <Text style={styles.subtitle}>Review and shape the plan before activating it.</Text>
+          <Text style={styles.subtitle}>Review the plan before activating it.</Text>
         </View>
         <View style={styles.readyPill}><Text style={styles.readyText}>AI ready</Text></View>
       </View>
@@ -153,8 +167,8 @@ export const YourPlanStep: React.FC<{
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Goal prediction</Text>
-          <Text style={styles.cardHint}>Choose the return assumption used for this illustration.</Text>
+          <Text style={styles.cardTitle}>Can we reach our goals?</Text>
+          <Text style={styles.cardHint}>Choose when you want to reach the goals. A 10-year horizon lowers the minimum monthly amount and eases near-term cash-flow pressure. Home cash uses 1.5%; invested goals use the selected scenario.</Text>
           <View style={styles.choiceRow}>
             {SCENARIOS.map((scenario) => (
               <TouchableOpacity key={scenario.id} style={[styles.choice, predictionScenario === scenario.id && styles.choiceActive]} onPress={() => setPredictionScenario(scenario.id)}>
@@ -171,21 +185,22 @@ export const YourPlanStep: React.FC<{
             ))}
           </View>
           <View style={styles.projectionBox}>
-            <Text style={styles.projectionLabel}>Projected family pot</Text>
-            <Text style={styles.projectionValue}>S${projected.toLocaleString()}</Text>
-            <Text style={styles.projectionFine}>Illustration based on {Math.round(scenarioRate * 1000) / 10}% p.a.; returns are not guaranteed.</Text>
+            <Text style={styles.projectionLabel}>GOAL OUTLOOK</Text>
+            <Text style={styles.projectionValue}>{goalsOnTrack}/{goalPreviews.length} on track</Text>
+            <Text style={styles.projectionFine}>Minimum across all goals: S${minimumGoalFunding.toLocaleString()}/month. {monthlyFundingGap > 0 ? `That is S$${monthlyFundingGap.toLocaleString()} above today’s available surplus.` : `This leaves S$${flexibleCash.toLocaleString()}/month flexible.`}</Text>
+            <Text style={styles.projectionFine}>Projected family pot if the full surplus remains routed: S${projected.toLocaleString()}. Returns are not guaranteed.</Text>
           </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>How OWNLYplan acts</Text>
-          <View style={styles.choiceRow}>
-            {MODES.map((item) => (
-              <TouchableOpacity key={item.id} style={[styles.choice, mode === item.id && styles.choiceActive]} onPress={() => setMode(item.id)}>
-                <Text style={[styles.choiceTitle, mode === item.id && styles.choiceTitleActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {goalPreviews.map((goal) => (
+            <View style={styles.forecastRow} key={goal.key}>
+              <View style={styles.forecastHeader}>
+                <Text style={styles.forecastTitle}>{goal.label}</Text>
+                <Text style={[styles.forecastStatus, goal.onTrack ? styles.forecastGood : styles.forecastRisk]}>{goal.onTrack ? 'ON TRACK' : 'AT RISK'}</Text>
+              </View>
+              <Text style={styles.forecastAmounts}>S${goal.currentAmount.toLocaleString()} now → S${goal.projectedAtTarget.toLocaleString()} by {goal.targetDate}</Text>
+              <Text style={styles.forecastTarget}>Target S${goal.targetAmount.toLocaleString()} · currently allocated S${goal.monthlyContribution.toLocaleString()}/month</Text>
+              <Text style={styles.forecastAction}>{goal.onTrack ? `Minimum needed is about S$${goal.requiredMonthly.toLocaleString()}/month. You can reduce the allocation to free up cash flow.` : `Minimum needed is about S$${goal.requiredMonthly.toLocaleString()}/month to close the gap.`}</Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.disclaimer}>This is an AI-generated planning illustration, not financial advice. You remain in control and can edit the plan later.</Text>
@@ -249,6 +264,15 @@ const styles = StyleSheet.create({
   projectionLabel: { color: '#50705A', fontSize: 10, fontWeight: '700' },
   projectionValue: { color: '#16803A', fontSize: 22, fontWeight: '900', marginTop: 2 },
   projectionFine: { color: '#718078', fontSize: 9, lineHeight: 13, marginTop: 2 },
+  forecastRow: { borderTopWidth: 1, borderTopColor: '#EEEAE4', paddingTop: 11, marginTop: 11 },
+  forecastHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  forecastTitle: { flex: 1, color: '#242220', fontSize: 12, fontWeight: '800' },
+  forecastStatus: { fontSize: 8, fontWeight: '900', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8, overflow: 'hidden' },
+  forecastGood: { color: '#16803A', backgroundColor: '#E9F8EE' },
+  forecastRisk: { color: '#A45C00', backgroundColor: '#FFF4DD' },
+  forecastAmounts: { color: '#4D4944', fontSize: 10, fontWeight: '700', marginTop: 6 },
+  forecastTarget: { color: '#817B74', fontSize: 9, marginTop: 3 },
+  forecastAction: { color: '#D81E05', fontSize: 9, fontWeight: '700', marginTop: 5 },
   disclaimer: { fontSize: 10, color: '#888888', lineHeight: 15, textAlign: 'center', paddingHorizontal: 8 },
   footer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, backgroundColor: '#F5F3EF', borderTopWidth: 1, borderTopColor: '#E9E5DE' },
   confirmButton: { backgroundColor: '#D81E05', borderRadius: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center' },

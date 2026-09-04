@@ -91,7 +91,7 @@ export const UserProfile: React.FC<{
                   </>
                 )}
                 <View style={styles.divider} />
-                {_renderField('Housing Milestone', `${profile?.household?.housing?.type || '4-Room BTO'}`)}
+                {_renderField('Housing', `${profile?.household?.housing?.type || 'Housing record unavailable'}`)}
                 {_renderField('Dependents', `${profile?.household?.dependentsCount || 0} dependent(s)`)}
               </View>
 

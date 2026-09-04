@@ -20,11 +20,15 @@ export const FamilyConsentStep: React.FC<{
 
         <Text style={styles.title}>Add your family</Text>
         <Text style={styles.subtitle}>
-          Your Singpass profile shows you are married with 1 dependent. Invite them so the plan
-          covers the whole household.
+          {members.length > 0
+            ? `MyInfo returned ${members.length} eligible dependent${members.length === 1 ? '' : 's'}. Invite them so the plan can cover the household.`
+            : 'MyInfo did not return an eligible dependent. You can continue with an individual plan.'}
         </Text>
 
         <View style={styles.card}>
+          {members.length === 0 ? (
+            <Text style={styles.emptyText}>No family members available to invite</Text>
+          ) : null}
           {members.map((member) => (
             <TouchableOpacity
               key={member.id}
@@ -59,13 +63,13 @@ export const FamilyConsentStep: React.FC<{
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryButton, (selectedCount === 0 || sending) && styles.primaryButtonDisabled]}
+          style={[styles.primaryButton, sending && styles.primaryButtonDisabled]}
           onPress={onSendInvite}
-          disabled={selectedCount === 0 || sending}
+          disabled={sending}
           activeOpacity={0.85}
         >
           <Text style={styles.primaryButtonText}>
-            {selectedCount > 0 ? `Send Invite (${selectedCount})` : 'Send Invite'}
+            {selectedCount > 0 ? `Send Invite (${selectedCount})` : 'Continue without family'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -117,6 +121,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EAEAEA',
     padding: 6,
+  },
+  emptyText: {
+    color: '#767676',
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 18,
   },
   memberRow: {
     flexDirection: 'row',

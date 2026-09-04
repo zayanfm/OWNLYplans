@@ -1,18 +1,19 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { MOCK_OCBC_POSITION } from '../../constants/mockData';
 
 const PLAN_TILES = [
-  { id: 'goals', label: 'Savings Goals', detail: '2 active goals' },
-  { id: 'insights', label: 'Money Insights', detail: 'Spending up 4% this month' },
-  { id: 'wealth', label: 'Wealth Dashboard', detail: 'S$18,450 invested' },
+  { id: 'goals', label: 'Savings Goals', detail: '3 household goals tracked' },
+  { id: 'insights', label: 'Money Insights', detail: 'S$54/month flagged for review' },
+  { id: 'wealth', label: 'Wealth Dashboard', detail: `S$${MOCK_OCBC_POSITION.investments.toLocaleString()} invested` },
   { id: 'life', label: 'Life Goals', detail: 'Retirement · Education' },
 ];
 
 const NET_POSITION = [
-  { label: 'Deposits', value: 'S$24,180.33' },
-  { label: 'Investments', value: 'S$18,450.00' },
-  { label: 'Card balances', value: '-S$1,240.80' },
+  { label: 'Deposits', value: `S$${MOCK_OCBC_POSITION.deposits.toLocaleString()}.00` },
+  { label: 'Investments', value: `S$${MOCK_OCBC_POSITION.investments.toLocaleString()}.00` },
+  { label: 'Card balances', value: 'S$0.00' },
 ];
 
 const ChevronRightIcon = () => (
@@ -32,7 +33,7 @@ export const PlanOcbcTab: React.FC = () => (
   <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <View style={styles.summaryCard}>
       <Text style={styles.summaryLabel}>Total net position</Text>
-      <Text style={styles.summaryValue}>S$41,389.53</Text>
+      <Text style={styles.summaryValue}>S${MOCK_OCBC_POSITION.total.toLocaleString()}.00</Text>
       {NET_POSITION.map((row, index) => (
         <View key={row.label} style={[styles.summaryRow, index > 0 && styles.summaryRowBorder]}>
           <Text style={styles.summaryRowLabel}>{row.label}</Text>

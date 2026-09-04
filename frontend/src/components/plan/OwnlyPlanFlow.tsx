@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import api, { AgentAnalysisData, MockPassAuthResponse } from '../../services/api';
@@ -15,6 +15,7 @@ import { AccountsConnectedStep } from './steps/AccountsConnectedStep';
 import { AnalyzingStep } from './steps/AnalyzingStep';
 import { YourPlanStep } from './steps/YourPlanStep';
 import { FamilyMember, OwnlyPlan, OwnlyStep, PlanPreferences } from './types';
+import { personalizePlan } from './planPersonalization';
 
 const buildFallbackPlan = (preferences?: PlanPreferences): OwnlyPlan => {
   const priorities = preferences?.priorities || ['housing', 'education', 'wealth'];
@@ -28,9 +29,9 @@ const buildFallbackPlan = (preferences?: PlanPreferences): OwnlyPlan => {
   const monthlySurplus = 1340;
   const investableSurplus = monthlySurplus - monthlyPremium;
   const routeDetails = {
-    housing: ['r1', 'BTO Downpayment Pot', 'OCBC 360 High Yield Vault', 'Key collection downpayment accumulation'],
-    education: ['r2', 'Child CDA & Education', 'OCBC Child Development Account + RoboInvest', 'Government co-matched child development fund'],
-    wealth: ['r3', 'High-Yield Liquid Sweep', 'LionGlobal SGD Money Market Fund', 'High-yield cash sweep with instant liquidity'],
+    housing: ['r1', 'Home Loan Safety Reserve', 'OCBC 360 Savings Goal', 'Build a mortgage-payment buffer outside the emergency fund'],
+    education: ['r2', '2-Child Education Fund', 'OCBC Savings Goal + RoboInvest', 'Build education funding by the selected goal horizon'],
+    wealth: ['r3', 'Retirement & Liquid Wealth', 'OCBC RoboInvest + CPF', 'Grow retirement-ready assets while retaining liquidity'],
   } as const;
   const months = timelineYears * 12;
   const monthlyRate = annualReturnRate / 12;
@@ -94,7 +95,7 @@ const buildFamilyFromProfile = (profile: MockPassAuthResponse | null): FamilyMem
     });
   });
 
-  if (members.length === 0) {
+  if (members.length === 0 && !profile) {
     return FALLBACK_FAMILY_MEMBERS.map((m) => ({
       ...m,
       relation: m.relation as FamilyMember['relation'],
@@ -109,17 +110,26 @@ const buildFamilyFromProfile = (profile: MockPassAuthResponse | null): FamilyMem
 export interface OwnlyPlanFlowProps {
   onHelp?: () => void;
   onNav?: (screenKey: string) => void;
+  initialPlan?: OwnlyPlan | null;
+  onPlanActivated?: (plan: OwnlyPlan) => void;
 }
 
-export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav }) => {
-  const [step, setStep] = useState<OwnlyStep>('intro');
+export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated }) => {
+  const [step, setStep] = useState<OwnlyStep>(initialPlan ? 'cockpit' : 'intro');
   const [myInfo, setMyInfo] = useState<MockPassAuthResponse | null>(null);
   const [aggregate, setAggregate] = useState<any>(null);
   const [family, setFamily] = useState<FamilyMember[]>([]);
   const [analysis, setAnalysis] = useState<AgentAnalysisData | null>(null);
-  const [plan, setPlan] = useState<OwnlyPlan | null>(null);
+  const [plan, setPlan] = useState<OwnlyPlan | null>(initialPlan || null);
   const [sending, setSending] = useState<boolean>(false);
   const [savingPlan, setSavingPlan] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (initialPlan && !plan) {
+      setPlan(initialPlan);
+      setStep('cockpit');
+    }
+  }, [initialPlan, plan]);
 
   const handleAuthenticated = (profile: MockPassAuthResponse) => {
     setMyInfo(profile);
@@ -133,6 +143,10 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav }) =
 
   const handleSendInvite = async () => {
     const selected = family.filter((m) => m.selected);
+    if (selected.length === 0) {
+      setStep('connected');
+      return;
+    }
     setSending(true);
     try {
       await api.inviteFamily(
@@ -156,19 +170,19 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav }) =
     setAnalysis(result);
     try {
       const response = await api.generatePlan({});
-      setPlan(response.plan);
+      setPlan(personalizePlan(response.plan, myInfo, aggregate));
     } catch {
-      setPlan(buildFallbackPlan());
+      setPlan(personalizePlan(buildFallbackPlan(), myInfo, aggregate));
     }
     setStep('review');
-  }, []);
+  }, [aggregate, myInfo]);
 
   const handleConfirmPlan = useCallback(async (preferences: PlanPreferences) => {
     setSavingPlan(true);
-    let finalPlan = buildFallbackPlan(preferences);
+    let finalPlan = personalizePlan(buildFallbackPlan(preferences), myInfo, aggregate);
     try {
       const generated = await api.generatePlan(preferences);
-      finalPlan = generated.plan;
+      finalPlan = personalizePlan(generated.plan, myInfo, aggregate);
       await api.approvePlan(finalPlan);
     } catch {
       // The prototype remains usable offline with the same calculated plan.
@@ -176,15 +190,16 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav }) =
       setPlan(finalPlan);
       setSavingPlan(false);
       setStep('cockpit');
+      onPlanActivated?.(finalPlan);
     }
-  }, []);
+  }, [aggregate, myInfo, onPlanActivated]);
 
   const institutionsCount =
     aggregate?.sgfindexConsent?.financialInstitutions?.length || FALLBACK_SGFINDEX_INSTITUTIONS.length;
 
   return (
     <View style={styles.container}>
-      {step === 'intro' && <IntroStep onStart={() => setStep('singpass')} />}
+      {step === 'intro' && <IntroStep onStart={() => setStep('singpass')} onHelp={onHelp} />}
 
       {step === 'singpass' && (
         <SingpassLoginStep onAuthenticated={handleAuthenticated} onBack={() => setStep('intro')} />
@@ -244,6 +259,8 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav }) =
           onNav={onNav}
           analysis={analysis}
           activePlan={plan}
+          profile={myInfo}
+          aggregate={aggregate}
           onEditPlan={() => setStep('review')}
         />
       )}

@@ -43,15 +43,15 @@ export const MyInfoReviewStep: React.FC<{
           <Field label="CPF Ordinary (OA)" value={money(user.cpf?.oa)} />
           <Field label="CPF Special (SA)" value={money(user.cpf?.sa)} />
           <Field label="CPF MediSave (MA)" value={money(user.cpf?.ma)} />
-          <Field label="Housing" value={profile.household?.housing?.type || '4-Room BTO (Pending)'} />
+          <Field label="Housing" value={profile.household?.housing?.type || 'Not available'} />
           <Field label="Dependents" value={`${profile.household?.dependentsCount || 0} dependent(s)`} />
         </View>
 
         <View style={styles.insightCard}>
-          <Text style={styles.insightTitle}>Because you are married</Text>
+          <Text style={styles.insightTitle}>Your verified profile</Text>
           <Text style={styles.insightBody}>
-            OWNLYplan will next connect your other banks through SGFinDex, and ask your spouse and
-            children for permission to join the household plan.
+            OWNLYplan will next connect financial data through SGFinDex. Any eligible dependents
+            returned by MyInfo can then be invited with their own consent.
           </Text>
         </View>
       </ScrollView>

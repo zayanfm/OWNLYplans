@@ -1,27 +1,39 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import api, { MockPassAuthResponse } from '../../../services/api';
-import { FALLBACK_MYINFO } from '../../../constants/mockData';
 
 export const SingpassLoginStep: React.FC<{
   onAuthenticated: (profile: MockPassAuthResponse) => void;
   onBack: () => void;
 }> = ({ onAuthenticated, onBack }) => {
   const [loading, setLoading] = useState<boolean>(false);
-  const [offline, setOffline] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setLoading(true);
-    setOffline(false);
+    setErrorMessage(null);
     try {
-      const profile = await api.mockpassLogin();
+      const returnUrl = Linking.createURL('mockpass');
+      const auth = await api.beginMockpassLogin(returnUrl);
+      const browserResult = await WebBrowser.openAuthSessionAsync(auth.authorizationUrl, returnUrl, {
+        preferEphemeralSession: true,
+      });
+      if (browserResult.type !== 'success') {
+        throw new Error('Login was cancelled before MyInfo consent was completed.');
+      }
+      const callback = Linking.parse(browserResult.url);
+      const rawError = callback.queryParams?.error;
+      const rawSession = callback.queryParams?.session;
+      const callbackError = Array.isArray(rawError) ? rawError[0] : rawError;
+      const sessionId = Array.isArray(rawSession) ? rawSession[0] : rawSession;
+      if (callbackError) throw new Error(String(callbackError));
+      if (!sessionId) throw new Error('MockPass returned no login session.');
+      const profile = await api.completeMockpassLogin(String(sessionId));
       onAuthenticated(profile);
-    } catch {
-      setOffline(true);
-      onAuthenticated({
-        ...FALLBACK_MYINFO,
-        authenticatedAt: new Date().toISOString(),
-      } as MockPassAuthResponse);
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Unable to complete MockPass login.');
     } finally {
       setLoading(false);
     }
@@ -58,13 +70,13 @@ export const SingpassLoginStep: React.FC<{
           </View>
 
           <Text style={styles.simulationNote}>
-            Prototype uses MockPass, the open-source Singpass simulator.
+            Development login is provided by the official @opengovsg/mockpass service.
           </Text>
         </View>
 
-        {offline ? (
+        {errorMessage ? (
           <Text style={styles.offlineNote}>
-            Backend unreachable — continuing with the bundled household profile.
+            {errorMessage} Check that the API and MockPass services are reachable, then try again.
           </Text>
         ) : null}
       </ScrollView>

@@ -16,6 +16,45 @@ export type PlanRouteId = 'housing' | 'education' | 'wealth';
 export type PlanMode = 'NOTIFY_AND_WAIT' | '24H_WINDOW' | 'FULL_AUTO';
 export type PredictionScenario = 'conservative' | 'balanced' | 'growth';
 
+export interface GoalOutlook {
+  key: PlanRouteId;
+  label: string;
+  currentAmount: number;
+  targetAmount: number;
+  targetDate: string;
+  targetDateIso: string;
+  monthlyContribution: number;
+  projectedAtTarget: number;
+  projectedCompletionDate: string;
+  lowEstimate: number;
+  highEstimate: number;
+  status: 'REACHED' | 'ON_TRACK' | 'AT_RISK';
+  shortfall: number;
+  confidence: number;
+  recommendedMonthlyContribution: number;
+  actionText: string;
+  returnRate: number;
+  dataUsed: string[];
+}
+
+export interface HouseholdSnapshot {
+  primaryName: string;
+  firstName: string;
+  householdLabel: string;
+  dependentNames: string[];
+  dependentCount: number;
+  housingType: string;
+  monthlyTakeHome: number;
+  monthlyExpenses: number;
+  monthlySurplus: number;
+  contributors: Array<{ label: string; amount: number }>;
+  totalLiquidCash: number;
+  totalInvestments: number;
+  cpfTotal: number;
+  emergencyFund: number;
+  lastSynced: string;
+}
+
 export interface PlanRoute {
   id: string;
   key: PlanRouteId;
@@ -48,6 +87,8 @@ export interface OwnlyPlan {
     annualReturnRate: number;
     inflationRate: number;
   };
+  householdSnapshot?: HouseholdSnapshot;
+  goalOutlooks?: GoalOutlook[];
   summary: {
     totalMonthlyRouted: number;
     totalMonthlyCommitted: number;

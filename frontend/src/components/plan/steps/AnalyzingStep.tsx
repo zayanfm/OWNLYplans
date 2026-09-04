@@ -4,8 +4,8 @@ import api, { AgentAnalysisData } from '../../../services/api';
 
 const AGENTS = [
   { id: 'health', icon: '🩺', name: 'Household Health & Risk', detail: 'Buffer, debt ratio & protection gap' },
-  { id: 'goals', icon: '🎯', name: 'Multi-Generational Goals', detail: 'BTO, education & retirement timelines' },
-  { id: 'grants', icon: '🇸🇬', name: 'Grants & Schemes', detail: 'EHG, Baby Bonus, CDA & vouchers' },
+  { id: 'goals', icon: '🎯', name: 'Multi-Generational Goals', detail: 'Home resilience, education & retirement' },
+  { id: 'grants', icon: '🇸🇬', name: 'Grants & Schemes', detail: 'Verifying support without assuming eligibility' },
   { id: 'orchestrator', icon: '🧠', name: 'Orchestrator', detail: 'Ranking your next-best actions' },
 ];
 

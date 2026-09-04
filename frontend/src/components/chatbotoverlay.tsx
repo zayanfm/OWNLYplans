@@ -42,7 +42,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
   const [messages, setMessages] = useState<Message[]>([
     {
       from: 'ai',
-      text: `Hello! 👋 I am your OWNLYplans AI Assistant, connected to your OCBC 360, SGFinDex, and CPF data. Ask me anything about your BTO downpayment, MMF yield sweeps, government grants, or protection gaps!`,
+      text: `Hello! 👋 I’m your OWNLYplan AI Assistant. Ask how your home reserve, children’s education, retirement outlook, government-support checks, or protection recommendations were calculated.`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -102,7 +102,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
         ...m,
         {
           from: 'ai',
-          text: `By sweeping your idle cash into LionGlobal SGD Money Market Fund, you increase your annual yield to 3.85% p.a. while keeping full liquidity. Your BTO downpayment accumulation remains on track for 2027.`
+          text: `I can’t reach the analysis service right now. Your approved plan is still visible, but rates, eligibility and recommendations should be refreshed once the backend reconnects.`
         }
       ]);
     } finally {
@@ -222,7 +222,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 {[
                   'Why sweep to LionGlobal MMF?',
                   'What grants are we eligible for?',
-                  'How is our BTO progress?',
+                  'How is our home reserve progressing?',
                   'Tell me about our protection gap'
                 ].map((q) => (
                   <TouchableOpacity
@@ -243,7 +243,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 value={input}
                 onChangeText={setInput}
                 onSubmitEditing={() => send(input)}
-                placeholder="Ask about grants, MMF yields, BTO goals..."
+                placeholder="Ask about your goals or recommendations..."
                 placeholderTextColor="#A0A0A0"
                 returnKeyType="send"
               />

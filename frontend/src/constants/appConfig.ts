@@ -1,5 +1,8 @@
 // frontend/src/constants/appConfig.ts
 
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 export interface AppConfig {
   appName: string;
   theme: {
@@ -38,4 +41,13 @@ export const MOCK_APP_CONFIG: AppConfig = {
   },
 };
 
-export const API_BASE_URL = 'http://172.20.10.2:5000';
+const explicitApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
+const expoDevHost = Constants.expoConfig?.hostUri?.split(':')[0];
+
+/**
+ * Expo Go runs on the phone, so localhost would point at the phone itself.
+ * In LAN development, hostUri contains the computer running Metro; use that
+ * same host for the Express API unless an explicit URL was supplied.
+ */
+export const API_BASE_URL = explicitApiUrl
+  || (Platform.OS !== 'web' && expoDevHost ? `http://${expoDevHost}:5000` : 'http://localhost:5000');

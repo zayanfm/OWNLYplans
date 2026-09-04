@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlanOcbcTab } from './PlanOcbcTab';
 import { OwnlyPlanFlow } from './OwnlyPlanFlow';
+import type { OwnlyPlan } from './types';
 
 type PlanPill = 'OCBC' | 'OWNLYplan';
 
@@ -12,12 +13,17 @@ const PILLS: PlanPill[] = ['OCBC', 'OWNLYplan'];
 export interface PlanTabShellProps {
   onHelp?: () => void;
   onNav?: (screenKey: string) => void;
+  initialPill?: PlanPill;
+  activePlan?: OwnlyPlan | null;
+  onPlanActivated?: (plan: OwnlyPlan) => void;
 }
 
-export const PlanTabShell: React.FC<PlanTabShellProps> = ({ onHelp, onNav }) => {
+export const PlanTabShell: React.FC<PlanTabShellProps> = ({ onHelp, onNav, initialPill = 'OCBC', activePlan, onPlanActivated }) => {
   const insets = useSafeAreaInsets();
   // OCBC stays the default pill so the Plan tab opens exactly as it does today.
-  const [activePill, setActivePill] = useState<PlanPill>('OCBC');
+  const [activePill, setActivePill] = useState<PlanPill>(initialPill);
+
+  useEffect(() => setActivePill(initialPill), [initialPill]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -52,7 +58,7 @@ export const PlanTabShell: React.FC<PlanTabShellProps> = ({ onHelp, onNav }) => 
         <PlanOcbcTab />
       </View>
       <View style={[styles.pillBody, { paddingBottom: 82 + insets.bottom }, activePill !== 'OWNLYplan' && styles.pillBodyHidden]}>
-        <OwnlyPlanFlow onHelp={onHelp} onNav={onNav} />
+        <OwnlyPlanFlow initialPlan={activePlan} onHelp={onHelp} onNav={onNav} onPlanActivated={onPlanActivated} />
       </View>
     </SafeAreaView>
   );

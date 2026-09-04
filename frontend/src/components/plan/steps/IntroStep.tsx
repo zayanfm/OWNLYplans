@@ -19,11 +19,24 @@ const HIGHLIGHTS = [
   },
 ];
 
-export const IntroStep: React.FC<{ onStart: () => void }> = ({ onStart }) => (
+export const IntroStep: React.FC<{ onStart: () => void; onHelp?: () => void }> = ({ onStart, onHelp }) => (
   <View style={styles.container}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>NEW · FAMILY FINANCIAL ENGINE</Text>
+      <View style={styles.topRow}>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>NEW · FAMILY FINANCIAL ENGINE</Text>
+        </View>
+        {onHelp ? (
+          <TouchableOpacity
+            style={styles.helpButton}
+            onPress={onHelp}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="OWNLYplan help and transparency"
+          >
+            <Text style={styles.helpButtonText}>?</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <Text style={styles.title}>OWNLYplan</Text>
@@ -69,6 +82,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 32,
   },
+  topRow: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: '#FFF0EE',
@@ -77,13 +97,27 @@ const styles = StyleSheet.create({
     borderColor: '#FFCDD2',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    marginBottom: 12,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#D81E05',
     letterSpacing: 0.6,
+  },
+  helpButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DEDAD3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpButtonText: {
+    color: '#4F4B45',
+    fontSize: 16,
+    fontWeight: '800',
   },
   title: {
     fontSize: 28,
