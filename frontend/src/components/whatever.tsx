@@ -12,6 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import api, { AgentAnalysisData, NextBestAction } from '../services/api';
+import type { OwnlyPlan } from './plan/types';
 
 // ==========================================
 // 1. DATA TYPES & INTERFACES
@@ -148,12 +149,19 @@ export const AgentCard: React.FC<{ a: AgentData; i: number }> = ({ a }) => {
 // 4. MAIN OWNLYSCREEN COMPONENT
 // ==========================================
 
-export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?: () => void }> = ({ onNav }) => {
+export const OwnlyScreen: React.FC<{
+  onNav?: (screenKey: string) => void;
+  onHelp?: () => void;
+  analysis?: AgentAnalysisData | null;
+  activePlan?: OwnlyPlan | null;
+  onEditPlan?: () => void;
+}> = ({ onNav, analysis: initialAnalysis, activePlan, onEditPlan }) => {
   const insets = useSafeAreaInsets();
-  const [mode, setMode] = useState<string>('Medium');
-  const [approved, setApproved] = useState<boolean>(false);
+  const initialMode = activePlan?.autonomyMode === 'FULL_AUTO' ? 'High' : activePlan?.autonomyMode === 'NOTIFY_AND_WAIT' ? 'Low' : 'Medium';
+  const [mode, setMode] = useState<string>(initialMode);
+  const [approved, setApproved] = useState<boolean>(Boolean(activePlan));
   const [loading, setLoading] = useState<boolean>(false);
-  const [analysis, setAnalysis] = useState<AgentAnalysisData | null>(null);
+  const [analysis, setAnalysis] = useState<AgentAnalysisData | null>(initialAnalysis || null);
   const [financeData, setFinanceData] = useState<any>(null);
 
   // RM Export State
@@ -168,7 +176,7 @@ export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?
   const loadData = async () => {
     try {
       const [agentRes, finRes] = await Promise.all([
-        api.analyzeAgents(),
+        initialAnalysis ? Promise.resolve({ success: true, data: initialAnalysis }) : api.analyzeAgents(),
         api.getFinanceOverview()
       ]);
       if (agentRes.success) setAnalysis(agentRes.data);
@@ -225,7 +233,7 @@ export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?
     text: 'text-red-800'
   }));
 
-  const routes: RouteData[] = (financeData?.routes || [
+  const routes: RouteData[] = (activePlan?.routes || financeData?.routes || [
     { name: 'BTO Downpayment Pot', monthlyAmount: 670, targetProduct: 'OCBC 360 Vault' },
     { name: 'LionGlobal SGD MMF', monthlyAmount: 400, targetProduct: '3.85% p.a. Cash Sweep' },
     { name: 'Child CDA & Education', monthlyAmount: 270, targetProduct: 'OCBC CDA Matching' }
@@ -247,14 +255,30 @@ export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?
             </Svg>
           </View>
           <Text style={styles.successTitle}>Plan Activated!</Text>
-          <Text style={styles.successSub}>OWNLYplans is actively optimizing your household cashflows in</Text>
+          <Text style={styles.successSub}>OWNLYplan is now using your confirmed priorities, protection and contribution settings.</Text>
           <Text style={styles.successModePill}>{m.pill}</Text>
 
+          {activePlan && (
+            <View style={styles.activePlanSummary}>
+              <View style={styles.activePlanMetric}>
+                <Text style={styles.activePlanValue}>S${activePlan.summary.projectedAtHorizon.toLocaleString()}</Text>
+                <Text style={styles.activePlanLabel}>{activePlan.timelineYears}-year prediction</Text>
+              </View>
+              <View style={styles.activePlanMetric}>
+                <Text style={styles.activePlanValue}>{activePlan.protection.enabled ? `S$${activePlan.protection.coverageAmount.toLocaleString()}` : 'Off'}</Text>
+                <Text style={styles.activePlanLabel}>Asset protection</Text>
+              </View>
+            </View>
+          )}
+
           <View style={styles.card}>
-            <Text style={styles.sectionHeader}>Active Surplus Routes</Text>
+            <View style={styles.cardHeaderFlex}>
+              <Text style={styles.sectionHeader}>Your priority routes</Text>
+              {onEditPlan && <TouchableOpacity onPress={onEditPlan}><Text style={styles.editPlanText}>Edit plan</Text></TouchableOpacity>}
+            </View>
             {routes.map((item, i) => (
               <View key={i} style={styles.completedActionRow}>
-                <Text style={styles.actionItemText}>{item.icon} {item.to}</Text>
+                <Text style={styles.actionItemText}>{i + 1}. {item.icon} {item.to}</Text>
                 <Text style={styles.actionStatusText}>{item.amt}/mo (Active)</Text>
               </View>
             ))}
@@ -264,8 +288,8 @@ export const OwnlyScreen: React.FC<{ onNav: (screenKey: string) => void; onHelp?
             <Text style={styles.rmExportBtnText}>📄 Export Summary for Relationship Manager</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.doneButton} onPress={() => onNav('dashboard')}>
-            <Text style={styles.doneButtonText}>View AI Dashboard</Text>
+          <TouchableOpacity style={styles.doneButton} onPress={() => onNav?.('home')}>
+            <Text style={styles.doneButtonText}>Back to Home</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -494,6 +518,11 @@ const styles = StyleSheet.create({
   successTitle: { fontSize: 24, fontWeight: '900', color: '#1A1A1A' },
   successSub: { fontSize: 13, color: '#666', textAlign: 'center', marginTop: 4 },
   successModePill: { backgroundColor: '#E8F4FD', color: '#1A73E8', fontWeight: '700', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 8, marginBottom: 16 },
+  activePlanSummary: { flexDirection: 'row', gap: 10, width: '100%', marginBottom: 12 },
+  activePlanMetric: { flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 12 },
+  activePlanValue: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
+  activePlanLabel: { color: '#BDBDBD', fontSize: 10, marginTop: 3 },
+  editPlanText: { color: '#D81E05', fontSize: 11, fontWeight: '800' },
   sectionHeader: { fontSize: 14, fontWeight: '800', color: '#1A1A1A', marginBottom: 10 },
   completedActionRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', width: '100%' },
   actionItemText: { fontSize: 12, color: '#1A1A1A', fontWeight: '600' },

@@ -6,13 +6,21 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  Modal,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { ChatbotOverlay, SetupProps } from './chatbotoverlay';
+import Svg, { Path } from 'react-native-svg';
+import { SetupProps } from './chatbotoverlay';
+import api, { AgentAnalysisData } from '../services/api';
+import type { OwnlyPlan } from './plan/types';
 
 export interface AIPlanDashboardProps {
   setup?: SetupProps;
   onNav?: (screenKey: string) => void;
+  activePlan?: OwnlyPlan | null;
+  analysis?: AgentAnalysisData | null;
+  onEditPlan?: () => void;
 }
 
 interface RecommendCard {
@@ -71,23 +79,36 @@ const getGreeting = (): string => {
   return 'Good Evening';
 };
 
-export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav }) => {
-  const timeline = setup?.timeline || '5';
+export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, activePlan, analysis, onEditPlan }) => {
+  const timeline = String(activePlan?.timelineYears || setup?.timeline || '5');
   const split = setup?.split ?? 60;
   const goalType = setup?.goalType || 'shared';
 
   const partnerSplit = 100 - split;
-  const maryMonthly = Math.round((1340 * split) / 100);
-  const zayanMonthly = Math.round((1340 * partnerSplit) / 100);
-  const [showChat, setShowChat] = useState(false);
+  const [rmModalVisible, setRmModalVisible] = useState(false);
+  const [shareJointOnly, setShareJointOnly] = useState(false);
+  const [maskNric, setMaskNric] = useState(true);
+  const [exportingRM, setExportingRM] = useState(false);
+  const [rmBriefing, setRmBriefing] = useState<any>(null);
 
   const label = `${timeline}-Year Plan`;
+  const planRoutes = activePlan?.routes || [];
+  const routeColors = ['#D81E05', '#7AB5E8', '#22A06B'];
+  const totalRouted = activePlan?.summary.totalMonthlyRouted || 1340;
+  const projected = activePlan?.summary.projectedAtHorizon || (timeline === '10' ? 500000 : 200000);
+  const protectionCoverage = activePlan?.protection.enabled ? activePlan.protection.coverageAmount : 0;
 
-  // Circular progress ring calculations
-  const radius = 26;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * 0.25;
-  const strokeDasharray = `${circumference * 0.68} ${circumference}`;
+  const handleExportRMBrief = async () => {
+    setExportingRM(true);
+    try {
+      const result = await api.exportRMSummary({ shareJointOnly, maskNric });
+      if (result.success) setRmBriefing(result.data);
+    } catch {
+      setRmBriefing({ exportId: 'OFFLINE-PREVIEW', bankBranch: 'OCBC Digital', keyDiscussionTopicsForRM: [] });
+    } finally {
+      setExportingRM(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -97,71 +118,48 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav }
           <View style={styles.headerRow}>
             <View style={styles.headerTextGroup}>
               <Text style={styles.greetingText}>{getGreeting()}</Text>
-              <Text style={styles.welcomeText}>Welcome, Mary! 👋</Text>
-              <Text style={styles.planStatusText}>{label} · Active</Text>
+              <Text style={styles.welcomeText}>Your OWNLYplan</Text>
+              <Text style={styles.planStatusText}>{label} · Active · {activePlan?.predictionScenario || 'balanced'} outlook</Text>
             </View>
 
-            {/* BTO Progress SVG Ring */}
-            <View style={styles.ringContainer}>
-              <Svg width="64" height="64" viewBox="0 0 64 64">
-                <Circle
-                  cx="32"
-                  cy="32"
-                  r={radius}
-                  stroke="#F0EDE8"
-                  strokeWidth="6"
-                  fill="none"
-                />
-                <Circle
-                  cx="32"
-                  cy="32"
-                  r={radius}
-                  stroke="#D81E05"
-                  strokeWidth="6"
-                  fill="none"
-                  strokeDasharray={strokeDasharray}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                />
-              </Svg>
-              <View style={styles.ringCenterText}>
-                <Text style={styles.ringPctText}>68%</Text>
-                <Text style={styles.ringLabelText}>BTO</Text>
-              </View>
+            <View style={styles.headerActions}>
+              {onEditPlan && (
+                <TouchableOpacity style={styles.headerIconButton} onPress={onEditPlan} accessibilityLabel="Edit plan">
+                  <Text style={styles.editIcon}>✎</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.exportIconButton} onPress={() => setRmModalVisible(true)} accessibilityLabel="Export for relationship manager">
+                <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <Path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="#FFFFFF" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Contribution Split Bar */}
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle}>Contribution Split</Text>
-              <Text style={styles.cardSubHeader}>S$1,340 / mo combined</Text>
+              <Text style={styles.cardTitle}>Monthly contribution plan</Text>
+              <Text style={styles.cardSubHeader}>S${totalRouted.toLocaleString()} routed</Text>
             </View>
             <View style={styles.splitBarContainer}>
-              <View style={[styles.splitBarSegment, { width: `${split}%`, backgroundColor: '#D81E05' }]}>
-                {split >= 18 && (
-                  <Text style={styles.splitSegmentText}>Mary {split}%</Text>
-                )}
-              </View>
-              {goalType === 'shared' && (
-                <View style={[styles.splitBarSegment, { width: `${partnerSplit}%`, backgroundColor: '#7AB5E8' }]}>
-                  {partnerSplit >= 18 && (
-                    <Text style={styles.splitSegmentText}>Zayan {partnerSplit}%</Text>
-                  )}
+              {(planRoutes.length ? planRoutes : [
+                { id: 'fallback-1', percentage: split, name: 'BTO' },
+                { id: 'fallback-2', percentage: partnerSplit, name: 'Family' },
+              ]).map((route, index) => (
+                <View key={route.id} style={[styles.splitBarSegment, { width: `${route.percentage}%`, backgroundColor: routeColors[index % routeColors.length] }]}>
+                  {route.percentage >= 18 && <Text style={styles.splitSegmentText}>{route.percentage}%</Text>}
                 </View>
-              )}
+              ))}
             </View>
-            <View style={styles.splitLegendRow}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#D81E05' }]} />
-                <Text style={styles.legendText}>Mary — S${maryMonthly}/mo</Text>
-              </View>
-              {goalType === 'shared' && (
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#7AB5E8' }]} />
-                  <Text style={styles.legendText}>Zayan — S${zayanMonthly}/mo</Text>
+            <View style={styles.routeLegendStack}>
+              {planRoutes.map((route, index) => (
+                <View style={styles.routeLegendRow} key={route.id}>
+                  <View style={[styles.legendDot, { backgroundColor: routeColors[index % routeColors.length] }]} />
+                  <Text style={styles.routeLegendName}>{index + 1}. {route.name}</Text>
+                  <Text style={styles.legendText}>S${route.monthlyAmount}/mo</Text>
                 </View>
-              )}
+              ))}
             </View>
           </View>
 
@@ -171,11 +169,16 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav }
               <Text style={styles.cardTitle}>Goal Progress</Text>
               <Text style={styles.cardSubHeader}>June 2026</Text>
             </View>
-            {[
+            {(planRoutes.length ? planRoutes.map((route, index) => ({
+              label: route.name,
+              pct: [68, 52, 37][index] || 35,
+              bar: routeColors[index % routeColors.length],
+              val: `S$${route.projectedAtEnd.toLocaleString()} projected`,
+            })) : [
               { label: 'BTO Goal Pot', pct: 68, bar: '#D81E05', val: 'S$40,800 / S$60K' },
               { label: 'Emergency Fund', pct: 100, bar: '#4ADE80', val: 'S$24,000 ✓' },
               { label: 'Investment Portfolio', pct: 37, bar: '#7AB5E8', val: 'S$18,450 / S$50K' },
-            ].map((g) => (
+            ]).map((g) => (
               <View key={g.label} style={styles.goalRow}>
                 <View style={styles.goalLabelRow}>
                   <Text style={styles.goalLabel}>{g.label}</Text>
@@ -188,7 +191,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav }
             ))}
             <View style={styles.statusFooter}>
               <View style={styles.pulseDot} />
-              <Text style={styles.statusFooterText}>All goals on track · Est. gain +S$340/mo</Text>
+              <Text style={styles.statusFooterText}>Plan aligned · S${projected.toLocaleString()} projected over {timeline} years</Text>
             </View>
           </View>
         </View>
@@ -233,10 +236,10 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav }
         <View style={styles.gridSection}>
           <View style={styles.tilesGrid}>
             {[
-              { icon: '💰', label: 'Monthly Surplus', value: 'S$1,340', sub: 'Routed to MMF', color: '#2563EB' },
-              { icon: '📈', label: 'Portfolio Return', value: '+3.2%', sub: 'This month', color: '#16A34A' },
-              { icon: '🛡️', label: 'Protection Gap', value: 'S$160K', sub: 'GE plan available', color: '#9333EA' },
-              { icon: '🏠', label: 'BTO Countdown', value: '18 mo', sub: 'On schedule ✓', color: '#D81E05' },
+              { icon: '💰', label: 'Monthly Surplus', value: `S$${(activePlan?.monthlySurplus || 1340).toLocaleString()}`, sub: `${planRoutes.length} active routes`, color: '#2563EB' },
+              { icon: '📈', label: 'Plan Projection', value: `S$${Math.round(projected / 1000)}K`, sub: `${timeline}-year ${activePlan?.predictionScenario || 'balanced'} case`, color: '#16A34A' },
+              { icon: '🛡️', label: 'Asset Protection', value: protectionCoverage ? `S$${Math.round(protectionCoverage / 1000)}K` : 'Off', sub: activePlan?.protection.enabled ? `${activePlan.protection.tier} cover active` : 'Not included', color: '#9333EA' },
+              { icon: '🎁', label: 'Grants Found', value: `S$${Math.round((analysis?.totalGrantsAvailable || 54300) / 1000)}K`, sub: 'Household opportunities', color: '#D81E05' },
             ].map((s) => (
               <View key={s.label} style={styles.tileCard}>
                 <Text style={styles.tileIcon}>{s.icon}</Text>
@@ -249,31 +252,39 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav }
         </View>
       </ScrollView>
 
-      {/* Floating Action Chatbot Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={() => setShowChat(true)}
-      >
-        <Svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <Rect x="2" y="3" width="18" height="12" rx="4" fill="white" fillOpacity="0.92" />
-          <Circle cx="7" cy="9" r="1.5" fill="#D81E05" />
-          <Circle cx="11" cy="9" r="1.5" fill="#D81E05" />
-          <Circle cx="15" cy="9" r="1.5" fill="#D81E05" />
-          <Path
-            d="M5 19l4-4h6"
-            stroke="white"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </Svg>
-      </TouchableOpacity>
-
-      {/* Chat Overlay Modal */}
-      {showChat && (
-        <ChatbotOverlay setup={setup} onClose={() => setShowChat(false)} />
-      )}
+      <Modal visible={rmModalVisible} transparent animationType="slide" onRequestClose={() => setRmModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIcon}><Text style={styles.modalIconText}>RM</Text></View>
+              <View style={styles.headerTextGroup}>
+                <Text style={styles.modalTitle}>Share with your RM</Text>
+                <Text style={styles.modalSubtitle}>Create a consent-filtered household briefing.</Text>
+              </View>
+            </View>
+            <View style={styles.consentRow}>
+              <Text style={styles.consentLabel}>Joint accounts only</Text>
+              <Switch value={shareJointOnly} onValueChange={setShareJointOnly} trackColor={{ true: '#D81E05' }} />
+            </View>
+            <View style={styles.consentRow}>
+              <Text style={styles.consentLabel}>Mask NRIC details</Text>
+              <Switch value={maskNric} onValueChange={setMaskNric} trackColor={{ true: '#D81E05' }} />
+            </View>
+            <TouchableOpacity style={styles.exportButton} onPress={handleExportRMBrief} disabled={exportingRM}>
+              {exportingRM ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.exportButtonText}>Generate briefing</Text>}
+            </TouchableOpacity>
+            {rmBriefing && (
+              <View style={styles.exportResult}>
+                <Text style={styles.exportResultTitle}>Briefing ready</Text>
+                <Text style={styles.exportResultText}>{rmBriefing.exportId} · {rmBriefing.bankBranch}</Text>
+              </View>
+            )}
+            <TouchableOpacity style={styles.closeButton} onPress={() => { setRmModalVisible(false); setRmBriefing(null); }}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -287,12 +298,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 32,
   },
   headerSection: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    marginTop: 12,
+    paddingHorizontal: 20,
+    marginBottom: 18,
+    marginTop: 8,
   },
   headerRow: {
     flexDirection: 'row',
@@ -303,6 +314,34 @@ const styles = StyleSheet.create({
   headerTextGroup: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E1DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#D81E05',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#D81E05',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  editIcon: { fontSize: 20, color: '#D81E05', fontWeight: '700' },
   greetingText: {
     color: '#767676',
     fontSize: 12,
@@ -342,11 +381,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#EAEAEA',
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -384,6 +423,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  routeLegendStack: { gap: 8 },
+  routeLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  routeLegendName: { flex: 1, color: '#333333', fontSize: 10, fontWeight: '600' },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -448,8 +490,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sectionContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 18,
   },
   seeAllText: {
     color: '#D81E05',
@@ -463,7 +505,7 @@ const styles = StyleSheet.create({
   },
   recommendCard: {
     width: 208,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
   },
   brandRow: {
@@ -508,7 +550,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   gridSection: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   tilesGrid: {
     flexDirection: 'row',
@@ -516,9 +558,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tileCard: {
-    width: (Dimensions.get('window').width - 44) / 2,
+    width: (Dimensions.get('window').width - 52) / 2,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#EAEAEA',
     padding: 14,
@@ -544,21 +586,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     marginTop: 2,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 96,
-    right: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#D81E05',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#D81E05',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 140,
-  },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(17,17,17,0.48)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 30 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
+  modalIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF0EE', alignItems: 'center', justifyContent: 'center' },
+  modalIconText: { color: '#D81E05', fontSize: 12, fontWeight: '900' },
+  modalTitle: { color: '#1A1A1A', fontSize: 18, fontWeight: '900' },
+  modalSubtitle: { color: '#767676', fontSize: 11, marginTop: 2 },
+  consentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 52, borderTopWidth: 1, borderTopColor: '#F0EDE8' },
+  consentLabel: { color: '#333333', fontSize: 13, fontWeight: '600' },
+  exportButton: { minHeight: 48, marginTop: 12, borderRadius: 14, backgroundColor: '#D81E05', alignItems: 'center', justifyContent: 'center' },
+  exportButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  exportResult: { backgroundColor: '#EEF8F1', borderRadius: 12, padding: 12, marginTop: 12 },
+  exportResultTitle: { color: '#16803A', fontSize: 12, fontWeight: '800' },
+  exportResultText: { color: '#52715C', fontSize: 10, marginTop: 2 },
+  closeButton: { alignItems: 'center', paddingVertical: 13, marginTop: 4 },
+  closeButtonText: { color: '#666666', fontSize: 13, fontWeight: '700' },
 });

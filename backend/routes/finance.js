@@ -59,8 +59,15 @@ router.get('/overview', (req, res) => {
  */
 router.post('/plan', (req, res) => {
   try {
-    const { householdId, timeline, split, mode } = req.body || {};
-    const plan = plannerService.generatePlan(householdId, { timeline, split, mode });
+    const { householdId, timeline, split, mode, priorities, protection, predictionScenario } = req.body || {};
+    const plan = plannerService.generatePlan(householdId, {
+      timeline,
+      split,
+      mode,
+      priorities,
+      protection,
+      predictionScenario
+    });
     res.json({ success: true, plan });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

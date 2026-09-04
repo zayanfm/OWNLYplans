@@ -44,6 +44,26 @@ async function testApi() {
     // 5. Finance Overview & Plan
     const finRes = await fetch(`${baseUrl}/api/finance/overview`).then(r => r.json());
     assert(finRes.metrics.monthlySurplus === 1340, 'Surplus should match');
+
+    const tailoredPlanRes = await fetch(`${baseUrl}/api/finance/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timeline: '10',
+        split: { housing: 0.4, education: 0.2, wealth: 0.4 },
+        priorities: ['wealth', 'housing', 'education'],
+        protection: { enabled: true, tier: 'enhanced' },
+        predictionScenario: 'growth',
+        mode: 'FULL_AUTO'
+      })
+    }).then(r => r.json());
+    assert(tailoredPlanRes.success, 'Tailored plan should generate');
+    assert.strictEqual(tailoredPlanRes.plan.routes[0].key, 'wealth', 'Priority order should be preserved');
+    assert.strictEqual(tailoredPlanRes.plan.protection.monthlyPremium, 52, 'Protection choice should affect commitments');
+    assert.strictEqual(tailoredPlanRes.plan.predictionScenario, 'growth', 'Prediction scenario should be preserved');
+    assert.strictEqual(tailoredPlanRes.plan.timelineYears, 10, 'Timeline should be preserved');
+    assert.strictEqual(tailoredPlanRes.plan.summary.totalMonthlyCommitted, 1340, 'Routes and protection should fit the available surplus');
+    console.log('✓ Editable Plan Configuration OK');
     console.log('✓ Finance Overview OK');
 
     // 6. Single family persona

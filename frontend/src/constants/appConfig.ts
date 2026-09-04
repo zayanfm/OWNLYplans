@@ -38,4 +38,4 @@ export const MOCK_APP_CONFIG: AppConfig = {
   },
 };
 
-export const API_BASE_URL = 'http://localhost:5000';
+export const API_BASE_URL = 'http://172.20.10.2:5000';

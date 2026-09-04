@@ -273,7 +273,7 @@ const BottomNav = ({ active, onNavigate }: { active: string; onNavigate?: (key: 
   </View>
 );
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly, onNav }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly }) => {
   const [tab, setTab] = useState<TabCategory>('Accounts');
   const [privacyMode, setPrivacyMode] = useState(false);
 
@@ -299,8 +299,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOwnly, onNav }) => {
         </View>
         <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      <BottomNav active="home" onNavigate={onNav} />
     </SafeAreaView>
   );
 };

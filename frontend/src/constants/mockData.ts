@@ -199,6 +199,71 @@ export const FINANCE_METRICS = {
   timelineDefault: '5',
 };
 
+// Offline fallbacks for the OWNLYplan onboarding flow (Alex Tan & Mary Lim household)
+export const FALLBACK_MYINFO = {
+  success: true,
+  authenticatedAt: '',
+  authMethod: 'MOCKPASS_SINGPASS_OIDC',
+  personaId: 'alex_mary_bto',
+  personaName: 'Alex Tan & Mary Lim',
+  segment: '25–34 Dual Income (Young BTO Family)',
+  user: {
+    nric: 'S****123A',
+    name: 'Alex Tan',
+    age: 31,
+    citizenship: 'Singapore Citizen',
+    maritalStatus: 'Married',
+    employment: 'Product Lead (Tech)',
+    monthlyGrossIncome: 5500,
+    monthlyTakeHome: 4400,
+    cpf: { oa: 42000, sa: 28000, ma: 18000 },
+    verified: true,
+  },
+  partner: {
+    nric: 'S****456B',
+    name: 'Mary Lim',
+    age: 29,
+    citizenship: 'Singapore Citizen',
+    employment: 'Marketing Manager',
+    monthlyGrossIncome: 4800,
+    monthlyTakeHome: 3840,
+    cpf: { oa: 38000, sa: 22000, ma: 16000 },
+    linked: true,
+  },
+  household: {
+    segment: '25–34 Dual Income (Young BTO Family)',
+    dependentsCount: 1,
+    dependents: [{ name: 'Ethan Tan', relation: 'Child', age: 0.5, nric: 'T****901Z' }],
+    housing: { type: '4-Room BTO (Pending)', town: 'Tengah Garden District' },
+  },
+};
+
+export const FALLBACK_FAMILY_MEMBERS = [
+  { id: 'spouse', name: 'Mary Lim', relation: 'Spouse', maskedNric: 'S****456B' },
+  { id: 'child-1', name: 'Ethan Tan', relation: 'Child', maskedNric: 'T****901Z' },
+];
+
+export const FALLBACK_SGFINDEX_INSTITUTIONS = [
+  { id: 'ocbc', name: 'OCBC Bank', detail: 'Deposits, cards & investments' },
+  { id: 'dbs', name: 'DBS Bank', detail: 'Multiplier Account' },
+  { id: 'uob', name: 'UOB Bank', detail: 'One Account' },
+  { id: 'cpf', name: 'CPF Board', detail: 'OA · SA · MediSave' },
+  { id: 'iras', name: 'IRAS', detail: 'Notice of Assessment' },
+];
+
+export const FALLBACK_SGFINDEX_AGGREGATE = {
+  success: true,
+  summary: {
+    totalLiquidCash: 36000,
+    totalInvestments: 14200,
+    householdCpfTotal: 164000,
+    totalAssets: 214200,
+    netWorth: 214200,
+    monthlySurplus: 1340,
+    emergencyBufferMonths: 4.1,
+  },
+};
+
 export const PLAN_MILESTONES: Record<string, Milestone[]> = {
   '5': [
     { year: 'Year 1', icon: '💰', title: 'Emergency Fund Complete', detail: 'S$24,000 fully funded · 3-month buffer secured' },

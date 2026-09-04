@@ -12,44 +12,88 @@ class PlannerService {
 
     const { financials, housing, dependents } = household;
     const monthlySurplus = financials.monthlySurplus || 1340;
-    const timeline = config.timeline || '5'; // '5' or '10' years
+    const timeline = String(config.timeline || '5'); // '5' or '10' years
     const mode = config.mode || '24H_WINDOW'; // 'NOTIFY_AND_WAIT', '24H_WINDOW', 'FULL_AUTO'
 
+    const allowedPriorities = ['housing', 'education', 'wealth'];
+    const priorities = Array.isArray(config.priorities)
+      ? config.priorities.filter((item) => allowedPriorities.includes(item))
+      : allowedPriorities;
+    allowedPriorities.forEach((item) => {
+      if (!priorities.includes(item)) priorities.push(item);
+    });
+
+    const scenarioRates = { conservative: 0.025, balanced: 0.045, growth: 0.065 };
+    const predictionScenario = scenarioRates[config.predictionScenario]
+      ? config.predictionScenario
+      : 'balanced';
+    const annualReturnRate = scenarioRates[predictionScenario];
+    const inflationRate = 0.025;
+
+    const protectionEnabled = config.protection?.enabled !== false;
+    const protectionTier = config.protection?.tier === 'enhanced' ? 'enhanced' : 'essential';
+    const protection = protectionEnabled
+      ? {
+          enabled: true,
+          tier: protectionTier,
+          monthlyPremium: protectionTier === 'enhanced' ? 52 : 28,
+          coverageAmount: protectionTier === 'enhanced' ? 300000 : 160000,
+          protectionGapClosed: protectionTier === 'enhanced' ? 160000 : 160000
+        }
+      : { enabled: false, tier: protectionTier, monthlyPremium: 0, coverageAmount: 0, protectionGapClosed: 0 };
+
+    const investableSurplus = Math.max(0, monthlySurplus - protection.monthlyPremium);
+
     // Calculate routing allocations
-    const housingSplit = config.split?.housing !== undefined ? config.split.housing : 0.50;
-    const educationSplit = config.split?.education !== undefined ? config.split.education : 0.30;
-    const wealthSplit = config.split?.wealth !== undefined ? config.split.wealth : 0.20;
+    const requestedSplits = {
+      housing: config.split?.housing !== undefined ? Number(config.split.housing) : 0.50,
+      education: config.split?.education !== undefined ? Number(config.split.education) : 0.30,
+      wealth: config.split?.wealth !== undefined ? Number(config.split.wealth) : 0.20
+    };
+    const splitTotal = Object.values(requestedSplits).reduce((sum, value) => sum + Math.max(0, value), 0) || 1;
+    const housingSplit = Math.max(0, requestedSplits.housing) / splitTotal;
+    const educationSplit = Math.max(0, requestedSplits.education) / splitTotal;
+    const wealthSplit = Math.max(0, requestedSplits.wealth) / splitTotal;
+    const months = timeline === '10' ? 120 : 60;
+    const project = (monthlyAmount) => {
+      const monthlyRate = annualReturnRate / 12;
+      if (!monthlyRate) return Math.round(monthlyAmount * months);
+      return Math.round(monthlyAmount * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
+    };
 
     const routes = [
       {
         id: 'r1',
+        key: 'housing',
         name: 'BTO Downpayment Pot',
         targetProduct: 'OCBC 360 High Yield Vault',
-        monthlyAmount: Number((monthlySurplus * housingSplit).toFixed(0)),
+        monthlyAmount: Number((investableSurplus * housingSplit).toFixed(0)),
         percentage: Math.round(housingSplit * 100),
         status: 'ACTIVE_ROUTING',
         purpose: 'Key collection downpayment accumulation',
-        projectedAtEnd: Number((monthlySurplus * housingSplit * (timeline === '5' ? 60 : 120)).toFixed(0))
+        projectedAtEnd: project(investableSurplus * housingSplit)
       },
       {
         id: 'r2',
+        key: 'education',
         name: 'Child CDA & Education',
         targetProduct: 'OCBC Child Development Account + RoboInvest',
-        monthlyAmount: Number((monthlySurplus * educationSplit).toFixed(0)),
+        monthlyAmount: Number((investableSurplus * educationSplit).toFixed(0)),
         percentage: Math.round(educationSplit * 100),
         status: 'ACTIVE_ROUTING',
         purpose: 'Government co-matched child development fund',
-        projectedAtEnd: Number((monthlySurplus * educationSplit * (timeline === '5' ? 60 : 120) * 1.04).toFixed(0))
+        projectedAtEnd: project(investableSurplus * educationSplit)
       },
       {
         id: 'r3',
+        key: 'wealth',
         name: 'High-Yield Liquid Sweep',
         targetProduct: 'LionGlobal SGD Money Market Fund',
-        monthlyAmount: Number((monthlySurplus * wealthSplit).toFixed(0)),
+        monthlyAmount: Number((investableSurplus * wealthSplit).toFixed(0)),
         percentage: Math.round(wealthSplit * 100),
         status: 'ACTIVE_ROUTING',
         purpose: '3.85% p.a. cash sweep with instant liquidity',
-        projectedAtEnd: Number((monthlySurplus * wealthSplit * (timeline === '5' ? 60 : 120) * 1.0385).toFixed(0))
+        projectedAtEnd: project(investableSurplus * wealthSplit)
       }
     ];
 
@@ -77,15 +121,22 @@ class PlannerService {
     return {
       householdId: household.id,
       monthlySurplus,
+      investableSurplus,
       timelineYears: Number(timeline),
       autonomyMode: mode,
-      routes,
+      predictionScenario,
+      priorities,
+      routes: priorities.map((key) => routes.find((route) => route.key === key)),
+      protection,
+      assumptions: { annualReturnRate, inflationRate },
       milestones,
       guardrails,
       summary: {
-        totalMonthlyRouted: monthlySurplus,
-        projected5YearAccumulation: Number((monthlySurplus * 60 * 1.035).toFixed(0)),
-        projected10YearAccumulation: Number((monthlySurplus * 120 * 1.045).toFixed(0)),
+        totalMonthlyRouted: investableSurplus,
+        totalMonthlyCommitted: investableSurplus + protection.monthlyPremium,
+        projected5YearAccumulation: Number((investableSurplus * 60 * (1 + annualReturnRate)).toFixed(0)),
+        projected10YearAccumulation: Number((investableSurplus * 120 * (1 + annualReturnRate * 2)).toFixed(0)),
+        projectedAtHorizon: routes.reduce((sum, route) => sum + route.projectedAtEnd, 0),
         annualYieldLift: '+S$456 / year'
       }
     };

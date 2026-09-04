@@ -6,11 +6,9 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
-import api, { MockPassAuthResponse, PersonaInfo } from '../services/api';
+import api, { MockPassAuthResponse } from '../services/api';
 
 export const UserProfile: React.FC<{
   onNext?: () => void;
@@ -19,18 +17,12 @@ export const UserProfile: React.FC<{
 }> = ({ onNext, onBack, onEdit }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [profile, setProfile] = useState<MockPassAuthResponse | null>(null);
-  const [personas, setPersonas] = useState<PersonaInfo[]>([]);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
 
-  const fetchProfile = async (personaId?: string) => {
+  const fetchProfile = async () => {
     try {
       setLoading(true);
-      const res = await api.mockpassLogin(personaId);
+      const res = await api.mockpassLogin();
       setProfile(res);
-      const pList = await api.getPersonas();
-      if (pList.success) {
-        setPersonas(pList.personas);
-      }
     } catch (e) {
       console.warn('Failed to load MockPass profile:', e);
     } finally {
@@ -42,11 +34,6 @@ export const UserProfile: React.FC<{
     fetchProfile();
   }, []);
 
-  const handleSelectPersona = async (id: string) => {
-    setModalVisible(false);
-    await fetchProfile(id);
-  };
-
   const user = profile?.user;
   const partner = profile?.partner;
 
@@ -56,9 +43,9 @@ export const UserProfile: React.FC<{
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.personaSwitchBtn} onPress={() => setModalVisible(true)}>
-          <Text style={styles.personaSwitchBtnText}>🔄 Switch Persona</Text>
-        </TouchableOpacity>
+        <View style={styles.householdTag}>
+          <Text style={styles.householdTagText}>Married · Household of 3</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.content}>
@@ -85,10 +72,12 @@ export const UserProfile: React.FC<{
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>Verified Household • {profile?.segment}</Text>
                 </View>
+                <Text style={styles.maskedNric}>{user?.nric}</Text>
               </View>
 
               <View style={styles.fieldContainer}>
                 {_renderField('Primary Applicant', `${user?.name} (${user?.nric})`)}
+                {_renderField('Marital Status', `${user?.maritalStatus || 'Married'}`)}
                 {_renderField('Employment', `${user?.employment}`)}
                 {_renderField('Monthly Take-Home', `S$${user?.monthlyTakeHome?.toLocaleString()}`)}
                 {_renderField('CPF Ordinary (OA)', `S$${user?.cpf?.oa?.toLocaleString()}`)}
@@ -107,46 +96,21 @@ export const UserProfile: React.FC<{
               </View>
 
               <Text style={styles.disclaimer}>
-                These details are auto-synced via MockPass & SGFinDex. Tap "Switch Persona" to test different Singapore family life stages.
+                These details are auto-synced via MockPass & SGFinDex and cannot be edited here.
               </Text>
             </View>
           </View>
         )}
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
-            <Text style={styles.editButtonText}>Switch Persona</Text>
+          <TouchableOpacity style={styles.editButton} onPress={onEdit}>
+            <Text style={styles.editButtonText}>Refresh from MyInfo</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.nextButton} onPress={onNext}>
             <Text style={styles.nextButtonText}>Confirm & Proceed</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Persona Selector Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Singpass MockPass Persona</Text>
-            <Text style={styles.modalSubtitle}>Test OWNLYplans with authentic Singapore household archetypes</Text>
-
-            {personas.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                style={[styles.personaOption, profile?.personaId === p.id && styles.personaOptionActive]}
-                onPress={() => handleSelectPersona(p.id)}
-              >
-                <Text style={styles.personaOptionTitle}>{p.name}</Text>
-                <Text style={styles.personaOptionDesc}>{p.segment} • {p.housing}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalCloseBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -186,7 +150,7 @@ const styles = StyleSheet.create({
     color: '#D81E05',
     fontWeight: '700',
   },
-  personaSwitchBtn: {
+  householdTag: {
     backgroundColor: '#FFF0EE',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -194,7 +158,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFCDD2',
   },
-  personaSwitchBtnText: {
+  householdTagText: {
     color: '#D81E05',
     fontWeight: '700',
     fontSize: 12,
@@ -281,6 +245,12 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     fontWeight: '700',
   },
+  maskedNric: {
+    fontSize: 11,
+    color: '#888888',
+    fontWeight: '600',
+    marginTop: 4,
+  },
   fieldContainer: {
     width: '100%',
     gap: 4,
@@ -349,61 +319,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 16,
-  },
-  personaOption: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    marginBottom: 10,
-  },
-  personaOptionActive: {
-    borderColor: '#D81E05',
-    backgroundColor: '#FFF8F8',
-  },
-  personaOptionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  personaOptionDesc: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  modalCloseBtn: {
-    marginTop: 10,
-    padding: 12,
-    alignItems: 'center',
-  },
-  modalCloseBtnText: {
-    color: '#767676',
-    fontWeight: '600',
   },
 });
 

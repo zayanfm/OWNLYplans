@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../constants/appConfig';
+import type { OwnlyPlan, PlanMode, PlanRouteId, PredictionScenario } from '../components/plan/types';
 
 export interface PersonaInfo {
   id: string;
@@ -20,6 +21,7 @@ export interface MockPassAuthResponse {
     name: string;
     age: number;
     citizenship: string;
+    maritalStatus: string;
     employment: string;
     monthlyGrossIncome: number;
     monthlyTakeHome: number;
@@ -43,6 +45,20 @@ export interface MockPassAuthResponse {
     dependents: any[];
     housing: any;
   };
+}
+
+export interface FamilyInviteMember {
+  name: string;
+  relation: string;
+  nric: string;
+  status?: 'PENDING' | 'APPROVED';
+}
+
+export interface FamilyInviteStatus {
+  success: boolean;
+  invitedAt: string | null;
+  allApproved: boolean;
+  members: FamilyInviteMember[];
 }
 
 export interface NextBestAction {
@@ -105,10 +121,11 @@ class ApiService {
   }
 
   // Auth & MockPass
-  async mockpassLogin(personaId?: string): Promise<MockPassAuthResponse> {
+  // The prototype ships a single family persona, so no persona argument is needed.
+  async mockpassLogin(): Promise<MockPassAuthResponse> {
     return this.request<MockPassAuthResponse>('/api/auth/mockpass', {
       method: 'POST',
-      body: JSON.stringify({ personaId })
+      body: JSON.stringify({})
     });
   }
 
@@ -128,6 +145,17 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(partnerData)
     });
+  }
+
+  async inviteFamily(members: FamilyInviteMember[]): Promise<{ success: boolean; invitedAt: string; members: FamilyInviteMember[] }> {
+    return this.request('/api/auth/family/invite', {
+      method: 'POST',
+      body: JSON.stringify({ members })
+    });
+  }
+
+  async getFamilyStatus(): Promise<FamilyInviteStatus> {
+    return this.request<FamilyInviteStatus>('/api/auth/family/status');
   }
 
   // SGFinDex Aggregation
@@ -161,14 +189,22 @@ class ApiService {
     return this.request(`/api/finance/overview${q}`);
   }
 
-  async generatePlan(payload: { timeline?: string; split?: any; mode?: string; householdId?: string }): Promise<any> {
+  async generatePlan(payload: {
+    timeline?: string;
+    split?: Record<PlanRouteId, number>;
+    mode?: PlanMode;
+    priorities?: PlanRouteId[];
+    protection?: { enabled: boolean; tier: 'essential' | 'enhanced' };
+    predictionScenario?: PredictionScenario;
+    householdId?: string;
+  }): Promise<{ success: boolean; plan: OwnlyPlan }> {
     return this.request('/api/finance/plan', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
   }
 
-  async approvePlan(plan: any, householdId?: string): Promise<any> {
+  async approvePlan(plan: OwnlyPlan | Record<string, unknown>, householdId?: string): Promise<any> {
     return this.request('/api/finance/approve-plan', {
       method: 'POST',
       body: JSON.stringify({ plan, householdId })
