@@ -13,7 +13,7 @@ export const TermsAndConditions: React.FC<{ onAgree?: () => void; onBack?: () =>
   onBack,
 }) => {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backButtonText}>← Back</Text>
@@ -65,11 +65,11 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 0,
+    paddingBottom: 4,
   },
   backButton: {
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   backButtonText: {
     fontSize: 14,
@@ -81,18 +81,19 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 48,
+    paddingTop: 0,
+    paddingBottom: 24,
   },
   title: {
     fontSize: 24,
     fontWeight: '900',
     color: '#1A1A1A',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
     color: '#666666',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -111,19 +112,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   paragraph: {
     fontSize: 13,
     color: '#444444',
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   checkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 'auto',
+    marginTop: 8,
   },
   agreeButtonText: {
     fontSize: 18,

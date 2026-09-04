@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import type { PlannerConfigData } from '../components/Screen6_PlannerConfig';
 
@@ -32,6 +32,7 @@ type OnboardingStep = 'landing' | 'terms' | 'profile' | 'planning' | 'agent-stat
 
 export default function MainApp() {
   const [screen, setScreen] = useState<string>('home');
+  const [hasApprovedPlan, setHasApprovedPlan] = useState<boolean>(false);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('landing');
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [showChat, setShowChat] = useState<boolean>(false);
@@ -46,6 +47,11 @@ export default function MainApp() {
   });
 
   const nav = (to: string) => {
+    // If user saved a plan, direct "plan" navigation straight to the final dashboard
+    if (to === 'plan' && hasApprovedPlan) {
+      setScreen('dashboard');
+      return;
+    }
     setScreen(to);
   };
 
@@ -69,8 +75,9 @@ export default function MainApp() {
     setOnboardingStep('terms');
   };
 
-  const completeOnboarding = () => {
-    setOnboardingStep('output');
+  const handleApprovePlan = () => {
+    setHasApprovedPlan(true);
+    setScreen('dashboard');
   };
 
   const handleConfigComplete = (config: PlannerConfigData) => {
@@ -78,7 +85,8 @@ export default function MainApp() {
     setOnboardingStep('loading');
   };
 
-  const showBottomNav = onboardingStep === 'landing';
+  // Keep Bottom Nav visible on Home, Ownly, Dashboard, and Plan Landing
+  const showBottomNav = screen === 'home' || screen === 'ownly' || screen === 'dashboard' || (screen === 'plan' && onboardingStep === 'landing');
 
   return (
     <SafeAreaProvider>
@@ -90,6 +98,12 @@ export default function MainApp() {
 
           {screen === 'ownly' && (
             <OwnlyScreen onNav={nav} onHelp={() => setShowHelp(true)} />
+          )}
+
+          {screen === 'dashboard' && (
+            <SafeAreaView style={styles.wizardContainer} edges={['top', 'left', 'right']}>
+              <AIPlanDashboard />
+            </SafeAreaView>
           )}
 
           {screen === 'plan' && (
@@ -160,7 +174,7 @@ export default function MainApp() {
               )}
 
               {onboardingStep === 'loading' && (
-                <Screen7_PlannerLoading onComplete={completeOnboarding} />
+                <Screen7_PlannerLoading onComplete={() => setOnboardingStep('output')} />
               )}
 
               {onboardingStep === 'output' && (
@@ -168,7 +182,7 @@ export default function MainApp() {
                   timeline={plannerConfig.timeline}
                   split={plannerConfig.split}
                   goalType={goalType}
-                  onApprove={() => completeOnboarding()}
+                  onApprove={handleApprovePlan}
                   onBack={() => setOnboardingStep('config')}
                 />
               )}
@@ -177,11 +191,23 @@ export default function MainApp() {
         </View>
 
         {showBottomNav && (
-          <BottomNav active={screen} onNavigate={nav} />
+          <BottomNav active={screen === 'dashboard' ? 'plan' : screen} onNavigate={nav} />
         )}
 
-        {(screen === 'home' || onboardingStep === 'output') && (
+        {/* Show Help FAB strictly on Home screen */}
+        {screen === 'home' && (
           <HelpFAB onPress={() => setShowHelp(true)} />
+        )}
+
+        {/* Floating AI Chatbot Button on Dashboard */}
+        {screen === 'dashboard' && (
+          <TouchableOpacity
+            style={styles.chatFab}
+            activeOpacity={0.85}
+            onPress={() => setShowChat(true)}
+          >
+            <Text style={styles.chatFabIcon}>🤖</Text>
+          </TouchableOpacity>
         )}
 
         <HelpPortal onClose={() => setShowHelp(false)} visible={showHelp} />
@@ -201,5 +227,25 @@ const styles = StyleSheet.create({
   },
   wizardContainer: {
     flex: 1,
+  },
+  chatFab: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#D81E05',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 99,
+  },
+  chatFabIcon: {
+    fontSize: 24,
   },
 });
