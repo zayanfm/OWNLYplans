@@ -1,10 +1,13 @@
 const personas = require('../data/personas.json');
 
+const FAMILY_APPROVAL_DELAY_MS = 3000;
+
 class HouseholdStore {
   constructor() {
     this.households = {};
     this.activePersonaId = 'alex_mary_bto';
     this.auditLogs = {};
+    this.familyInvites = {};
     this.init();
   }
 
@@ -67,6 +70,53 @@ class HouseholdStore {
     return household;
   }
 
+  /**
+   * Record consent invitations for household members. Members remain PENDING
+   * until FAMILY_APPROVAL_DELAY_MS has elapsed, mirroring a real consent round-trip.
+   */
+  inviteFamilyMembers(householdId = this.activePersonaId, members = []) {
+    const invitedAt = new Date().toISOString();
+    const record = {
+      invitedAt,
+      members: members.map((m) => ({
+        name: m.name,
+        relation: m.relation,
+        nric: m.nric,
+        status: 'PENDING'
+      }))
+    };
+
+    this.familyInvites[householdId] = record;
+    this.recordAudit(householdId, 'FAMILY_INVITE_SENT', {
+      count: record.members.length,
+      members: record.members.map((m) => m.name)
+    });
+
+    return record;
+  }
+
+  getFamilyInviteStatus(householdId = this.activePersonaId) {
+    const record = this.familyInvites[householdId];
+    if (!record) {
+      return { invitedAt: null, allApproved: false, members: [] };
+    }
+
+    const elapsed = Date.now() - new Date(record.invitedAt).getTime();
+    const approved = elapsed >= FAMILY_APPROVAL_DELAY_MS;
+
+    if (approved) {
+      record.members.forEach((m) => {
+        m.status = 'APPROVED';
+      });
+    }
+
+    return {
+      invitedAt: record.invitedAt,
+      allApproved: approved,
+      members: record.members
+    };
+  }
+
   approveSurplusPlan(householdId = this.activePersonaId, planDetails) {
     const household = this.getHousehold(householdId);
     if (!household) return null;
@@ -119,6 +169,7 @@ class HouseholdStore {
     } else {
       this.init();
     }
+    this.familyInvites = {};
     return true;
   }
 }

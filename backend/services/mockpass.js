@@ -1,15 +1,15 @@
 const householdStore = require('../models/householdStore');
+const { DEFAULT_PERSONA } = require('../config/env');
 
 class MockPassService {
   /**
    * Authenticate with Singpass MockPass.
-   * Supports persona switching, QR simulation, and returns verified MyInfo profile.
+   * The prototype ships a single family persona (Alex Tan & Mary Lim), so any
+   * requested personaId always resolves to the default household.
    */
-  authenticate(personaId = null) {
-    if (personaId) {
-      householdStore.setActivePersonaId(personaId);
-    }
-    const currentHousehold = householdStore.getHousehold();
+  authenticate() {
+    householdStore.setActivePersonaId(DEFAULT_PERSONA);
+    const currentHousehold = householdStore.getHousehold(DEFAULT_PERSONA);
     if (!currentHousehold) {
       throw new Error('Persona not found');
     }
@@ -28,6 +28,7 @@ class MockPassService {
         name: primaryUser.name,
         age: primaryUser.age,
         citizenship: primaryUser.citizenship,
+        maritalStatus: primaryUser.maritalStatus || 'Married',
         employment: primaryUser.employment,
         monthlyGrossIncome: primaryUser.monthlyGrossIncome,
         monthlyTakeHome: primaryUser.monthlyTakeHome,
@@ -58,12 +59,32 @@ class MockPassService {
     return householdStore.listPersonas();
   }
 
-  switchPersona(personaId) {
-    const success = householdStore.setActivePersonaId(personaId);
-    if (!success) {
-      throw new Error(`Invalid persona ID: ${personaId}`);
-    }
-    return this.authenticate(personaId);
+  /**
+   * Retained for backwards compatibility. Always resolves the single family persona.
+   */
+  switchPersona() {
+    return this.authenticate();
+  }
+
+  /**
+   * Send consent invitations to household members (spouse / children).
+   * Members stay PENDING until the simulated approval delay elapses.
+   */
+  inviteFamily(members = []) {
+    const invited = householdStore.inviteFamilyMembers(undefined, members);
+    return {
+      success: true,
+      invitedAt: invited.invitedAt,
+      members: invited.members
+    };
+  }
+
+  getFamilyStatus() {
+    const status = householdStore.getFamilyInviteStatus();
+    return {
+      success: true,
+      ...status
+    };
   }
 
   linkPartner(partnerDetails) {

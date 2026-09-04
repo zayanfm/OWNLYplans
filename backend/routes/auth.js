@@ -4,12 +4,11 @@ const mockpassService = require('../services/mockpass');
 
 /**
  * POST /api/auth/mockpass
- * MockPass Singpass login endpoint. Accepts optional personaId.
+ * MockPass Singpass login endpoint. Always resolves the single family persona.
  */
 router.post('/mockpass', (req, res) => {
   try {
-    const { personaId } = req.body || {};
-    const result = mockpassService.authenticate(personaId);
+    const result = mockpassService.authenticate();
     res.json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -31,15 +30,11 @@ router.get('/personas', (req, res) => {
 
 /**
  * POST /api/auth/switch-persona
- * Switch active persona.
+ * Retained for backwards compatibility. Always resolves the single family persona.
  */
 router.post('/switch-persona', (req, res) => {
   try {
-    const { personaId } = req.body;
-    if (!personaId) {
-      return res.status(400).json({ success: false, error: 'personaId is required' });
-    }
-    const result = mockpassService.switchPersona(personaId);
+    const result = mockpassService.switchPersona();
     res.json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -57,6 +52,36 @@ router.post('/partner/link', (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/family/invite
+ * Request consent from household members (spouse / children).
+ */
+router.post('/family/invite', (req, res) => {
+  try {
+    const { members } = req.body || {};
+    if (!Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({ success: false, error: 'members array is required' });
+    }
+    const result = mockpassService.inviteFamily(members);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/auth/family/status
+ * Poll household member consent status. Auto-approves after the simulated delay.
+ */
+router.get('/family/status', (req, res) => {
+  try {
+    const result = mockpassService.getFamilyStatus();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

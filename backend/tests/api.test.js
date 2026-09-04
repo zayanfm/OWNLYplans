@@ -46,7 +46,40 @@ async function testApi() {
     assert(finRes.metrics.monthlySurplus === 1340, 'Surplus should match');
     console.log('✓ Finance Overview OK');
 
-    // 6. RM Household Summary Export
+    // 6. Single family persona
+    const personaRes = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
+    assert.strictEqual(personaRes.personas.length, 1, 'Only the family persona ships');
+    assert.strictEqual(personaRes.personas[0].id, 'alex_mary_bto');
+    console.log('✓ Single Family Persona OK');
+
+    // 7. Family invite & consent status
+    const inviteRes = await fetch(`${baseUrl}/api/auth/family/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ members: [{ name: 'Mary Lim', relation: 'Spouse', nric: 'S****456B' }] })
+    }).then(r => r.json());
+    assert(inviteRes.success, 'Family invite should succeed');
+    assert.strictEqual(inviteRes.members[0].status, 'PENDING');
+    console.log('✓ Family Invite OK');
+
+    const pendingRes = await fetch(`${baseUrl}/api/auth/family/status`).then(r => r.json());
+    assert.strictEqual(pendingRes.allApproved, false, 'Consent should still be pending');
+
+    await new Promise(resolve => setTimeout(resolve, 3100));
+
+    const approvedRes = await fetch(`${baseUrl}/api/auth/family/status`).then(r => r.json());
+    assert.strictEqual(approvedRes.allApproved, true, 'Consent resolves after the delay');
+    console.log('✓ Family Consent Status OK');
+
+    const emptyInvite = await fetch(`${baseUrl}/api/auth/family/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ members: [] })
+    });
+    assert.strictEqual(emptyInvite.status, 400, 'Empty invite should be rejected');
+    console.log('✓ Family Invite Validation OK');
+
+    // 8. RM Household Summary Export
     const rmRes = await fetch(`${baseUrl}/api/rm/household-summary`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

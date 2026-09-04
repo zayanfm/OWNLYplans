@@ -8,6 +8,7 @@
       "name": "Alex Tan",
       "age": 31,
       "citizenship": "Singapore Citizen",
+      "maritalStatus": "Married",
       "employment": "Product Lead (Tech)",
       "monthlyGrossIncome": 5500,
       "monthlyTakeHome": 4400,
@@ -37,7 +38,8 @@
         "name": "Ethan Tan",
         "relation": "Child",
         "age": 0.5,
-        "birthDate": "2025-08-15"
+        "birthDate": "2025-08-15",
+        "nric": "T****901Z"
       }
     ],
     "housing": {
@@ -75,136 +77,6 @@
       "investments": [
         { "platform": "OCBC RoboInvest", "name": "Global Balanced Growth Portfolio", "value": 14200.00, "unrealizedGain": "+6.4%" },
         { "platform": "LionGlobal", "name": "LionGlobal SGD Money Market Fund", "value": 0.00, "yieldRate": 0.0385 }
-      ]
-    }
-  },
-  "sandwich_family": {
-    "id": "sandwich_family",
-    "name": "David Tan & Grace Wong",
-    "segment": "35–49 Sandwiched Generation Family",
-    "primaryUser": {
-      "nric": "S****789C",
-      "name": "David Tan",
-      "age": 42,
-      "citizenship": "Singapore Citizen",
-      "employment": "Operations Director",
-      "monthlyGrossIncome": 9500,
-      "monthlyTakeHome": 7600,
-      "cpf": {
-        "oa": 95000,
-        "sa": 82000,
-        "ma": 45000
-      }
-    },
-    "partner": {
-      "nric": "S****321D",
-      "name": "Grace Wong",
-      "age": 40,
-      "citizenship": "Singapore Citizen",
-      "employment": "Senior HR Manager",
-      "monthlyGrossIncome": 8000,
-      "monthlyTakeHome": 6400,
-      "linked": true,
-      "cpf": {
-        "oa": 78000,
-        "sa": 64000,
-        "ma": 38000
-      }
-    },
-    "dependents": [
-      { "name": "Lucas Tan", "relation": "Child (Primary)", "age": 8 },
-      { "name": "Chloe Tan", "relation": "Child (Primary)", "age": 6 },
-      { "name": "Tan Ah Hock", "relation": "Elderly Parent", "age": 73, "pioneer": true }
-    ],
-    "housing": {
-      "type": "5-Room HDB Resale",
-      "town": "Bishan",
-      "estimatedPrice": 820000,
-      "mortgageOutstanding": 380000,
-      "monthlyMortgage": 2150,
-      "firstTimer": false
-    },
-    "financials": {
-      "householdMonthlyIncome": 17500,
-      "householdTakeHome": 14000,
-      "householdMonthlyExpenses": 11800,
-      "monthlySurplus": 2200,
-      "emergencyFund": 65000,
-      "totalLiabilities": 380000,
-      "insuranceCoverage": {
-        "existingLifeCoverage": 600000,
-        "recommendedLifeCoverage": 950000,
-        "protectionGap": 350000,
-        "hospitalPlan": "Great SupremeHealth Integrated Shield"
-      }
-    },
-    "accounts": {
-      "ocbc": [
-        { "type": "OCBC 360 Account", "number": "512-110293-001", "holder": "David Tan", "balance": 42000.00, "interestRate": 0.05, "role": "Salary credit" },
-        { "type": "OCBC Premier EasiSave", "number": "512-990182-002", "holder": "Grace Wong", "balance": 32000.00, "interestRate": 0.05, "role": "Joint Household" }
-      ],
-      "otherBanks": [
-        { "bank": "DBS", "type": "DBS Savings Plus", "number": "003-88219-1", "holder": "David Tan", "balance": 18000.00, "interestRate": 0.05 }
-      ],
-      "investments": [
-        { "platform": "OCBC Blue Chip Investment Plan", "name": "Straits Times Index ETF", "value": 48000.00, "unrealizedGain": "+12.1%" },
-        { "platform": "OCBC Unit Trusts", "name": "LionGlobal Singapore Dividend Equity Fund", "value": 35000.00, "unrealizedGain": "+8.4%" }
-      ]
-    }
-  },
-  "single_achiever": {
-    "id": "single_achiever",
-    "name": "Chloe Teo",
-    "segment": "21–29 Emerging Affluent Single",
-    "primaryUser": {
-      "nric": "S****654E",
-      "name": "Chloe Teo",
-      "age": 27,
-      "citizenship": "Singapore Citizen",
-      "employment": "Cybersecurity Consultant",
-      "monthlyGrossIncome": 6800,
-      "monthlyTakeHome": 5440,
-      "cpf": {
-        "oa": 52000,
-        "sa": 34000,
-        "ma": 19000
-      }
-    },
-    "partner": null,
-    "dependents": [],
-    "housing": {
-      "type": "Private Condominium Aspirant",
-      "town": "District 15 Marine Parade",
-      "estimatedPrice": 1200000,
-      "downpaymentRequired": 300000,
-      "downpaymentAccumulated": 110000,
-      "targetYear": "2029-06",
-      "firstTimer": true
-    },
-    "financials": {
-      "householdMonthlyIncome": 6800,
-      "householdTakeHome": 5440,
-      "householdMonthlyExpenses": 3400,
-      "monthlySurplus": 2040,
-      "emergencyFund": 25000,
-      "totalLiabilities": 0,
-      "insuranceCoverage": {
-        "existingLifeCoverage": 200000,
-        "recommendedLifeCoverage": 300000,
-        "protectionGap": 100000,
-        "hospitalPlan": "Great SupremeHealth Private"
-      }
-    },
-    "accounts": {
-      "ocbc": [
-        { "type": "OCBC 360 Account", "number": "512-772910-001", "holder": "Chloe Teo", "balance": 35000.00, "interestRate": 0.05, "role": "Salary & High Yield" }
-      ],
-      "otherBanks": [
-        { "bank": "UOB", "type": "One Account", "number": "311-99820-2", "holder": "Chloe Teo", "balance": 15000.00, "interestRate": 0.05 }
-      ],
-      "investments": [
-        { "platform": "OCBC RoboInvest", "name": "US Tech Leaders Portfolio", "value": 28000.00, "unrealizedGain": "+18.2%" },
-        { "platform": "LionGlobal", "name": "LionGlobal SGD Money Market Fund", "value": 12000.00, "yieldRate": 0.0385 }
       ]
     }
   }

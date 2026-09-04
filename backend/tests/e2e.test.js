@@ -67,47 +67,51 @@ async function runE2ETests() {
     console.log(`  ✓ RM Briefing Exported: ID ${rm1.data.exportId} (${rm1.data.keyDiscussionTopicsForRM.length} topics identified)\n`);
 
     // -------------------------------------------------------------
-    // Scenario 2: Sandwiched Generation Family (David & Grace Tan)
+    // Scenario 2: Family consent journey (Send Invite -> Approved)
     // -------------------------------------------------------------
-    console.log('[Scenario 2] Testing Sandwiched Generation Persona (David & Grace)...');
-    householdStore.reset('sandwich_family');
+    console.log('[Scenario 2] Testing family consent journey (Mary Lim & Ethan Tan)...');
+    householdStore.reset('alex_mary_bto');
 
-    const auth2 = await fetch(`${baseUrl}/api/auth/switch-persona`, {
+    const invite = await fetch(`${baseUrl}/api/auth/family/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        members: [
+          { name: 'Mary Lim', relation: 'Spouse', nric: 'S****456B' },
+          { name: 'Ethan Tan', relation: 'Child', nric: 'T****901Z' }
+        ]
+      })
+    }).then(r => r.json());
+    assert(invite.success, 'Family invite should succeed');
+    assert.strictEqual(invite.members.length, 2);
+    assert(invite.members.every(m => m.status === 'PENDING'), 'Members start as PENDING');
+    console.log('  ✓ Invitations sent — both members awaiting approval');
+
+    const pending = await fetch(`${baseUrl}/api/auth/family/status`).then(r => r.json());
+    assert.strictEqual(pending.allApproved, false, 'Consent is not granted immediately');
+
+    await new Promise(resolve => setTimeout(resolve, 3100));
+
+    const approvedStatus = await fetch(`${baseUrl}/api/auth/family/status`).then(r => r.json());
+    assert.strictEqual(approvedStatus.allApproved, true, 'Consent resolves after the simulated delay');
+    assert(approvedStatus.members.every(m => m.status === 'APPROVED'), 'All members approved');
+    console.log('  ✓ Accounts Connected — all household members approved\n');
+
+    // -------------------------------------------------------------
+    // Scenario 3: Single family persona is always resolved
+    // -------------------------------------------------------------
+    console.log('[Scenario 3] Testing single-persona resolution...');
+    const personaList = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
+    assert.strictEqual(personaList.personas.length, 1, 'Only one family persona ships');
+    assert.strictEqual(personaList.personas[0].id, 'alex_mary_bto');
+
+    const legacySwitch = await fetch(`${baseUrl}/api/auth/switch-persona`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ personaId: 'sandwich_family' })
     }).then(r => r.json());
-    assert.strictEqual(auth2.user.name, 'David Tan');
-    console.log('  ✓ Switched to Persona: David Tan & Grace Wong');
-
-    const agent2 = await fetch(`${baseUrl}/api/agents/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    }).then(r => r.json());
-    assert(agent2.data.agents.health.metrics.protectionGap >= 300000, 'Higher protection gap for sandwiched family');
-    console.log(`  ✓ Sandwiched Family Health & Senior Grants Analyzed (Protection Gap: S$${agent2.data.agents.health.metrics.protectionGap.toLocaleString()})\n`);
-
-    // -------------------------------------------------------------
-    // Scenario 3: Single Emerging Affluent Professional (Chloe Teo)
-    // -------------------------------------------------------------
-    console.log('[Scenario 3] Testing Emerging Affluent Single (Chloe Teo)...');
-    householdStore.reset('single_achiever');
-
-    const auth3 = await fetch(`${baseUrl}/api/auth/switch-persona`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ personaId: 'single_achiever' })
-    }).then(r => r.json());
-    assert.strictEqual(auth3.user.name, 'Chloe Teo');
-    assert.strictEqual(auth3.partner, null);
-    console.log('  ✓ Single Achiever Profile Verified (Solo Goal Tracking)');
-
-    const agent3 = await fetch(`${baseUrl}/api/agents/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    }).then(r => r.json());
-    assert(agent3.data.nextBestActions.length > 0);
-    console.log(`  ✓ Single Achiever Wealth Compounding Roadmap Created\n`);
+    assert.strictEqual(legacySwitch.personaId, 'alex_mary_bto', 'Unknown personas fall back cleanly');
+    console.log('  ✓ Retired personas resolve to Alex Tan & Mary Lim\n');
 
     console.log('==============================================');
     console.log('   ALL END-TO-END VALIDATION JOURNEYS PASSED');
