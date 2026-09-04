@@ -5,7 +5,7 @@ const FAMILY_APPROVAL_DELAY_MS = 3000;
 class HouseholdStore {
   constructor() {
     this.households = {};
-    this.activePersonaId = 'alex_mary_bto';
+    this.activePersonaId = 'freya_family';
     this.auditLogs = {};
     this.familyInvites = {};
     this.init();

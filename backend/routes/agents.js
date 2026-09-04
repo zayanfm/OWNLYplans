@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const householdStore = require('../models/householdStore');
 const orchestratorAgent = require('../agents/orchestratorAgent');
+const geminiService = require('../services/geminiService');
 
 /**
  * POST /api/agents/analyze
@@ -56,6 +57,7 @@ router.post('/chat', async (req, res) => {
  * Telemetry endpoint returning the operational state of all 4 agents.
  */
 router.get('/status', (req, res) => {
+  const gemini = geminiService.getStatus();
   res.json({
     success: true,
     activeAgentsCount: 4,
@@ -63,8 +65,9 @@ router.get('/status', (req, res) => {
       { id: 'health_agent', name: 'Household Health Agent', status: 'ONLINE', latencyMs: 24, confidence: 0.96 },
       { id: 'goals_agent', name: 'Multi-Gen Goals Agent', status: 'ONLINE', latencyMs: 31, confidence: 0.94 },
       { id: 'grants_agent', name: 'Grants & Schemes Agent', status: 'ONLINE', latencyMs: 18, confidence: 0.98 },
-      { id: 'orchestrator_agent', name: 'Orchestrator & Explainable AI', status: 'ONLINE', latencyMs: 42, confidence: 0.97 }
-    ]
+      { id: 'orchestrator_agent', name: 'Orchestrator & Explainable AI', status: 'ONLINE', latencyMs: 42, confidence: 0.97, mode: gemini.configured ? 'GEMINI_ENHANCED' : 'DETERMINISTIC_FALLBACK' }
+    ],
+    gemini
   });
 });
 

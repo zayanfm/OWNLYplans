@@ -7,5 +7,12 @@ module.exports = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
-  DEFAULT_PERSONA: 'alex_mary_bto'
+  APP_PUBLIC_URL: process.env.APP_PUBLIC_URL || '',
+  MOCKPASS_EMBEDDED: process.env.MOCKPASS_EMBEDDED !== 'false',
+  MOCKPASS_PORT: Number(process.env.MOCKPASS_PORT || 5156),
+  MOCKPASS_INTERNAL_URL: (process.env.MOCKPASS_INTERNAL_URL || 'http://127.0.0.1:5156').replace(/\/$/, ''),
+  MOCKPASS_PUBLIC_URL: (process.env.MOCKPASS_PUBLIC_URL || '').replace(/\/$/, ''),
+  MOCKPASS_CLIENT_ID: process.env.MOCKPASS_CLIENT_ID || 'ownlyplans-local',
+  MOCKPASS_NRIC: process.env.MOCKPASS_NRIC || 'S9812382B',
+  DEFAULT_PERSONA: 'freya_family'
 };

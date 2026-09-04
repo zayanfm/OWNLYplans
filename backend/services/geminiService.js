@@ -20,9 +20,22 @@ class GeminiService {
     }
   }
 
-  async generateJson(prompt, fallbackData) {
-    if (!this.ai || !env.GEMINI_API_KEY) {
-      return fallbackData;
+  isConfigured() {
+    return Boolean(this.ai && env.GEMINI_API_KEY);
+  }
+
+  getStatus() {
+    return {
+      configured: this.isConfigured(),
+      model: 'gemini-2.5-flash',
+      role: 'Narrative synthesis and conversational explanation',
+      fallback: 'Deterministic explainable engine'
+    };
+  }
+
+  async generateJsonWithMeta(prompt, fallbackData) {
+    if (!this.isConfigured()) {
+      return { data: fallbackData, source: 'DETERMINISTIC_FALLBACK' };
     }
 
     try {
@@ -30,14 +43,18 @@ class GeminiService {
         model: 'gemini-2.5-flash',
         contents: `${prompt}\n\nIMPORTANT: Return ONLY a valid JSON object matching the requested schema. No markdown ticks, no commentary.`
       });
-
       const text = response.text ? response.text.trim() : '';
       const cleanJson = text.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/, '').trim();
-      return JSON.parse(cleanJson);
+      return { data: JSON.parse(cleanJson), source: 'GEMINI_2_5_FLASH' };
     } catch (error) {
-      console.warn('[GeminiService] Gemini call failed or returned unparseable JSON, using deterministic fallback:', error.message);
-      return fallbackData;
+      console.warn('[GeminiService] Gemini synthesis failed, using deterministic fallback:', error.message);
+      return { data: fallbackData, source: 'DETERMINISTIC_FALLBACK' };
     }
+  }
+
+  async generateJson(prompt, fallbackData) {
+    const result = await this.generateJsonWithMeta(prompt, fallbackData);
+    return result.data;
   }
 
   async generateChatResponse(systemContext, conversationHistory, userMessage) {
@@ -51,7 +68,7 @@ class GeminiService {
         `Current Household Context:\n${JSON.stringify(systemContext, null, 2)}`,
         `Recent conversation:\n${conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n')}`,
         `User query: ${userMessage}`,
-        `Provide a helpful, precise, explainable response grounded in Singapore context (CPF, BTO, MMF, OCBC 360, Great Eastern). Keep it warm, concise, and structured.`
+        `Provide a helpful, precise, explainable response grounded in the consented household data and Singapore context (CPF, HDB home financing, cash management, OCBC, Great Eastern). Never invent grant eligibility, product rates, family members, or balances. Keep it warm, concise, and structured.`
       ].join('\n\n');
 
       const response = await this.ai.models.generateContent({

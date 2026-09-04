@@ -1,63 +1,56 @@
 {
-  "alex_mary_bto": {
-    "id": "alex_mary_bto",
-    "name": "Alex Tan & Mary Lim",
-    "segment": "25–34 Dual Income (Young BTO Family)",
+  "freya_family": {
+    "id": "freya_family",
+    "name": "Freya Lim Family",
+    "segment": "Mature Household with School-Age Children",
     "primaryUser": {
-      "nric": "S****123A",
-      "name": "Alex Tan",
-      "age": 31,
-      "citizenship": "Singapore Citizen",
+      "nric": "S****82B",
+      "name": "Freya Lim Guo En",
+      "age": 66,
+      "citizenship": "American",
       "maritalStatus": "Married",
-      "employment": "Product Lead (Tech)",
-      "monthlyGrossIncome": 5500,
-      "monthlyTakeHome": 4400,
+      "employment": "IT Service Manager",
+      "monthlyGrossIncome": 4500,
+      "monthlyTakeHome": 3600,
       "cpf": {
-        "oa": 42000,
-        "sa": 28000,
-        "ma": 18000
+        "oa": 49602.38,
+        "sa": 12939.75,
+        "ma": 17253
       }
     },
-    "partner": {
-      "nric": "S****456B",
-      "name": "Mary Lim",
-      "age": 29,
-      "citizenship": "Singapore Citizen",
-      "employment": "Marketing Manager",
-      "monthlyGrossIncome": 4800,
-      "monthlyTakeHome": 3840,
-      "linked": true,
-      "cpf": {
-        "oa": 38000,
-        "sa": 22000,
-        "ma": 16000
-      }
-    },
+    "partner": null,
     "dependents": [
       {
-        "name": "Ethan Tan",
+        "name": "Lim Junhao",
         "relation": "Child",
-        "age": 0.5,
-        "birthDate": "2025-08-15",
-        "nric": "T****901Z"
+        "age": 11,
+        "birthDate": "2015-07-19",
+        "nric": "T****09G"
+      },
+      {
+        "name": "Tay Wei Qiang Messi",
+        "relation": "Child",
+        "age": 9,
+        "birthDate": "2017-07-18",
+        "nric": "T****92H"
       }
     ],
     "housing": {
-      "type": "4-Room BTO (Pending)",
-      "town": "Tengah Garden District",
-      "estimatedPrice": 480000,
-      "downpaymentRequired": 96000,
-      "downpaymentAccumulated": 80000,
-      "keyCollectionDate": "2027-12",
-      "firstTimer": true
+      "type": "5-Room Flat (HDB)",
+      "town": "Jurong East",
+      "estimatedPrice": 450000,
+      "mortgageOutstanding": 349500,
+      "monthlyLoanInstalment": 1500,
+      "owners": 2,
+      "firstTimer": false
     },
     "financials": {
-      "householdMonthlyIncome": 10300,
-      "householdTakeHome": 8240,
-      "householdMonthlyExpenses": 6900,
+      "householdMonthlyIncome": 4500,
+      "householdTakeHome": 3600,
+      "householdMonthlyExpenses": 2260,
       "monthlySurplus": 1340,
       "emergencyFund": 28000,
-      "totalLiabilities": 0,
+      "totalLiabilities": 349500,
       "insuranceCoverage": {
         "existingLifeCoverage": 250000,
         "recommendedLifeCoverage": 410000,
@@ -65,14 +58,25 @@
         "hospitalPlan": "Great Eastern GREAT SupremeHealth Standard"
       }
     },
+    "spendingInsights": {
+      "analysisWindowDays": 90,
+      "recurringSubscriptions": [
+        { "merchant": "Streaming bundle", "monthlyAmount": 31.98, "usage": "LOW", "recommendation": "REVIEW" },
+        { "merchant": "Fitness app", "monthlyAmount": 22.02, "usage": "LOW", "recommendation": "REVIEW" },
+        { "merchant": "Cloud storage", "monthlyAmount": 9.99, "usage": "HIGH", "recommendation": "KEEP" },
+        { "merchant": "Family music", "monthlyAmount": 16.98, "usage": "HIGH", "recommendation": "KEEP" }
+      ],
+      "reviewableMonthlySavings": 54,
+      "method": "Recurring merchant detection across linked-account transaction categories"
+    },
     "accounts": {
       "ocbc": [
-        { "type": "OCBC 360 Account", "number": "512-882910-001", "holder": "Alex Tan", "balance": 18450.00, "interestRate": 0.05, "role": "Emergency / Salary credit" },
-        { "type": "OCBC Frank Account", "number": "512-441920-002", "holder": "Mary Lim", "balance": 4550.00, "interestRate": 0.05, "role": "Daily Expenses" }
+        { "type": "OCBC 360 Account", "number": "512-882910-001", "holder": "Freya Lim Guo En", "balance": 18450.00, "interestRate": 0.05, "role": "Emergency / Salary credit" },
+        { "type": "OCBC Frank Account", "number": "512-441920-002", "holder": "Freya Lim Guo En", "balance": 4550.00, "interestRate": 0.05, "role": "Daily Expenses" }
       ],
       "otherBanks": [
-        { "bank": "DBS", "type": "Multiplier Account", "number": "012-99381-2", "holder": "Alex Tan", "balance": 9200.00, "interestRate": 0.05 },
-        { "bank": "UOB", "type": "One Account", "number": "311-22819-5", "holder": "Mary Lim", "balance": 3800.00, "interestRate": 0.05 }
+        { "bank": "DBS", "type": "Multiplier Account", "number": "012-99381-2", "holder": "Freya Lim Guo En", "balance": 9200.00, "interestRate": 0.05 },
+        { "bank": "UOB", "type": "One Account", "number": "311-22819-5", "holder": "Freya Lim Guo En", "balance": 3800.00, "interestRate": 0.05 }
       ],
       "investments": [
         { "platform": "OCBC RoboInvest", "name": "Global Balanced Growth Portfolio", "value": 14200.00, "unrealizedGain": "+6.4%" },

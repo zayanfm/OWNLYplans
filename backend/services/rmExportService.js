@@ -73,21 +73,23 @@ class RMExportService {
           solutionProposal: 'Great Eastern GREAT FlexiLife Term or SupremeHealth rider'
         } : null,
         includeMilestones ? {
-          topic: 'BTO Key Collection Liquidity Strategy',
+          topic: 'Home Loan Resilience',
           priority: 'MEDIUM',
-          context: `Target milestone in ${household.housing.keyCollectionDate || '2027'} requiring S$16,000 cash accumulation.`,
-          solutionProposal: 'Review high-yield sweep progress and CPF OA usage ratio'
+          context: `Current monthly instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}; the plan targets a 12-month payment reserve outside the emergency fund.`,
+          solutionProposal: 'Review reserve progress, repricing options and CPF OA versus cash servicing'
         } : null,
         shareGovernmentGrants ? {
-          topic: 'Government Co-Matching & CDA Maximization',
+          topic: 'Government Support Eligibility Review',
           priority: 'LOW',
-          context: `Discovered S$${analysis.totalGrantsAvailable.toLocaleString()} in eligible grants.`,
-          solutionProposal: 'Ensure OCBC CDA account is operational to capture full $4,000 match'
+          context: analysis.totalGrantsAvailable > 0
+            ? `S$${analysis.totalGrantsAvailable.toLocaleString()} in support was matched from the consented data.`
+            : 'No benefit value is included because household-level citizenship and current scheme criteria require verification.',
+          solutionProposal: 'Confirm eligibility against current agency records before including support in projections'
         } : null
       ].filter(Boolean),
       recommendedNextSteps: [
         '1. Review household insurance coverage with licensed Great Eastern specialist.',
-        '2. Confirm CPF Ordinary Account vs Cash split for BTO flat final balance payment.',
+        '2. Review the mortgage-payment reserve, repricing options and CPF OA versus cash servicing.',
         '3. Authorize automated monthly surplus routing into LionGlobal SGD MMF.'
       ]
     };

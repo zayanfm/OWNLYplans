@@ -13,25 +13,21 @@ async function runE2ETests() {
 
   try {
     // -------------------------------------------------------------
-    // Scenario 1: Dual Income Young Family (Alex & Mary Tan)
+    // Scenario 1: Freya's household with two school-age children
     // -------------------------------------------------------------
-    console.log('[Scenario 1] Testing Alex & Mary Tan (Young BTO Family)...');
-    householdStore.reset('alex_mary_bto');
+    console.log('[Scenario 1] Testing Freya Lim Family...');
+    householdStore.reset('freya_family');
 
-    // 1.1 MockPass Login
-    const auth1 = await fetch(`${baseUrl}/api/auth/mockpass`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ personaId: 'alex_mary_bto' })
-    }).then(r => r.json());
-    assert(auth1.success, 'MockPass Auth should succeed');
-    assert.strictEqual(auth1.user.name, 'Alex Tan');
-    assert.strictEqual(auth1.partner.name, 'Mary Lim');
-    console.log('  ✓ MockPass Singpass OIDC Authenticated: Alex Tan & Mary Lim');
+    // 1.1 MockPass handoff (the consent UI is exercised manually)
+    const auth1 = await fetch(`${baseUrl}/api/auth/mockpass/start?returnUrl=${encodeURIComponent('frontend://mockpass')}`).then(r => r.json());
+    assert(auth1.success, 'MockPass authorization handoff should succeed');
+    assert.strictEqual(auth1.protocol, 'MYINFO_V3');
+    console.log('  ✓ Official MockPass MyInfo v3 authorization handoff created');
 
     // 1.2 SGFinDex Aggregation
     const sgf1 = await fetch(`${baseUrl}/api/sgfindex/aggregate`).then(r => r.json());
-    assert(sgf1.summary.netWorth > 200000, 'Consolidated net worth verified');
+    assert(Number.isFinite(sgf1.summary.netWorth), 'Consolidated net worth verified including mortgage liabilities');
+    assert.strictEqual(sgf1.summary.totalLiquidCash, 36000, 'Linked cash should remain consistent');
     console.log(`  ✓ SGFinDex Synced: Net Worth = S$${sgf1.summary.netWorth.toLocaleString()}, Surplus = S$${sgf1.summary.monthlySurplus}/mo`);
 
     // 1.3 4-Agent Execution
@@ -40,7 +36,8 @@ async function runE2ETests() {
       headers: { 'Content-Type': 'application/json' }
     }).then(r => r.json());
     assert(agent1.data.overallHealthScore >= 70, 'Health score is healthy');
-    assert(agent1.data.totalGrantsAvailable >= 45000, 'Grants discovered for BTO & Child');
+    assert.strictEqual(agent1.data.totalGrantsAvailable, 0, 'Unverified benefits must not inflate the plan');
+    assert(agent1.data.nextBestActions.some(action => action.id === 'nba_government_support_review'), 'Eligibility review should be actionable');
     console.log(`  ✓ Multi-Agent Diagnostics: Health Score = ${agent1.data.overallHealthScore}/100, Total Grants = S$${agent1.data.totalGrantsAvailable.toLocaleString()}`);
 
     // 1.4 Plan Generation & Approval
@@ -69,16 +66,16 @@ async function runE2ETests() {
     // -------------------------------------------------------------
     // Scenario 2: Family consent journey (Send Invite -> Approved)
     // -------------------------------------------------------------
-    console.log('[Scenario 2] Testing family consent journey (Mary Lim & Ethan Tan)...');
-    householdStore.reset('alex_mary_bto');
+    console.log('[Scenario 2] Testing family consent journey (Freya’s children)...');
+    householdStore.reset('freya_family');
 
     const invite = await fetch(`${baseUrl}/api/auth/family/invite`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         members: [
-          { name: 'Mary Lim', relation: 'Spouse', nric: 'S****456B' },
-          { name: 'Ethan Tan', relation: 'Child', nric: 'T****901Z' }
+          { name: 'Lim Junhao', relation: 'Child', nric: 'T****09G' },
+          { name: 'Tay Wei Qiang Messi', relation: 'Child', nric: 'T****92H' }
         ]
       })
     }).then(r => r.json());
@@ -98,20 +95,19 @@ async function runE2ETests() {
     console.log('  ✓ Accounts Connected — all household members approved\n');
 
     // -------------------------------------------------------------
-    // Scenario 3: Single family persona is always resolved
+    // Scenario 3: legacy instant-persona switching is disabled
     // -------------------------------------------------------------
-    console.log('[Scenario 3] Testing single-persona resolution...');
+    console.log('[Scenario 3] Testing interactive-auth enforcement...');
     const personaList = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
-    assert.strictEqual(personaList.personas.length, 1, 'Only one family persona ships');
-    assert.strictEqual(personaList.personas[0].id, 'alex_mary_bto');
+    assert.strictEqual(personaList.personas.length, 0, 'Personas are selected in MockPass');
 
-    const legacySwitch = await fetch(`${baseUrl}/api/auth/switch-persona`, {
+    const legacySwitchResponse = await fetch(`${baseUrl}/api/auth/switch-persona`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ personaId: 'sandwich_family' })
-    }).then(r => r.json());
-    assert.strictEqual(legacySwitch.personaId, 'alex_mary_bto', 'Unknown personas fall back cleanly');
-    console.log('  ✓ Retired personas resolve to Alex Tan & Mary Lim\n');
+    });
+    assert.strictEqual(legacySwitchResponse.status, 410, 'Legacy switching must not bypass authentication');
+    console.log('  ✓ Legacy instant authentication is disabled\n');
 
     console.log('==============================================');
     console.log('   ALL END-TO-END VALIDATION JOURNEYS PASSED');

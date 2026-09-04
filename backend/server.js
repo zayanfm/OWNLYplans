@@ -10,6 +10,8 @@ const agentsRoutes = require('./routes/agents');
 const rmRoutes = require('./routes/rm');
 
 const app = express();
+let mockpassServer = null;
+let apiServer = null;
 
 // Middleware
 app.use(cors({ origin: env.CORS_ORIGIN }));
@@ -53,11 +55,45 @@ app.use((err, req, res, next) => {
 // Export app for testing
 if (process.env.NODE_ENV !== 'test') {
   const PORT = env.PORT;
-  app.listen(PORT, '0.0.0.0', () => {
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[Shutdown] ${signal}: closing API and MockPass listeners...`);
+    if (mockpassServer) mockpassServer.close();
+    if (apiServer) {
+      apiServer.close(() => process.exit(0));
+      setTimeout(() => process.exit(0), 2000).unref();
+    } else {
+      process.exit(0);
+    }
+  };
+
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+
+  if (env.MOCKPASS_EMBEDDED) {
+    process.env.MOCKPASS_PORT = String(env.MOCKPASS_PORT);
+    process.env.MOCKPASS_NRIC = env.MOCKPASS_NRIC;
+    process.env.SHOW_LOGIN_PAGE = process.env.SHOW_LOGIN_PAGE || 'false';
+    const { app: mockpassApp } = require('@opengovsg/mockpass');
+    mockpassServer = mockpassApp.listen(env.MOCKPASS_PORT, '0.0.0.0', () => {
+      console.log(`  MockPass: http://localhost:${env.MOCKPASS_PORT}`);
+    });
+    mockpassServer.on('error', (error) => {
+      console.error(`[MockPass] Could not listen on port ${env.MOCKPASS_PORT}: ${error.message}`);
+      if (error.code === 'EADDRINUSE') shutdown('MOCKPASS_PORT_IN_USE');
+    });
+  }
+  apiServer = app.listen(PORT, '0.0.0.0', () => {
     console.log(`=========================================`);
     console.log(`  OWNLYplans API Engine Running on port ${PORT}`);
     console.log(`  Local:   http://localhost:${PORT}`);
     console.log(`=========================================`);
+  });
+  apiServer.on('error', (error) => {
+    console.error(`[API] Could not listen on port ${PORT}: ${error.message}`);
+    if (error.code === 'EADDRINUSE') shutdown('API_PORT_IN_USE');
   });
 }
 

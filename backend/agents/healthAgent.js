@@ -20,12 +20,10 @@ class HealthAgent {
     const protectionGap = Math.max(0, recommendedLife - existingLife);
 
     // Idle Cash Analysis
-    const idleCashInLowYield = accounts.ocbc.reduce((sum, a) => {
-      if (a.interestRate <= 0.05 && a.balance > 5000) {
-        return sum + (a.balance - 5000); // Amount above base operational reserve
-      }
-      return sum;
-    }, 0) + accounts.otherBanks.reduce((sum, a) => sum + (a.balance || 0), 0);
+    const lowYieldCash = [...accounts.ocbc, ...accounts.otherBanks].reduce((sum, account) => (
+      account.interestRate <= 0.05 ? sum + Number(account.balance || 0) : sum
+    ), 0);
+    const idleCashInLowYield = Math.max(0, lowYieldCash - emergencyFund);
 
     // Compute Health Score (0-100)
     let score = 70;
