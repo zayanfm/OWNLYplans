@@ -92,6 +92,27 @@ async function testApi() {
     console.log('✓ Editable Plan Configuration OK');
     console.log('✓ Finance Overview OK');
 
+    const optimisedPlanRes = await fetch(`${baseUrl}/api/finance/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: 'home_first' })
+    }).then(r => r.json());
+    assert.strictEqual(optimisedPlanRes.plan.optimiserPlanId, 'home_first', 'Without a split, the chosen optimiser plan drives routing');
+    const optimisedTotal = optimisedPlanRes.plan.routes.reduce((sum, route) => sum + route.monthlyAmount, 0) + optimisedPlanRes.plan.emergencyReserve.monthlyAmount;
+    assert.strictEqual(optimisedTotal, optimisedPlanRes.plan.investableSurplus, 'Routes plus the emergency top-up use the investable surplus');
+    console.log('✓ Optimiser-Driven Plan OK');
+
+    // 5b. Decision engine endpoints
+    const plansRes = await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json());
+    assert.strictEqual(plansRes.recommendedPlanId, 'balanced');
+    const simulateRes = await fetch(`${baseUrl}/api/scenarios/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ levers: { incomeChangePct: -10 } })
+    }).then(r => r.json());
+    assert(simulateRes.success && simulateRes.surplusAfter < simulateRes.surplusBefore, 'Income cut lowers the surplus');
+    console.log('✓ Plans & What-if Endpoints OK');
+
     // 6. Persona selection belongs to the sandbox login page
     const personaRes = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
     assert.strictEqual(personaRes.personas.length, 0);

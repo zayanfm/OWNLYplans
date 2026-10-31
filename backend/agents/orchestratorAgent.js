@@ -2,6 +2,7 @@ const healthAgent = require('./healthAgent');
 const goalsAgent = require('./goalsAgent');
 const grantsAgent = require('./grantsAgent');
 const geminiService = require('../services/geminiService');
+const optimiserService = require('../services/optimiserService');
 
 class OrchestratorAgent {
   async runFullAnalysis(household, options = {}) {
@@ -104,22 +105,25 @@ class OrchestratorAgent {
       });
     }
 
-    // NBA 4: Goal Surplus Allocation
+    // NBA 4: Goal Surplus Allocation from the optimiser's recommended plan
+    const recommendedPlan = optimiserService.optimise(household).plans.find(plan => plan.recommended);
     nextBestActions.push({
       id: 'nba_surplus_allocation',
       title: `Automate Monthly S$${monthlySurplus.toLocaleString()} Surplus Routing`,
       category: 'MILESTONE_EXECUTION',
       confidence: 0.96,
-      impact: 'Fund three family goals from one monthly surplus',
-      reason: 'Routes 50% to the home-loan reserve, 30% to children’s education, and 20% to retirement and liquid wealth.',
+      impact: `Funds ${recommendedPlan.goals.length} family goals from one monthly surplus`,
+      reason: `${recommendedPlan.name} plan: S$${recommendedPlan.routes.housing}/month home, S$${recommendedPlan.routes.education}/month education, S$${recommendedPlan.routes.emergency}/month emergency buffer and S$${recommendedPlan.routes.wealth}/month retirement, stepping up as earlier goals finish.`,
       urgency: 'MEDIUM',
       badge: 'Automated Growth',
       actionPayload: {
         type: 'ALLOCATION_ROUTE',
+        planId: recommendedPlan.id,
         splits: {
-          housingGoal: Number((monthlySurplus * 0.5).toFixed(0)),
-          childGoal: Number((monthlySurplus * 0.3).toFixed(0)),
-          wealthGrowth: Number((monthlySurplus * 0.2).toFixed(0))
+          housingGoal: recommendedPlan.routes.housing,
+          childGoal: recommendedPlan.routes.education,
+          emergencyBuffer: recommendedPlan.routes.emergency,
+          wealthGrowth: recommendedPlan.routes.wealth
         }
       }
     });

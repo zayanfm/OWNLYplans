@@ -95,6 +95,44 @@ async function runE2ETests() {
     console.log('  ✓ Accounts Connected — all household members approved\n');
 
     // -------------------------------------------------------------
+    // Scenario 2b: Decide together (optimise -> what-if -> propose -> partner reply -> agree)
+    // -------------------------------------------------------------
+    console.log('[Scenario 2b] Testing the decide-together journey...');
+    const options = await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json());
+    assert.strictEqual(options.plans.length, 3);
+    const whatIf = await fetch(`${baseUrl}/api/scenarios/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ levers: { extraChild: true } })
+    }).then(r => r.json());
+    assert(whatIf.goals.some(g => g.isNew), 'What-if shows the new child goal');
+    console.log(`  ✓ Optimiser offered ${options.plans.length} plans; what-if surplus ${whatIf.surplusBefore} -> ${whatIf.surplusAfter}`);
+
+    const proposed = await fetch(`${baseUrl}/api/scenarios/proposals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: 'education_first' })
+    }).then(r => r.json());
+    assert.strictEqual(proposed.proposal.status, 'PENDING');
+    assert.strictEqual(proposed.proposal.partnerResponse, undefined, 'The prepared reply is not leaked early');
+    const tooEarly = await fetch(`${baseUrl}/api/scenarios/proposals/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.strictEqual(tooEarly.status, 409, 'Cannot finalise before the partner replies');
+
+    await new Promise(resolve => setTimeout(resolve, 3100));
+
+    const replied = await fetch(`${baseUrl}/api/scenarios/proposals/latest`).then(r => r.json());
+    assert.strictEqual(replied.proposal.status, 'SUGGESTED_CHANGE', 'Lila pushes back on a plan that starts retirement lower');
+    assert.strictEqual(replied.proposal.response.suggestedPlanId, 'balanced');
+    const agreed = await fetch(`${baseUrl}/api/scenarios/proposals/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: 'balanced' })
+    }).then(r => r.json());
+    assert.strictEqual(agreed.proposal.status, 'AGREED');
+    assert.strictEqual(agreed.proposal.finalPlanId, 'balanced');
+    console.log(`  ✓ Lila replied "${replied.proposal.response.message}" and they agreed on ${agreed.proposal.finalPlanId}\n`);
+
+    // -------------------------------------------------------------
     // Scenario 3: legacy instant-persona switching is disabled
     // -------------------------------------------------------------
     console.log('[Scenario 3] Testing interactive-auth enforcement...');

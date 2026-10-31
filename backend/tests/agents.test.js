@@ -6,6 +6,8 @@ const grantsAgent = require('../agents/grantsAgent');
 const orchestratorAgent = require('../agents/orchestratorAgent');
 const householdStore = require('../models/householdStore');
 const cashflowService = require('../services/cashflowService');
+const optimiserService = require('../services/optimiserService');
+const scenarioService = require('../services/scenarioService');
 
 async function runTests() {
   console.log('--- RUNNING AGENTS UNIT TESTS ---');
@@ -30,6 +32,7 @@ async function runTests() {
   assert.strictEqual(goalsRes.goals.find(g => g.key === 'education').deadline, '2041-04', 'Education is due when Percy turns 18');
   assert.strictEqual(goalsRes.goals.find(g => g.key === 'emergency').targetAmount, 35400, 'Six months of essential spending');
   assert(goalsRes.fundingGap > 0, 'Goals compete for the surplus');
+  assert(goalsRes.goals.every(g => g.status === 'ON_TRACK'), 'The recommended plan sequences goals so each meets its deadline');
   const growthGoals = await goalsAgent.analyze(alexHousehold, { predictionScenario: 'growth' });
   assert(growthGoals.goals[2].requiredMonthlyAllocation < goalsRes.goals[2].requiredMonthlyAllocation, 'Higher assumed returns lower required education funding');
 
@@ -39,6 +42,38 @@ async function runTests() {
   assert.strictEqual(cashflow.freeToPlan, 1340, 'Free-to-plan equals the monthly surplus');
   assert.strictEqual(cashflow.essentialMonthly, 5900);
   console.log('✓ Cashflow Free To Plan:', cashflow.freeToPlan);
+
+  // 2c. Goal optimiser
+  const optimised = optimiserService.optimise(alexHousehold);
+  assert.strictEqual(optimised.plans.length, 3, 'One recommended plan and two alternatives');
+  assert.strictEqual(optimised.plans.filter(p => p.recommended).length, 1);
+  assert.strictEqual(optimised.recommendedPlanId, 'balanced');
+  assert.strictEqual(optimised.lumpSum.amount, 1100, 'Spare cash beyond the floor and working cash tops up the buffer');
+  optimised.plans.forEach(plan => {
+    const routed = Object.values(plan.routes).reduce((sum, value) => sum + value, 0);
+    assert.strictEqual(routed, optimised.investable, `${plan.id} routes the whole investable surplus`);
+    assert.strictEqual(plan.goals.find(g => g.key === 'housing').status, 'ON_TRACK', 'BTO deadline is never traded away');
+  });
+  const homeFirst = optimised.plans.find(p => p.id === 'home_first');
+  const balancedPlan = optimised.plans.find(p => p.id === 'balanced');
+  assert(homeFirst.routes.housing > balancedPlan.routes.housing, 'Home first pushes the BTO fund harder');
+  assert(balancedPlan.stepUps.some(s => s.fromGoal === 'housing'), 'BTO money moves on once the fund completes');
+  console.log('✓ Optimiser Plans:', optimised.plans.map(p => p.id).join(', '));
+
+  // 2d. What-if scenarios
+  const schoolFees = scenarioService.simulate('alex_family', { schoolFeesMonthly: 300 });
+  assert.strictEqual(schoolFees.surplusAfter, 1040);
+  assert.strictEqual(schoolFees.goals.find(g => g.key === 'housing').after.status, 'ON_TRACK', 'BTO keeps priority');
+  assert.strictEqual(schoolFees.goals.find(g => g.key === 'emergency').after.status, 'AT_RISK', 'The buffer top-up absorbs the squeeze');
+  const newChild = scenarioService.simulate('alex_family', { extraChild: true });
+  assert(newChild.goals.some(g => g.key === 'education_2' && g.isNew), 'A second child adds an education goal');
+  assert(newChild.goals.find(g => g.key === 'education').before, 'Percy keeps a comparable education goal');
+  assert(newChild.monthlyGapToClose > 0, 'The gap to close is quantified');
+  const saveMore = scenarioService.simulate('alex_family', { extraSavingsMonthly: 5000 });
+  assert.strictEqual(saveMore.levers.extraSavingsMonthly, 2000, 'Levers are clamped');
+  assert.strictEqual(saveMore.surplusAfter, 2040, 'Extra savings come only from flexible lifestyle spending');
+  assert.strictEqual(alexHousehold.financials.monthlySurplus, 1340, 'Scenarios never mutate the real household');
+  console.log('✓ What-if Scenarios OK');
 
   // 3. Grants Agent
   const grantsRes = await grantsAgent.analyze(alexHousehold);

@@ -8,6 +8,8 @@ class HouseholdStore {
     this.activePersonaId = 'alex_family';
     this.auditLogs = {};
     this.familyInvites = {};
+    this.proposals = {};
+    this.scenarioLogs = {};
     this.init();
   }
 
@@ -117,6 +119,62 @@ class HouseholdStore {
     };
   }
 
+  recordScenario(householdId = this.activePersonaId, scenario) {
+    if (!this.scenarioLogs[householdId]) {
+      this.scenarioLogs[householdId] = [];
+    }
+    this.scenarioLogs[householdId].push({ exploredAt: new Date().toISOString(), ...scenario });
+    this.scenarioLogs[householdId] = this.scenarioLogs[householdId].slice(-10);
+  }
+
+  getScenarios(householdId = this.activePersonaId) {
+    return this.scenarioLogs[householdId] || [];
+  }
+
+  /**
+   * Record a plan proposal for the partner. Like family invites, the partner's prepared
+   * response is revealed once FAMILY_APPROVAL_DELAY_MS has elapsed.
+   */
+  createProposal(householdId = this.activePersonaId, proposal) {
+    const record = {
+      id: `prop-${Date.now().toString(36)}`,
+      proposedAt: new Date().toISOString(),
+      status: 'PENDING',
+      response: null,
+      ...proposal
+    };
+    this.proposals[householdId] = record;
+    this.recordAudit(householdId, 'PLAN_PROPOSED', { proposalId: record.id, planId: record.planId });
+    return this.publicProposal(record);
+  }
+
+  getProposal(householdId = this.activePersonaId) {
+    const record = this.proposals[householdId];
+    if (!record) return null;
+
+    const elapsed = Date.now() - new Date(record.proposedAt).getTime();
+    if (record.status === 'PENDING' && elapsed >= FAMILY_APPROVAL_DELAY_MS) {
+      record.response = record.partnerResponse;
+      record.status = record.partnerResponse.decision;
+      this.recordAudit(householdId, 'PLAN_PARTNER_RESPONSE', { proposalId: record.id, decision: record.status });
+    }
+    return this.publicProposal(record);
+  }
+
+  resolveProposal(householdId = this.activePersonaId, finalPlanId) {
+    const record = this.proposals[householdId];
+    if (!record || record.status === 'PENDING') return null;
+    record.status = 'AGREED';
+    record.finalPlanId = finalPlanId || record.planId;
+    this.recordAudit(householdId, 'PLAN_AGREED', { proposalId: record.id, planId: record.finalPlanId });
+    return this.publicProposal(record);
+  }
+
+  publicProposal(record) {
+    const { partnerResponse, ...visible } = record;
+    return visible;
+  }
+
   addManualAsset(householdId = this.activePersonaId, asset) {
     const household = this.getHousehold(householdId);
     if (!household) return null;
@@ -180,6 +238,8 @@ class HouseholdStore {
       this.init();
     }
     this.familyInvites = {};
+    this.proposals = {};
+    this.scenarioLogs = {};
     return true;
   }
 }

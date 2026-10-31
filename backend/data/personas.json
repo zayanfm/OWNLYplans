@@ -254,7 +254,7 @@
     "goalSettings": {
       "emergency": {
         "targetMonthsOfEssentials": 6,
-        "deadlineMonths": 12
+        "deadlineMonths": 18
       },
       "education": {
         "targetAmountPerChild": 80000,

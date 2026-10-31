@@ -1,4 +1,5 @@
 const { buildGoals } = require('../services/goalModel');
+const optimiserService = require('../services/optimiserService');
 const { money } = require('../utils/finance');
 
 const ICONS = { EMERGENCY: 'shield', HOUSING: 'home', EDUCATION: 'graduation-cap', RETIREMENT: 'trending-up' };
@@ -9,6 +10,9 @@ class GoalsAgent {
    * the monthly amount it needs, and the goals it depends on.
    */
   async analyze(household, options = {}) {
+    const optimised = optimiserService.optimise(household, options);
+    const recommended = optimised.plans.find((plan) => plan.id === optimised.recommendedPlanId);
+    const outcome = (key) => recommended.goals.find((goal) => goal.key === key) || {};
     const goals = buildGoals(household, options).map((goal) => ({
       id: `goal_${goal.key}`,
       key: goal.key,
@@ -26,7 +30,9 @@ class GoalsAgent {
       dependsOn: goal.dependsOn,
       basis: goal.basis,
       icon: ICONS[goal.category],
-      status: goal.shortfall === 0 ? 'REACHED' : 'NEEDS_FUNDING'
+      suggestedMonthlyAllocation: outcome(goal.key).monthlyNow ?? 0,
+      projectedCompletion: outcome(goal.key).completesBy ?? null,
+      status: goal.shortfall === 0 ? 'REACHED' : outcome(goal.key).status || 'AT_RISK'
     }));
 
     const totalRequired = goals.reduce((sum, goal) => sum + goal.requiredMonthlyAllocation, 0);
@@ -39,10 +45,12 @@ class GoalsAgent {
       totalRequiredMonthly: totalRequired,
       monthlySurplus: surplus,
       fundingGap: Math.max(0, totalRequired - surplus),
+      recommendedPlanId: optimised.recommendedPlanId,
+      lumpSum: optimised.lumpSum,
       goals,
       findings: [
         totalRequired > surplus
-          ? `Funding every goal on time needs ${money(totalRequired)}/month, ${money(totalRequired - surplus)} more than the ${money(surplus)} surplus, so goals compete.`
+          ? `Funding every goal at once would need ${money(totalRequired)}/month, ${money(totalRequired - surplus)} more than the ${money(surplus)} surplus. ${goals.every((goal) => goal.status !== 'AT_RISK') ? 'Sequencing them, with retirement stepping up as earlier goals finish, keeps every deadline.' : 'Even sequenced, some deadlines are at risk.'}`
           : `All goals can be funded on time from the ${money(surplus)} monthly surplus.`,
         home ? `${home.name}: ${money(home.shortfall)} still needed by ${home.deadline}.` : 'No home goal is set.',
         'Projected returns are assumptions, not guarantees.'

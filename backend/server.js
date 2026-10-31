@@ -8,6 +8,7 @@ const financeRoutes = require('./routes/finance');
 const configRoutes = require('./routes/config');
 const agentsRoutes = require('./routes/agents');
 const rmRoutes = require('./routes/rm');
+const scenarioRoutes = require('./routes/scenarios');
 
 const app = express();
 let apiServer = null;
@@ -41,6 +42,7 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/agents', agentsRoutes);
 app.use('/api/rm', rmRoutes);
+app.use('/api/scenarios', scenarioRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

@@ -39,6 +39,6 @@ const addMonthsIso = (months, from = new Date()) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 };
 
-const money = (value) => `S$${Math.round(value).toLocaleString('en-SG')}`;
+const money = (value) => `${value < 0 ? '-' : ''}S$${Math.abs(Math.round(value)).toLocaleString('en-SG')}`;
 
 module.exports = { futureValue, requiredMonthly, monthsToReach, monthsUntil, addMonthsIso, parseMonth, money };

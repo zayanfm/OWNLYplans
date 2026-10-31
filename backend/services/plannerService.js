@@ -1,4 +1,5 @@
 const householdStore = require('../models/householdStore');
+const optimiserService = require('./optimiserService');
 
 class PlannerService {
   /**
@@ -45,16 +46,37 @@ class PlannerService {
 
     const investableSurplus = Math.max(0, monthlySurplus - protection.monthlyPremium);
 
-    // Calculate routing allocations
-    const requestedSplits = {
-      housing: config.split?.housing !== undefined ? Number(config.split.housing) : 0.50,
-      education: config.split?.education !== undefined ? Number(config.split.education) : 0.30,
-      wealth: config.split?.wealth !== undefined ? Number(config.split.wealth) : 0.20
-    };
-    const splitTotal = Object.values(requestedSplits).reduce((sum, value) => sum + Math.max(0, value), 0) || 1;
-    const housingSplit = Math.max(0, requestedSplits.housing) / splitTotal;
-    const educationSplit = Math.max(0, requestedSplits.education) / splitTotal;
-    const wealthSplit = Math.max(0, requestedSplits.wealth) / splitTotal;
+    // Routing allocations: a customer-edited split, or else the goal optimiser's chosen plan.
+    let amounts;
+    let emergencyReserve = null;
+    let optimiserPlanId = null;
+    if (config.split) {
+      const requestedSplits = {
+        housing: config.split.housing !== undefined ? Number(config.split.housing) : 0.50,
+        education: config.split.education !== undefined ? Number(config.split.education) : 0.30,
+        wealth: config.split.wealth !== undefined ? Number(config.split.wealth) : 0.20
+      };
+      const splitTotal = Object.values(requestedSplits).reduce((sum, value) => sum + Math.max(0, value), 0) || 1;
+      amounts = Object.fromEntries(Object.entries(requestedSplits)
+        .map(([key, value]) => [key, Number((investableSurplus * Math.max(0, value) / splitTotal).toFixed(0))]));
+    } else {
+      const optimised = optimiserService.optimise(household, { protection: config.protection, predictionScenario });
+      const chosen = optimised.plans.find((plan) => plan.id === config.planId)
+        || optimised.plans.find((plan) => plan.id === optimised.recommendedPlanId);
+      optimiserPlanId = chosen.id;
+      amounts = { housing: chosen.routes.housing, education: chosen.routes.education, wealth: chosen.routes.wealth };
+      const emergencyGoal = chosen.goals.find((goal) => goal.key === 'emergency');
+      emergencyReserve = {
+        monthlyAmount: chosen.routes.emergency,
+        lumpSum: optimised.lumpSum?.amount || 0,
+        completesBy: emergencyGoal?.completesBy || null,
+        targetProduct: 'LionGlobal SGD Money Market Fund (T+0)'
+      };
+    }
+    const share = (amount) => (investableSurplus ? amount / investableSurplus : 0);
+    const housingSplit = share(amounts.housing);
+    const educationSplit = share(amounts.education);
+    const wealthSplit = share(amounts.wealth);
     const months = timeline === '10' ? 120 : 60;
     const project = (monthlyAmount) => {
       const monthlyRate = annualReturnRate / 12;
@@ -68,33 +90,33 @@ class PlannerService {
         key: 'housing',
         name: isPendingBto ? 'BTO Home Purchase Fund' : 'Home Loan Safety Reserve',
         targetProduct: 'OCBC 360 Savings Goal',
-        monthlyAmount: Number((investableSurplus * housingSplit).toFixed(0)),
+        monthlyAmount: amounts.housing,
         percentage: Math.round(housingSplit * 100),
         status: 'ACTIVE_ROUTING',
         purpose: isPendingBto ? 'Build the remaining BTO downpayment by the selected goal horizon' : 'Build 12 months of mortgage payments without using the emergency fund',
-        projectedAtEnd: project(investableSurplus * housingSplit)
+        projectedAtEnd: project(amounts.housing)
       },
       {
         id: 'r2',
         key: 'education',
         name: `${dependents.length || 1}-Child Education Fund`,
         targetProduct: 'OCBC Savings Goal + RoboInvest',
-        monthlyAmount: Number((investableSurplus * educationSplit).toFixed(0)),
+        monthlyAmount: amounts.education,
         percentage: Math.round(educationSplit * 100),
         status: 'ACTIVE_ROUTING',
         purpose: 'Build education funding by the selected goal horizon',
-        projectedAtEnd: project(investableSurplus * educationSplit)
+        projectedAtEnd: project(amounts.education)
       },
       {
         id: 'r3',
         key: 'wealth',
         name: 'Retirement & Liquid Wealth',
         targetProduct: 'OCBC RoboInvest + CPF',
-        monthlyAmount: Number((investableSurplus * wealthSplit).toFixed(0)),
+        monthlyAmount: amounts.wealth,
         percentage: Math.round(wealthSplit * 100),
         status: 'ACTIVE_ROUTING',
         purpose: 'Grow retirement-ready assets while retaining liquidity',
-        projectedAtEnd: project(investableSurplus * wealthSplit)
+        projectedAtEnd: project(amounts.wealth)
       }
     ];
 
@@ -124,6 +146,8 @@ class PlannerService {
       predictionScenario,
       priorities,
       routes: priorities.map((key) => routes.find((route) => route.key === key)),
+      optimiserPlanId,
+      emergencyReserve,
       protection,
       assumptions: { annualReturnRate, inflationRate },
       milestones,

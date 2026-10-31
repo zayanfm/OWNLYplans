@@ -67,7 +67,7 @@ const buildGoals = (household, options = {}) => {
   dependents.filter((child) => child.relation === 'Child').forEach((child, index) => {
     const firstName = String(child.name || `Child ${index + 1}`).split(' ')[0];
     goals.push({
-      key: dependents.length > 1 ? `education_${index + 1}` : 'education',
+      key: index === 0 ? 'education' : `education_${index + 1}`,
       name: `${firstName}'s education`,
       category: 'EDUCATION',
       routeKey: 'education',
