@@ -4,6 +4,7 @@ const grantsAgent = require('./grantsAgent');
 const geminiService = require('../services/geminiService');
 const optimiserService = require('../services/optimiserService');
 const growService = require('../services/growService');
+const numberCheck = require('../services/numberCheck');
 
 class OrchestratorAgent {
   async runFullAnalysis(household, options = {}) {
@@ -162,9 +163,24 @@ class OrchestratorAgent {
         fallbackNarrative
       );
 
-    const aiSynthesis = narrativeResult.data && typeof narrativeResult.data.executiveSummary === 'string'
+    // Every figure in AI-written text must trace back to the engine, or the AI text is dropped.
+    const candidate = narrativeResult.data && typeof narrativeResult.data.executiveSummary === 'string'
       ? narrativeResult.data
       : fallbackNarrative;
+    const aiWritten = narrativeResult.source !== 'DETERMINISTIC_FALLBACK' && candidate !== fallbackNarrative;
+    const check = aiWritten
+      ? numberCheck.verify(
+        [candidate.executiveSummary, ...(candidate.familyPriorities || []), ...(candidate.watchouts || [])].join(' '),
+        household, healthRes, goalsRes, grantsRes, nextBestActions
+      )
+      : { checked: 0, mismatches: [], passed: true };
+    const aiSynthesis = check.passed ? candidate : fallbackNarrative;
+    const verification = {
+      checkedAgainst: 'DETERMINISTIC_RULE_ENGINE',
+      figuresChecked: check.checked,
+      mismatches: check.mismatches,
+      outcome: !aiWritten ? 'ENGINE_TEXT' : check.passed ? 'AI_TEXT_VERIFIED' : 'AI_TEXT_REPLACED'
+    };
 
     const synthesis = {
       householdId: household.id,
@@ -181,8 +197,9 @@ class OrchestratorAgent {
       nextBestActions,
       executiveSummary: aiSynthesis.executiveSummary,
       aiSynthesis,
-      intelligenceSource: narrativeResult.source,
-      calculationSource: 'DETERMINISTIC_RULE_ENGINE'
+      intelligenceSource: aiWritten && check.passed ? narrativeResult.source : 'DETERMINISTIC_FALLBACK',
+      calculationSource: 'DETERMINISTIC_RULE_ENGINE',
+      verification
     };
 
     return synthesis;
@@ -193,12 +210,19 @@ class OrchestratorAgent {
     const fullAnalysis = await this.runFullAnalysis(household, { skipNarrative: true });
     const geminiReply = await geminiService.generateChatResponse(fullAnalysis, history, message);
 
+    // Numbers the family typed themselves are allowed to be repeated back.
+    let replacedCheck = null;
     if (geminiReply) {
-      return {
-        reply: geminiReply,
-        source: 'GEMINI_LLM_MULTI_AGENT',
-        confidence: 0.96
-      };
+      const check = numberCheck.verify(geminiReply, fullAnalysis, household, message);
+      if (check.passed) {
+        return {
+          reply: geminiReply,
+          source: 'GEMINI_LLM_MULTI_AGENT',
+          confidence: 0.96,
+          verification: { figuresChecked: check.checked, mismatches: [], outcome: 'AI_TEXT_VERIFIED' }
+        };
+      }
+      replacedCheck = check;
     }
 
     // Deterministic Chat responses for high-confidence financial Q&A
@@ -213,7 +237,7 @@ class OrchestratorAgent {
         : `No further government support was found from your MyInfo data. Schemes you are not eligible for are listed with the reason.`;
     } else if (lower.includes('bto') || lower.includes('downpayment') || lower.includes('tengah') || lower.includes('house') || lower.includes('milestone')) {
       reply = String(household.housing.type || '').includes('BTO')
-        ? `Your BTO purchase fund currently has S$${Number(household.housing.downpaymentAccumulated || 0).toLocaleString()} toward its S$${Number(household.housing.downpaymentRequired || 0).toLocaleString()} target. OWNLYplan tests the remaining amount against your selected 5- or 10-year horizon.`
+        ? `Your BTO purchase fund currently has S$${Number(household.housing.downpaymentAccumulated || 0).toLocaleString()} toward its S$${Number(household.housing.downpaymentRequired || 0).toLocaleString()} target. OWNLYplan plans the remaining amount against the key collection date you confirmed.`
         : `Your current home-loan instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}/month. OWNLYplan uses a 12-month mortgage-payment reserve as the home goal and protects the separate S$${household.financials.emergencyFund.toLocaleString()} emergency floor.`;
     } else if (lower.includes('protection') || lower.includes('insurance') || lower.includes('great eastern') || lower.includes('gap')) {
       reply = `Our Household Health Agent identified a S$${(fullAnalysis.agents.health.metrics.protectionGap || 160000).toLocaleString()} life coverage gap against your outstanding mortgage commitments. Adding Great Eastern FlexiLife Term closes this 100% for approximately S$28/month.`;
@@ -224,7 +248,10 @@ class OrchestratorAgent {
     return {
       reply,
       source: 'DETERMINISTIC_EXPLAINABLE_ENGINE',
-      confidence: 0.98
+      confidence: 0.98,
+      verification: replacedCheck
+        ? { figuresChecked: replacedCheck.checked, mismatches: replacedCheck.mismatches, outcome: 'AI_TEXT_REPLACED' }
+        : { figuresChecked: 0, mismatches: [], outcome: 'ENGINE_TEXT' }
     };
   }
 }

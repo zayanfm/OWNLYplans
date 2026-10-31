@@ -95,7 +95,10 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
       }));
 
       const response = await api.sendChatMessage(text, history);
-      setMessages((m) => [...m, { from: 'ai', text: response.reply }]);
+      const note = response.verification?.outcome === 'AI_TEXT_REPLACED'
+        ? '\n\n(The AI draft was replaced because its figures did not match the planning engine.)'
+        : '';
+      setMessages((m) => [...m, { from: 'ai', text: `${response.reply}${note}` }]);
     } catch (err) {
       console.warn('Chat error, using fallback:', err);
       setMessages((m) => [
@@ -131,7 +134,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 <Text style={styles.botName}>OWNLYplans AI Assistant</Text>
                 <View style={styles.statusRow}>
                   <View style={styles.activeDot} />
-                  <Text style={styles.statusText}>Multi-Agent Active · Live Household Context</Text>
+                  <Text style={styles.statusText}>Numbers checked against the planning engine ✓</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>

@@ -129,6 +129,31 @@ async function runTests() {
   assert(orchRes.nextBestActions.length >= 4, 'Should synthesize at least 4 NBAs');
   assert(orchRes.nextBestActions.some(n => n.id === 'nba_advisory_review'), 'Complexity triggers the advisory NBA');
 
+  // 4b. The AI cannot be wrong silently
+  const numberCheck = require('../services/numberCheck');
+  const geminiService = require('../services/geminiService');
+  assert(numberCheck.verify('Your surplus is S$1,340 a month and the buffer is 4.1 months.', { surplus: 1340, buffer: 4.1 }).passed);
+  assert(numberCheck.verify('About S$16k is still needed.', { shortfall: 16000 }).passed, 'Rounded figures are accepted');
+  assert.deepStrictEqual(numberCheck.verify('You could save S$9,999 more at 7%.', { surplus: 1340 }).mismatches, ['S$9,999', '7%']);
+  const realNarrative = geminiService.generateJsonWithMeta;
+  const realChat = geminiService.generateChatResponse;
+  geminiService.generateJsonWithMeta = async () => ({ source: 'GEMINI_2_5_FLASH', data: { executiveSummary: 'You can retire with S$3,000,000 by 2040.', familyPriorities: [], watchouts: [] } });
+  const invented = await orchestratorAgent.runFullAnalysis(alexHousehold);
+  assert.strictEqual(invented.verification.outcome, 'AI_TEXT_REPLACED', 'Invented figures are caught');
+  assert.deepStrictEqual(invented.verification.mismatches, ['S$3,000,000']);
+  assert(!invented.executiveSummary.includes('3,000,000'), 'The invented figure is never shown');
+  assert.strictEqual(invented.intelligenceSource, 'DETERMINISTIC_FALLBACK');
+  geminiService.generateJsonWithMeta = async () => ({ source: 'GEMINI_2_5_FLASH', data: { executiveSummary: 'Your S$1,340 monthly surplus covers the plan.', familyPriorities: [], watchouts: [] } });
+  const faithful = await orchestratorAgent.runFullAnalysis(alexHousehold);
+  assert.strictEqual(faithful.verification.outcome, 'AI_TEXT_VERIFIED', 'Faithful AI text is kept');
+  geminiService.generateChatResponse = async () => 'Move S$50,000 into equities today.';
+  const chatGuarded = await orchestratorAgent.handleChat(alexHousehold, [], 'What should we do?');
+  assert.strictEqual(chatGuarded.verification.outcome, 'AI_TEXT_REPLACED');
+  assert(!chatGuarded.reply.includes('50,000'), 'Unverified chat figures are replaced');
+  geminiService.generateJsonWithMeta = realNarrative;
+  geminiService.generateChatResponse = realChat;
+  console.log('✓ Number check: invented AI figures are replaced');
+
   // 5. Explainable Chat
   const chatYield = await orchestratorAgent.handleChat(alexHousehold, [], 'Why sweep idle cash?');
   assert(chatYield.reply.includes('emergency floor'), 'Chat should explain the protected emergency floor');

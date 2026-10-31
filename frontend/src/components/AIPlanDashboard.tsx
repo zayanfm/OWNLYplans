@@ -289,7 +289,11 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
               <Text style={styles.planStatusText}>{label} · Active · {activePlan?.predictionScenario || 'balanced'} outlook</Text>
               <Text style={styles.syncText}>OCBC synced {lastSyncedLabel}</Text>
               <Text style={styles.intelligenceSourceText}>
-                {analysis?.intelligenceSource === 'GEMINI_2_5_FLASH' ? 'Gemini-enhanced explanation · verified calculations' : 'Explainable rules · deterministic fallback'}
+                {analysis?.verification?.outcome === 'AI_TEXT_VERIFIED'
+                  ? `✓ AI explanation · ${analysis.verification.figuresChecked} figures checked against the planning engine`
+                  : analysis?.verification?.outcome === 'AI_TEXT_REPLACED'
+                    ? '✓ AI draft replaced: its figures did not match the planning engine'
+                    : '✓ Figures from the planning engine'}
               </Text>
             </View>
 

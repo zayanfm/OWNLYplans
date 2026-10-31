@@ -344,11 +344,19 @@ export interface AgentAnalysisData {
   executiveSummary: string;
   intelligenceSource?: 'GEMINI_2_5_FLASH' | 'DETERMINISTIC_FALLBACK';
   calculationSource?: 'DETERMINISTIC_RULE_ENGINE';
+  verification?: AiVerification;
   aiSynthesis?: {
     executiveSummary: string;
     familyPriorities: string[];
     watchouts: string[];
   };
+}
+
+// Result of checking AI-written text against the planning engine's figures.
+export interface AiVerification {
+  figuresChecked: number;
+  mismatches: string[];
+  outcome: 'ENGINE_TEXT' | 'AI_TEXT_VERIFIED' | 'AI_TEXT_REPLACED';
 }
 
 export interface ChatMessage {
@@ -546,7 +554,7 @@ class ApiService {
     });
   }
 
-  async sendChatMessage(message: string, history: ChatMessage[] = [], householdId?: string): Promise<{ success: boolean; reply: string; source: string; confidence: number }> {
+  async sendChatMessage(message: string, history: ChatMessage[] = [], householdId?: string): Promise<{ success: boolean; reply: string; source: string; confidence: number; verification?: AiVerification }> {
     return this.request('/api/agents/chat', {
       method: 'POST',
       body: JSON.stringify({ message, history, householdId })
