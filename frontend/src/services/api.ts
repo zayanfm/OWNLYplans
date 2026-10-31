@@ -210,7 +210,7 @@ export interface FamilyPicture {
   findings: string[];
 }
 
-export type PlanOptionId = 'balanced' | 'home_first' | 'education_first';
+export type PlanOptionId = 'balanced' | 'home_first' | 'education_first' | 'custom';
 
 export interface PlanGoalOutcome {
   key: string;
@@ -488,6 +488,13 @@ class ApiService {
   async getPlanOptions(householdId?: string): Promise<PlanOptions> {
     const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
     return this.request<PlanOptions>(`/api/scenarios/plans${q}`);
+  }
+
+  async customPlan(order: string[], monthlyOverrides: Record<string, number>): Promise<{ success: boolean; investable: number; plan: PlanOption; recommendedPlanId: PlanOptionId }> {
+    return this.request('/api/scenarios/plans/custom', {
+      method: 'POST',
+      body: JSON.stringify({ order, monthlyOverrides })
+    });
   }
 
   async simulateScenario(levers: Partial<ScenarioLevers>, planId?: PlanOptionId): Promise<ScenarioResult> {

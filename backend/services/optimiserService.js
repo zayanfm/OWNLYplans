@@ -44,26 +44,31 @@ class OptimiserService {
    * goal moves on to the next. Returns one recommended plan and two alternatives; it never
    * selects investments.
    */
-  optimise(household, options = {}) {
+  prepare(household, options = {}) {
     const now = options.now || new Date();
     const tier = options.protection?.tier === 'enhanced' ? 'enhanced' : 'essential';
     const premium = options.protection?.enabled === false ? 0 : PROTECTION_PREMIUMS[tier];
     const monthlySurplus = Number(household.financials.monthlySurplus || 0);
     const investable = Math.max(0, monthlySurplus - premium);
 
-    // Spare cash completes as much of the emergency gap as it can, today.
     // Only goals the family has confirmed are planned; the rest are reported as needing a decision.
     const allGoals = buildGoals(household, { predictionScenario: options.predictionScenario, includeKeys: options.includeKeys, now });
     const goals = allGoals.filter((goal) => goal.planned);
     const needsDecision = allGoals.filter((goal) => !goal.planned && goal.inputStatus !== 'OFF')
       .map((goal) => ({ key: goal.key, name: goal.name, status: goal.inputStatus }));
+
+    // Spare cash completes as much of the emergency gap as it can, today.
     const emergency = goals.find((goal) => goal.key === 'emergency');
     const lumpSumAmount = emergency ? Math.min(spareCash(household), emergency.shortfall) : 0;
     if (emergency && lumpSumAmount > 0) {
       emergency.currentAmount += lumpSumAmount;
       emergency.shortfall -= lumpSumAmount;
     }
+    return { now, premium, monthlySurplus, investable, goals, needsDecision, lumpSumAmount };
+  }
 
+  optimise(household, options = {}) {
+    const { now, premium, monthlySurplus, investable, goals, needsDecision, lumpSumAmount } = this.prepare(household, options);
     const plans = PLAN_DEFINITIONS.map((definition) => this.simulate(definition, goals, investable, now));
     const recommended = plans.find((plan) => plan.allOnTrack) || plans[0];
     plans.forEach((plan) => { plan.recommended = plan.id === recommended.id; });
@@ -91,15 +96,20 @@ class OptimiserService {
         ? { ...goal, monthsRemaining: goal.monthsRemaining + stretch, deadline: addMonthsIso(goal.monthsRemaining + stretch, now) }
         : { ...goal };
     });
-    const ordered = definition.order.flatMap((routeKey) => goals.filter((goal) => goal.routeKey === routeKey));
+    const ordered = definition.goalOrder
+      ? definition.goalOrder.map((key) => goals.find((goal) => goal.key === key)).filter(Boolean)
+      : definition.order.flatMap((routeKey) => goals.filter((goal) => goal.routeKey === routeKey));
     const sinks = goals.filter(isSink);
     const horizon = Math.max(...goals.map((goal) => goal.monthsRemaining), 1);
 
     // Fixed monthly target per prioritised goal, set once at the start of the plan.
     const desired = {};
     ordered.forEach((goal) => {
-      const multiplier = definition.multipliers[goal.routeKey] || 1;
-      desired[goal.key] = Math.ceil(requiredMonthly(goal.currentAmount, goal.targetAmount, goal.monthsRemaining, goal.annualRate) * multiplier);
+      const override = definition.overrides?.[goal.key];
+      const multiplier = definition.multipliers?.[goal.routeKey] || 1;
+      desired[goal.key] = override !== undefined
+        ? override
+        : Math.ceil(requiredMonthly(goal.currentAmount, goal.targetAmount, goal.monthsRemaining, goal.annualRate) * multiplier);
     });
 
     const state = Object.fromEntries(goals.map((goal) => [goal.key, {
@@ -207,6 +217,63 @@ class OptimiserService {
       notes.push(`Retirement steps up as earlier goals finish: ${plan.stepUps.map((step) => step.month).join(', ')}.`);
     }
     return notes;
+  }
+
+  /**
+   * The family's own plan: their priority order and, optionally, their own monthly amounts for
+   * any non-retirement goal. Retirement still absorbs the rest, so every dollar stays allocated.
+   * The engine reports which goals that leaves late; it never overrides the family's choice.
+   */
+  customPlan(household, { order = [], monthlyOverrides = {} } = {}, options = {}) {
+    const { now, investable, goals, lumpSumAmount } = this.prepare(household, options);
+    const prioritisable = goals.filter((goal) => !isSink(goal)).map((goal) => goal.key);
+    const unknown = (order || []).filter((key) => !prioritisable.includes(key));
+    if (unknown.length) throw this.error(400, `Unknown or unplanned goals in order: ${unknown.join(', ')}`);
+    const goalOrder = [...new Set(order || []), ...prioritisable.filter((key) => !(order || []).includes(key))];
+
+    const overrides = {};
+    Object.entries(monthlyOverrides || {}).forEach(([key, value]) => {
+      const amount = Number(value);
+      if (!prioritisable.includes(key)) throw this.error(400, `Monthly amounts can be set for dated goals only; ${key} is not one`);
+      if (!Number.isFinite(amount) || amount < 0) throw this.error(400, 'Monthly amounts must be zero or more');
+      overrides[key] = Math.round(amount);
+    });
+    const overrideTotal = Object.values(overrides).reduce((sum, value) => sum + value, 0);
+    if (overrideTotal > investable) {
+      throw this.error(400, `Monthly amounts add up to ${money(overrideTotal)}, more than the ${money(investable)} available`);
+    }
+
+    const recommended = this.optimise(household, options);
+    const plan = this.simulate({
+      id: 'custom',
+      name: 'Our plan',
+      tagline: 'Your own priorities and amounts',
+      goalOrder,
+      overrides,
+      multipliers: {}
+    }, goals, investable, now);
+    const recommendedPlan = recommended.plans.find((item) => item.id === recommended.recommendedPlanId);
+    plan.recommended = false;
+    plan.tradeOffs = this.describeTradeOffs(plan, recommendedPlan);
+    plan.definition = { order: goalOrder, monthlyOverrides: overrides };
+    return { investable, lumpSum: lumpSumAmount, plan, recommendedPlanId: recommended.recommendedPlanId };
+  }
+
+  // Any plan by id, including the family's saved custom plan.
+  findPlan(household, planId, options = {}) {
+    if (planId === 'custom') {
+      const definition = householdStore.getCustomPlan(household.id);
+      if (!definition) throw this.error(404, 'No custom plan has been made yet');
+      return this.customPlan(household, definition, options).plan;
+    }
+    const optimised = this.optimise(household, options);
+    return optimised.plans.find((plan) => plan.id === planId) || null;
+  }
+
+  error(status, message) {
+    const error = new Error(message);
+    error.status = status;
+    return error;
   }
 
   optimiseById(householdId = null, options = {}) {

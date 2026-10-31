@@ -18,6 +18,23 @@ router.get('/plans', (req, res) => {
 });
 
 /**
+ * POST /api/scenarios/plans/custom
+ * The family's own plan: { order: [goalKey...], monthlyOverrides: { goalKey: amount } }.
+ * Saved so it can be proposed to the partner and activated like any other plan.
+ */
+router.post('/plans/custom', (req, res) => {
+  try {
+    const { householdId, order, monthlyOverrides } = req.body || {};
+    const household = householdId ? householdStore.getHousehold(householdId) : householdStore.getHousehold();
+    const result = optimiserService.customPlan(household, { order, monthlyOverrides });
+    householdStore.saveCustomPlan(household.id, result.plan.definition);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    res.status(error.status || 400).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/scenarios/simulate
  * What-if levers: extraChild, incomeChangePct, schoolFeesMonthly, extraSavingsMonthly.
  */

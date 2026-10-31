@@ -125,6 +125,20 @@ async function testApi() {
       body: JSON.stringify({ levers: { incomeChangePct: -10 } })
     }).then(r => r.json());
     assert(simulateRes.success && simulateRes.surplusAfter < simulateRes.surplusBefore, 'Income cut lowers the surplus');
+    const ownPlanRes = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: ['housing', 'education'], monthlyOverrides: { education: 300 } })
+    }).then(r => r.json());
+    assert.strictEqual(ownPlanRes.plan.id, 'custom');
+    const tooMuch = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monthlyOverrides: { housing: 50000 } })
+    });
+    assert.strictEqual(tooMuch.status, 400, 'Amounts above the investable surplus are rejected');
+    const customPlanRes = await fetch(`${baseUrl}/api/finance/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId: 'custom' }) }).then(r => r.json());
+    assert.strictEqual(customPlanRes.plan.optimiserPlanId, 'custom', 'A saved custom plan can be activated');
     console.log('✓ Plans & What-if Endpoints OK');
 
     // 5c. Grow: readiness, advisory trigger, scripted check-in

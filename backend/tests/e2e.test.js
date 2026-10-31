@@ -116,6 +116,20 @@ async function runE2ETests() {
     assert(whatIf.goals.some(g => g.isNew), 'What-if shows the new child goal');
     console.log(`  ✓ Optimiser offered ${options.plans.length} plans; what-if surplus ${whatIf.surplusBefore} -> ${whatIf.surplusAfter}`);
 
+    // The family tries its own order first; Lila pushes back because it makes the BTO fund late.
+    const ownPlan = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: ['education', 'emergency', 'housing'], monthlyOverrides: { education: 500 } })
+    }).then(r => r.json());
+    assert(ownPlan.plan.atRisk.includes('housing'), 'Own plan leaves the BTO fund late');
+    await fetch(`${baseUrl}/api/scenarios/proposals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId: 'custom' }) });
+    await new Promise(resolve => setTimeout(resolve, 3100));
+    const pushback = await fetch(`${baseUrl}/api/scenarios/proposals/latest`).then(r => r.json());
+    assert.strictEqual(pushback.proposal.status, 'SUGGESTED_CHANGE', 'Lila asks to keep the BTO fund on track');
+    assert(pushback.proposal.response.message.includes('BTO home purchase fund'), 'Lila names the goal at risk');
+    console.log(`  ✓ Own plan proposed; Lila replied "${pushback.proposal.response.message}"`);
+
     const proposed = await fetch(`${baseUrl}/api/scenarios/proposals`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

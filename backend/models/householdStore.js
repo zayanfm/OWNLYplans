@@ -11,6 +11,7 @@ class HouseholdStore {
     this.proposals = {};
     this.scenarioLogs = {};
     this.goalInputs = {};
+    this.customPlans = {};
     this.init();
   }
 
@@ -118,6 +119,15 @@ class HouseholdStore {
       allApproved: approved,
       members: record.members
     };
+  }
+
+  getCustomPlan(householdId = this.activePersonaId) {
+    return this.customPlans[householdId] || null;
+  }
+
+  saveCustomPlan(householdId = this.activePersonaId, definition) {
+    this.customPlans[householdId] = definition;
+    this.recordAudit(householdId, 'CUSTOM_PLAN_SAVED', definition);
   }
 
   getGoalInputs(householdId = this.activePersonaId) {
@@ -248,6 +258,7 @@ class HouseholdStore {
     this.proposals = {};
     this.scenarioLogs = {};
     this.goalInputs = {};
+    this.customPlans = {};
     return true;
   }
 }

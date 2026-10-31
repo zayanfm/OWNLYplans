@@ -135,8 +135,7 @@ class ScenarioService {
     if (!household?.partner) {
       throw new Error('A linked partner is required to propose a plan');
     }
-    const optimised = optimiserService.optimise(household);
-    const plan = optimised.plans.find((item) => item.id === planId);
+    const plan = optimiserService.findPlan(household, planId);
     if (!plan) {
       throw new Error('Unknown plan');
     }

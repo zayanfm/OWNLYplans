@@ -6,6 +6,10 @@ import { FALLBACK_PLAN_OPTIONS } from '../../../constants/planningFallback';
 import { futureValue } from '../planPersonalization';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
 import { WhatIfSheet } from './WhatIfSheet';
+import { Stepper } from '../Stepper';
+
+const ROUTE_ORDER = ['housing', 'education', 'custom', 'emergency'];
+const EDIT_DEBOUNCE_MS = 400;
 
 const PROPOSAL_POLL_MS = 1000;
 const OFFLINE_REPLY_MS = 3000;
@@ -88,6 +92,12 @@ export const OurPlanStep: React.FC<{
   const [whatIfOpen, setWhatIfOpen] = useState<boolean>(false);
   const [proposal, setProposal] = useState<PlanProposal | null>(null);
   const [proposing, setProposing] = useState<boolean>(false);
+  const [editing, setEditing] = useState<boolean>(false);
+  const [order, setOrder] = useState<string[]>([]);
+  const [amounts, setAmounts] = useState<Record<string, number>>({});
+  const [ownPlan, setOwnPlan] = useState<PlanOption | null>(null);
+  const [ownError, setOwnError] = useState<string | null>(null);
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -102,6 +112,7 @@ export const OurPlanStep: React.FC<{
       });
     return () => {
       if (timer.current) clearTimeout(timer.current);
+      if (debounce.current) clearTimeout(debounce.current);
     };
   }, []);
 
@@ -109,7 +120,48 @@ export const OurPlanStep: React.FC<{
     return <View style={styles.loading}><ActivityIndicator color={COLORS.red} /></View>;
   }
 
-  const plan = options.plans.find((item) => item.id === selectedId) || options.plans[0];
+  const plan = (selectedId === 'custom' && ownPlan) || options.plans.find((item) => item.id === selectedId) || options.plans[0];
+
+  // The family's own plan: start from the plan on screen, then recalculate on every change.
+  const startEditing = () => {
+    const dated = plan.goals.filter((goal) => goal.routeKey !== 'wealth')
+      .sort((a, b) => ROUTE_ORDER.indexOf(a.routeKey) - ROUTE_ORDER.indexOf(b.routeKey));
+    setOrder(dated.map((goal) => goal.key));
+    setAmounts(Object.fromEntries(dated.map((goal) => [goal.key, goal.monthlyNow])));
+    setEditing(true);
+    recalculate(dated.map((goal) => goal.key), Object.fromEntries(dated.map((goal) => [goal.key, goal.monthlyNow])));
+  };
+
+  const recalculate = (nextOrder: string[], nextAmounts: Record<string, number>) => {
+    if (debounce.current) clearTimeout(debounce.current);
+    debounce.current = setTimeout(async () => {
+      try {
+        setOwnPlan((await api.customPlan(nextOrder, nextAmounts)).plan);
+        setOwnError(null);
+      } catch (err: any) {
+        setOwnError(err?.status ? err.message : 'Changing the plan needs the planning engine. Start the backend and try again.');
+      }
+    }, EDIT_DEBOUNCE_MS);
+  };
+
+  const move = (key: string, delta: number) => {
+    const index = order.indexOf(key);
+    const target = index + delta;
+    if (target < 0 || target >= order.length) return;
+    const next = [...order];
+    [next[index], next[target]] = [next[target], next[index]];
+    setOrder(next);
+    recalculate(next, amounts);
+  };
+
+  const setAmount = (key: string, value: number) => {
+    const next = { ...amounts, [key]: value };
+    setAmounts(next);
+    recalculate(order, next);
+  };
+
+  const fixedTotal = Object.values(amounts).reduce((sum, value) => sum + value, 0);
+  const goalName = (key: string) => plan.goals.find((goal) => goal.key === key)?.name || ownPlan?.goals.find((goal) => goal.key === key)?.name || key;
   const goals = [...plan.goals].sort((a, b) => a.deadline.localeCompare(b.deadline));
 
   const pollReply = (online: boolean, sent: PlanProposal) => {
@@ -211,6 +263,53 @@ export const OurPlanStep: React.FC<{
           <AlternativeCard key={item.id} plan={item} selected={item.id === selectedId} onSelect={() => { setSelectedId(item.id); setProposal(null); }} />
         )) : null}
 
+        {!editing ? (
+          <TouchableOpacity style={[stepStyles.secondaryButton, styles.gap]} onPress={startEditing} activeOpacity={0.8}>
+            <Text style={stepStyles.secondaryButtonText}>Change priorities or amounts</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[stepStyles.card, styles.gap]}>
+            <Text style={stepStyles.cardTitle}>Make it ours</Text>
+            <Text style={stepStyles.cardSub}>Order is priority: the top goal is funded first. We show what each change does; the choice stays yours.</Text>
+            {order.map((key, index) => {
+              const outcome = ownPlan?.goals.find((goal) => goal.key === key);
+              const pill = outcome ? statusPill(outcome.status) : null;
+              return (
+                <View key={key} style={styles.editRow}>
+                  <View style={styles.editHead}>
+                    <Text style={styles.editRank}>{index + 1}</Text>
+                    <Text style={[styles.goalName, styles.flex]}>{goalName(key)}</Text>
+                    {pill ? <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View> : null}
+                    <TouchableOpacity style={styles.moveButton} onPress={() => move(key, -1)} accessibilityLabel={`Move ${goalName(key)} up`}><Text style={styles.moveText}>↑</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.moveButton} onPress={() => move(key, 1)} accessibilityLabel={`Move ${goalName(key)} down`}><Text style={styles.moveText}>↓</Text></TouchableOpacity>
+                  </View>
+                  <Stepper label="Each month" value={amounts[key] || 0} step={25} min={0} max={options.investable}
+                    display={money(amounts[key] || 0)} onChange={(value) => setAmount(key, value)} />
+                  {outcome ? <Text style={stepStyles.note}>Done {monthLabel(outcome.completesBy)} · due {monthLabel(outcome.deadline)}</Text> : null}
+                </View>
+              );
+            })}
+            <View style={stepStyles.row}>
+              <Text style={stepStyles.rowLabel}>Retirement gets the rest</Text>
+              <Text style={stepStyles.rowValue}>{money(Math.max(0, options.investable - fixedTotal))}/mo</Text>
+            </View>
+            {ownError ? <Text style={styles.errorText}>{ownError}</Text> : null}
+            {ownPlan?.tradeOffs.map((line) => <Text key={line} style={styles.tradeOff}>• {line}</Text>)}
+            <View style={[styles.choiceRow, styles.gap]}>
+              <TouchableOpacity style={[stepStyles.secondaryButton, styles.flex]} onPress={() => { setEditing(false); setSelectedId(options.recommendedPlanId); }}>
+                <Text style={stepStyles.secondaryButtonText}>Back to suggestion</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[stepStyles.primaryButton, styles.flex, (!ownPlan || Boolean(ownError)) && stepStyles.primaryButtonDisabled]}
+                onPress={() => { setSelectedId('custom'); setEditing(false); setProposal(null); }}
+                disabled={!ownPlan || Boolean(ownError)}
+              >
+                <Text style={stepStyles.primaryButtonText}>Use our plan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <TouchableOpacity style={[stepStyles.secondaryButton, styles.gap]} onPress={() => setWhatIfOpen(true)} activeOpacity={0.8}>
           <Text style={stepStyles.secondaryButtonText}>What if…</Text>
         </TouchableOpacity>
@@ -290,6 +389,12 @@ const styles = StyleSheet.create({
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   proposalText: { fontSize: 13, lineHeight: 19, fontWeight: '700', color: COLORS.ink, flex: 1 },
   choiceRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  editRow: { borderTopWidth: 1, borderTopColor: '#F2F2F2', paddingTop: 10, marginTop: 10 },
+  editHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  editRank: { width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.red, color: '#FFFFFF', textAlign: 'center', lineHeight: 22, fontSize: 11, fontWeight: '900', overflow: 'hidden' },
+  moveButton: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
+  moveText: { fontSize: 14, fontWeight: '900', color: COLORS.ink },
+  errorText: { fontSize: 12, fontWeight: '700', color: COLORS.red, marginTop: 6 },
 });
 
 export default OurPlanStep;

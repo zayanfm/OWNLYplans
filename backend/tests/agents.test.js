@@ -87,6 +87,16 @@ async function runTests() {
   assert(balancedPlan.stepUps.some(s => s.fromGoal === 'housing'), 'BTO money moves on once the fund completes');
   console.log('✓ Optimiser Plans:', optimised.plans.map(p => p.id).join(', '));
 
+  // 2c-ii. The family's own order and amounts
+  const ours = optimiserService.customPlan(alexHousehold, { order: ['education', 'emergency', 'housing'], monthlyOverrides: { education: 500 } }).plan;
+  assert.strictEqual(Object.values(ours.routes).reduce((sum, value) => sum + value, 0), optimised.investable, 'Every dollar stays allocated');
+  assert.strictEqual(ours.goals.find(g => g.key === 'education').monthlyNow, 500, 'The family amount is used as-is');
+  assert.strictEqual(ours.goals.find(g => g.key === 'housing').status, 'AT_RISK', 'The engine flags what the choice makes late');
+  assert(ours.tradeOffs.some(t => t.includes('misses its 2028-09 deadline')), 'The consequence is explained, not blocked');
+  assert.throws(() => optimiserService.customPlan(alexHousehold, { monthlyOverrides: { housing: 99999 } }), /more than the/);
+  assert.throws(() => optimiserService.customPlan(alexHousehold, { order: ['retirement_primary'] }), /Unknown or unplanned/);
+  console.log('✓ Custom Plan: family order and amounts, consequences flagged');
+
   // 2d. What-if scenarios
   const schoolFees = scenarioService.simulate('alex_family', { schoolFeesMonthly: 300 });
   assert.strictEqual(schoolFees.surplusAfter, 1040);

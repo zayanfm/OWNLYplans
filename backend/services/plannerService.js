@@ -62,7 +62,7 @@ class PlannerService {
         .map(([key, value]) => [key, Number((investableSurplus * Math.max(0, value) / splitTotal).toFixed(0))]));
     } else {
       const optimised = optimiserService.optimise(household, { protection: config.protection, predictionScenario });
-      const chosen = optimised.plans.find((plan) => plan.id === config.planId)
+      const chosen = (config.planId && optimiserService.findPlan(household, config.planId, { protection: config.protection, predictionScenario }))
         || optimised.plans.find((plan) => plan.id === optimised.recommendedPlanId);
       optimiserPlanId = chosen.id;
       amounts = { housing: chosen.routes.housing, education: chosen.routes.education, wealth: chosen.routes.wealth };

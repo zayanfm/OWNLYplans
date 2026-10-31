@@ -77,6 +77,7 @@ The prototype has one coherent sandbox household used by login, the household wo
 | `/api/household/goals` | `POST` | Add the family's own goal |
 | `/api/household/goals/:key` | `DELETE` | Delete a custom goal or switch off a suggested one |
 | `/api/scenarios/plans` | `GET` | Recommended allocation plan plus two alternatives |
+| `/api/scenarios/plans/custom` | `POST` | The family's own priority order and monthly amounts; consequences flagged, never overridden |
 | `/api/scenarios/simulate` | `POST` | What-if levers: another child, income change, school fees, extra savings |
 | `/api/scenarios/proposals` | `POST` | Propose a plan to the partner (reply simulated after 3s) |
 | `/api/scenarios/proposals/latest` | `GET` | Latest proposal and the partner's reply |
