@@ -110,6 +110,13 @@ async function runTests() {
   assert(ours.tradeOffs.some(t => t.includes('misses its 2028-09 deadline')), 'The consequence is explained, not blocked');
   assert.throws(() => optimiserService.customPlan(alexHousehold, { monthlyOverrides: { housing: 99999 } }), /more than the/);
   assert.throws(() => optimiserService.customPlan(alexHousehold, { order: ['retirement_primary'] }), /Unknown or unplanned/);
+  const sameAmounts = ['housing', 'education', 'emergency'].map(first => optimiserService.customPlan(alexHousehold, { order: [first] }).plan.routes);
+  assert(sameAmounts.every(routes => JSON.stringify(routes) === JSON.stringify(sameAmounts[0])), 'When every goal fits, order does not change the amounts');
+  const homeFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', 'housing', 'education'], monthlyOverrides: { emergency: 900 } }).plan;
+  const educationFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', 'education', 'housing'], monthlyOverrides: { emergency: 900 } }).plan;
+  assert.strictEqual(homeFirstTight.routes.education, 0, 'When money is short, the lower priority waits');
+  assert(educationFirstTight.routes.education > 0 && educationFirstTight.routes.housing < homeFirstTight.routes.housing, 'Moving a goal up funds it first');
+  assert.deepStrictEqual(educationFirstTight.definition.order, ['emergency', 'education', 'housing'], 'The chosen order is returned so it can be restored');
   console.log('✓ Custom Plan: family order and amounts, consequences flagged');
 
   // 2d. What-if scenarios

@@ -237,6 +237,8 @@ export interface PlanOption {
   atRisk: string[];
   recommended: boolean;
   tradeOffs: string[];
+  // Only on the family's own plan: the order and amounts they chose.
+  definition?: { order: string[]; monthlyOverrides: Record<string, number> };
 }
 
 export interface PlanOptions {
