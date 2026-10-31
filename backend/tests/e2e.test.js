@@ -36,8 +36,8 @@ async function runE2ETests() {
       headers: { 'Content-Type': 'application/json' }
     }).then(r => r.json());
     assert(agent1.data.overallHealthScore >= 70, 'Health score is healthy');
-    assert.strictEqual(agent1.data.totalGrantsAvailable, 0, 'Unverified benefits must not inflate the plan');
-    assert(agent1.data.nextBestActions.some(action => action.id === 'nba_government_support_review'), 'Eligibility review should be actionable');
+    assert.strictEqual(agent1.data.totalGrantsAvailable, 2800, 'Estimated support from published scheme rules');
+    assert(agent1.data.nextBestActions.some(action => action.id === 'nba_grant_cda_matching_percy'), 'CDA matching should be actionable');
     console.log(`  ✓ Multi-Agent Diagnostics: Health Score = ${agent1.data.overallHealthScore}/100, Total Grants = S$${agent1.data.totalGrantsAvailable.toLocaleString()}`);
 
     // 1.4 Plan Generation & Approval

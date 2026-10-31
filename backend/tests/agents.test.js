@@ -5,6 +5,7 @@ const goalsAgent = require('../agents/goalsAgent');
 const grantsAgent = require('../agents/grantsAgent');
 const orchestratorAgent = require('../agents/orchestratorAgent');
 const householdStore = require('../models/householdStore');
+const cashflowService = require('../services/cashflowService');
 
 async function runTests() {
   console.log('--- RUNNING AGENTS UNIT TESTS ---');
@@ -22,17 +23,33 @@ async function runTests() {
   // 2. Goals Agent
   const goalsRes = await goalsAgent.analyze(alexHousehold);
   console.log('✓ GoalsAgent Count:', goalsRes.goals.length);
-  assert(goalsRes.goals.length >= 3, 'Should have at least 3 multi-generational goals');
-  const homeGoal = goalsRes.goals.find(g => g.id === 'goal_home_reserve');
-  assert(homeGoal, 'Home-loan reserve goal should exist');
-  const tenYearGoals = await goalsAgent.analyze(alexHousehold, { timelineYears: 10 });
-  assert(tenYearGoals.goals[1].requiredMonthlyAllocation < goalsRes.goals[1].requiredMonthlyAllocation, 'Longer horizons should lower required monthly education funding');
+  assert.deepStrictEqual(goalsRes.goals.map(g => g.key), ['emergency', 'housing', 'education', 'retirement_primary', 'retirement_partner']);
+  const homeGoal = goalsRes.goals.find(g => g.key === 'housing');
+  assert.strictEqual(homeGoal.deadline, '2028-09', 'BTO goal is due at key collection');
+  assert.deepStrictEqual(homeGoal.dependsOn, ['emergency'], 'Home savings depend on the emergency buffer');
+  assert.strictEqual(goalsRes.goals.find(g => g.key === 'education').deadline, '2041-04', 'Education is due when Percy turns 18');
+  assert.strictEqual(goalsRes.goals.find(g => g.key === 'emergency').targetAmount, 35400, 'Six months of essential spending');
+  assert(goalsRes.fundingGap > 0, 'Goals compete for the surplus');
+  const growthGoals = await goalsAgent.analyze(alexHousehold, { predictionScenario: 'growth' });
+  assert(growthGoals.goals[2].requiredMonthlyAllocation < goalsRes.goals[2].requiredMonthlyAllocation, 'Higher assumed returns lower required education funding');
+
+  // 2b. Cash flow
+  const cashflow = cashflowService.analyze(alexHousehold);
+  assert.strictEqual(cashflow.totalCommitments, 6900, 'Itemised commitments match household expenses');
+  assert.strictEqual(cashflow.freeToPlan, 1340, 'Free-to-plan equals the monthly surplus');
+  assert.strictEqual(cashflow.essentialMonthly, 5900);
+  console.log('✓ Cashflow Free To Plan:', cashflow.freeToPlan);
 
   // 3. Grants Agent
   const grantsRes = await grantsAgent.analyze(alexHousehold);
   console.log('✓ GrantsAgent Total Value:', grantsRes.totalGrantValue);
-  assert.strictEqual(grantsRes.totalGrantValue, 0, 'Unverified citizen-only benefits must not be counted');
-  assert(grantsRes.grants.some(g => g.status === 'VERIFY_ELIGIBILITY'), 'Support eligibility review should be recommended');
+  assert.strictEqual(grantsRes.grants.find(g => g.id === 'ehg_housing_grant').status, 'NOT_ELIGIBLE', 'S$10,300 household income is above the EHG ceiling');
+  const matching = grantsRes.grants.find(g => g.id === 'cda_matching_percy');
+  assert.strictEqual(matching.amount, 2500, 'Remaining CDA matching = S$4,000 cap - S$1,500 matched');
+  assert.strictEqual(matching.fundType, 'RESTRICTED_CDA', 'CDA money is restricted');
+  assert.strictEqual(grantsRes.grants.find(g => g.id === 'cash_gift_percy').restricted, false, 'Cash Gift is flexible');
+  assert.strictEqual(grantsRes.totalGrantValue, 2800, 'CDA matching plus upcoming climate vouchers');
+  assert(grantsRes.upcomingDates.some(d => d.date === '2035-12'), 'CDA closing date is tracked');
 
   // 4. Orchestrator Synthesis
   const orchRes = await orchestratorAgent.runFullAnalysis(alexHousehold);

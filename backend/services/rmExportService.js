@@ -91,7 +91,7 @@ class RMExportService {
           topic: 'Government Support Eligibility Review',
           priority: 'LOW',
           context: analysis.totalGrantsAvailable > 0
-            ? `S$${analysis.totalGrantsAvailable.toLocaleString()} in support was matched from the consented data.`
+            ? `About S$${analysis.totalGrantsAvailable.toLocaleString()} in support is estimated as available or upcoming from published scheme rules.`
             : 'No benefit value is included because household-level citizenship and current scheme criteria require verification.',
           solutionProposal: 'Confirm eligibility against current agency records before including support in projections'
         } : null

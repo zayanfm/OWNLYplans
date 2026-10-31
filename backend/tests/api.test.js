@@ -44,6 +44,15 @@ async function testApi() {
     assert.strictEqual(jointSharing.status, 400, 'Joint accounts cannot be made private by one holder');
     console.log('✓ Family Workspace OK');
 
+    // 3b. Our Family Picture
+    const pictureRes = await fetch(`${baseUrl}/api/household/picture`).then(r => r.json());
+    assert(pictureRes.success, 'Picture should succeed');
+    assert.strictEqual(pictureRes.cashflow.freeToPlan, 1340);
+    const educationGoal = pictureRes.goals.find(g => g.key === 'education');
+    assert(educationGoal.support.some(s => s.id === 'cda_matching_percy'), 'CDA support appears inside the education goal');
+    assert(pictureRes.support.notEligible.some(s => s.id === 'ehg_housing_grant'), 'Ineligible schemes are explained');
+    console.log('✓ Family Picture OK');
+
     // 4. Multi-Agent Analysis
     const agentRes = await fetch(`${baseUrl}/api/agents/analyze`, {
       method: 'POST',

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const workspaceService = require('../services/workspaceService');
+const pictureService = require('../services/pictureService');
 
 /**
  * GET /api/household/workspace
@@ -10,6 +11,19 @@ router.get('/workspace', (req, res) => {
   try {
     const { householdId } = req.query;
     res.json(workspaceService.getWorkspace(householdId));
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/household/picture
+ * Cash flow, family goals with dependencies, and the government support attached to each goal.
+ */
+router.get('/picture', async (req, res) => {
+  try {
+    const { householdId } = req.query;
+    res.json(await pictureService.getPicture(householdId));
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
