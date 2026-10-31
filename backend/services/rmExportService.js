@@ -17,10 +17,12 @@ class RMExportService {
       includeHealthMetrics = true,
       includeMilestones = true,
       includeProtectionGaps = true,
-      shareGovernmentGrants = true
+      shareGovernmentGrants = true,
+      includeScenarios = true
     } = consentOptions;
 
     const analysis = await orchestratorAgent.runFullAnalysis(household);
+    const proposal = householdStore.getProposal(household.id);
 
     // Format primary & partner user profiles with privacy masking
     const primaryName = household.primaryUser.name;
@@ -102,7 +104,38 @@ class RMExportService {
           ? '2. Confirm the CPF OA and cash split for the BTO purchase milestone.'
           : '2. Review the mortgage-payment reserve, repricing options and CPF OA versus cash servicing.',
         '3. Authorize automated monthly surplus routing into LionGlobal SGD MMF.'
-      ]
+      ],
+      // Structured planning context so the family does not have to re-explain it (#12).
+      familyGoals: includeMilestones
+        ? analysis.agents.goals.goals.map(goal => ({
+          goal: goal.name,
+          target: goal.targetAmount,
+          saved: goal.currentAmount,
+          shortfall: goal.shortfall,
+          deadline: goal.deadline,
+          monthlyInPlan: goal.suggestedMonthlyAllocation,
+          status: goal.status
+        }))
+        : [],
+      scenariosExplored: includeScenarios
+        ? householdStore.getScenarios(household.id).map(item => ({ exploredAt: item.exploredAt, levers: item.levers, outcome: item.summary }))
+        : [],
+      planDecision: proposal
+        ? {
+          plan: proposal.finalPlanId || proposal.planId,
+          status: proposal.status,
+          partnerResponse: proposal.response?.message || null
+        }
+        : null,
+      decisionsForAdviser: [
+        includeProtectionGaps && analysis.agents.health.metrics.protectionGap > 0
+          ? `Choose protection cover for the S$${analysis.agents.health.metrics.protectionGap.toLocaleString()} gap (licensed adviser required).`
+          : null,
+        includeMilestones && String(household.housing.type).includes('BTO')
+          ? 'Decide the CPF OA versus cash split for the BTO downpayment and loan.'
+          : null,
+        'Confirm suitability before long-horizon goal savings are invested.'
+      ].filter(Boolean)
     };
 
     householdStore.recordAudit(household.id, 'EXPORT_RM_BRIEF', { exportId: advisorBriefing.exportId, shareJointOnly });

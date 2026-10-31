@@ -3,6 +3,7 @@ const goalsAgent = require('./goalsAgent');
 const grantsAgent = require('./grantsAgent');
 const geminiService = require('../services/geminiService');
 const optimiserService = require('../services/optimiserService');
+const growService = require('../services/growService');
 
 class OrchestratorAgent {
   async runFullAnalysis(household, options = {}) {
@@ -107,6 +108,22 @@ class OrchestratorAgent {
 
     // NBA 4: Goal Surplus Allocation from the optimiser's recommended plan
     const recommendedPlan = optimiserService.optimise(household).plans.find(plan => plan.recommended);
+
+    // NBA 6: Advisory pathway, triggered by planning complexity rather than wealth alone
+    const advisory = growService.advisory(household, recommendedPlan, healthRes);
+    if (advisory.recommended) {
+      nextBestActions.push({
+        id: 'nba_advisory_review',
+        title: advisory.title,
+        category: 'ADVISORY',
+        confidence: 0.9,
+        impact: 'One conversation covering home, protection and education',
+        reason: `${advisory.reason} ${advisory.flags.map(flag => flag.label).join('; ')}.`,
+        urgency: 'LOW',
+        badge: 'Human Advice',
+        actionPayload: { type: 'BOOK_ADVISER', flags: advisory.flags.map(flag => flag.id) }
+      });
+    }
     nextBestActions.push({
       id: 'nba_surplus_allocation',
       title: `Automate Monthly S$${monthlySurplus.toLocaleString()} Surplus Routing`,

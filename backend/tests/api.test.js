@@ -113,6 +113,19 @@ async function testApi() {
     assert(simulateRes.success && simulateRes.surplusAfter < simulateRes.surplusBefore, 'Income cut lowers the surplus');
     console.log('✓ Plans & What-if Endpoints OK');
 
+    // 5c. Grow: readiness, advisory trigger, scripted check-in
+    const growRes = await fetch(`${baseUrl}/api/grow/overview`).then(r => r.json());
+    assert(growRes.readiness.ready, 'Floor, short-term goal and risk profile checks pass');
+    assert(growRes.readiness.suggestions.every(s => s.goalKey !== 'housing' && s.goalKey !== 'emergency'), 'Only long-horizon goals are invested');
+    assert(growRes.readiness.handoff, 'Execution hands off to OCBC');
+    assert(growRes.advisory.recommended, 'BTO + child + protection gap triggers the advisory card');
+    const reviewRes = await fetch(`${baseUrl}/api/grow/reviews/simulate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json());
+    assert.strictEqual(reviewRes.review.surplusAfter, reviewRes.review.surplusBefore - 200, 'Check-in applies the detected S$200 increase');
+    assert.deepStrictEqual(reviewRes.review.suggestions.map(s => s.id), ['accept', 'revise', 'reject']);
+    const badDecision = await fetch(`${baseUrl}/api/grow/reviews/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewId: reviewRes.review.id, decision: 'maybe' }) });
+    assert.strictEqual(badDecision.status, 400, 'Unknown review decisions are rejected');
+    console.log('✓ Grow Overview & Check-in OK');
+
     // 6. Persona selection belongs to the sandbox login page
     const personaRes = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
     assert.strictEqual(personaRes.personas.length, 0);
@@ -154,6 +167,16 @@ async function testApi() {
     }).then(r => r.json());
     assert(rmRes.success, 'RM summary should succeed');
     assert(rmRes.data.exportId.startsWith('RM-BRIEF'), 'Briefing ID generated');
+    assert(rmRes.data.familyGoals.length >= 4, 'Briefing carries the family goals');
+    assert(rmRes.data.scenariosExplored.length > 0, 'Briefing carries the what-ifs the family explored');
+    assert(rmRes.data.decisionsForAdviser.length > 0, 'Briefing lists decisions needing professional review');
+    const privateRes = await fetch(`${baseUrl}/api/rm/household-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consentOptions: { includeScenarios: false, includeMilestones: false } })
+    }).then(r => r.json());
+    assert.strictEqual(privateRes.data.scenariosExplored.length, 0, 'Scenarios respect consent');
+    assert.strictEqual(privateRes.data.familyGoals.length, 0, 'Goals respect consent');
     console.log('✓ RM Brief Export OK');
 
     console.log('--- ALL API INTEGRATION TESTS PASSED ---\n');

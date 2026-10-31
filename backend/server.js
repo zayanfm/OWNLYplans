@@ -9,6 +9,7 @@ const configRoutes = require('./routes/config');
 const agentsRoutes = require('./routes/agents');
 const rmRoutes = require('./routes/rm');
 const scenarioRoutes = require('./routes/scenarios');
+const growRoutes = require('./routes/grow');
 
 const app = express();
 let apiServer = null;
@@ -43,6 +44,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/agents', agentsRoutes);
 app.use('/api/rm', rmRoutes);
 app.use('/api/scenarios', scenarioRoutes);
+app.use('/api/grow', growRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

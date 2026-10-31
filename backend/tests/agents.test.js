@@ -90,6 +90,7 @@ async function runTests() {
   const orchRes = await orchestratorAgent.runFullAnalysis(alexHousehold);
   console.log('✓ Orchestrator NBAs:', orchRes.nextBestActions.length);
   assert(orchRes.nextBestActions.length >= 4, 'Should synthesize at least 4 NBAs');
+  assert(orchRes.nextBestActions.some(n => n.id === 'nba_advisory_review'), 'Complexity triggers the advisory NBA');
 
   // 5. Explainable Chat
   const chatYield = await orchestratorAgent.handleChat(alexHousehold, [], 'Why sweep idle cash?');

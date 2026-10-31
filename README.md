@@ -72,6 +72,15 @@ The prototype has one coherent sandbox household used by login, the household wo
 | `/api/household/workspace` | `GET` | Family workspace: MyInfo CPF plus consented OCBC accounts |
 | `/api/household/sharing` | `POST` | Set an account to shared, total-only or private |
 | `/api/household/manual-assets` | `POST` | Add a self-declared asset held outside OCBC |
+| `/api/household/picture` | `GET` | Cash flow, goals with deadlines/dependencies, support per goal |
+| `/api/scenarios/plans` | `GET` | Recommended allocation plan plus two alternatives |
+| `/api/scenarios/simulate` | `POST` | What-if levers: another child, income change, school fees, extra savings |
+| `/api/scenarios/proposals` | `POST` | Propose a plan to the partner (reply simulated after 3s) |
+| `/api/scenarios/proposals/latest` | `GET` | Latest proposal and the partner's reply |
+| `/api/scenarios/proposals/resolve` | `POST` | Record the agreed plan |
+| `/api/grow/overview` | `GET` | Investment readiness checks, suggested long-horizon contributions, advisory trigger |
+| `/api/grow/reviews/simulate` | `POST` | Scripted "3 months later" plan check-in |
+| `/api/grow/reviews/respond` | `POST` | Accept / revise / reject a check-in |
 | `/api/agents/analyze` | `POST` | Run 4-agent parallel financial analysis & NBAs |
 | `/api/agents/chat` | `POST` | Explainable, context-aware AI chatbot |
 | `/api/agents/status` | `GET` | Live telemetry of all 4 AI agents |

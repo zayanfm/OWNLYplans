@@ -130,7 +130,42 @@ async function runE2ETests() {
     }).then(r => r.json());
     assert.strictEqual(agreed.proposal.status, 'AGREED');
     assert.strictEqual(agreed.proposal.finalPlanId, 'balanced');
-    console.log(`  ✓ Lila replied "${replied.proposal.response.message}" and they agreed on ${agreed.proposal.finalPlanId}\n`);
+    console.log(`  ✓ Lila replied "${replied.proposal.response.message}" and they agreed on ${agreed.proposal.finalPlanId}`);
+
+    // Grow: approve the agreed plan, get a check-in, then hand off to the RM with full context.
+    const agreedPlan = await fetch(`${baseUrl}/api/finance/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: agreed.proposal.finalPlanId })
+    }).then(r => r.json());
+    const approval = await fetch(`${baseUrl}/api/finance/approve-plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: agreedPlan.plan })
+    }).then(r => r.json());
+    assert.strictEqual(approval.plan.optimiserPlanId, 'balanced', 'The agreed plan is the active plan');
+
+    const checkIn = await fetch(`${baseUrl}/api/grow/reviews/simulate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json());
+    await fetch(`${baseUrl}/api/grow/reviews/respond`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reviewId: checkIn.review.id, decision: 'accept' })
+    });
+
+    const handoff = await fetch(`${baseUrl}/api/rm/household-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consentOptions: {} })
+    }).then(r => r.json());
+    assert.strictEqual(handoff.data.planDecision.plan, 'balanced', 'RM sees the agreed plan');
+    assert(handoff.data.planDecision.partnerResponse.startsWith('Lila'), 'RM sees the partner discussion');
+    assert(handoff.data.scenariosExplored.length >= 2, 'RM sees the what-if and the check-in');
+    const audit = await fetch(`${baseUrl}/api/finance/audit`).then(r => r.json());
+    const actions = audit.logs.map(log => log.action);
+    ['PLAN_PROPOSED', 'PLAN_AGREED', 'PLAN_APPROVED', 'REVIEW_RAISED', 'REVIEW_DECISION', 'EXPORT_RM_BRIEF'].forEach(action => {
+      assert(actions.includes(action), `Audit trail records ${action}`);
+    });
+    console.log(`  ✓ Plan approved, check-in accepted, RM briefing ${handoff.data.exportId} carries ${handoff.data.scenariosExplored.length} scenarios\n`);
 
     // -------------------------------------------------------------
     // Scenario 3: legacy instant-persona switching is disabled
