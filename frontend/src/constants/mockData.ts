@@ -250,11 +250,10 @@ export const FALLBACK_WORKSPACE: HouseholdWorkspace = {
   summary: {
     totalLiquidCash: 36000,
     totalInvestments: 14200,
-    totalManualAssets: 5000,
     householdCpfTotal: 164000,
-    totalAssets: 219200,
+    totalAssets: 214200,
     totalLiabilities: 0,
-    netWorth: 219200,
+    netWorth: 214200,
     monthlyHouseholdIncome: 10300,
     monthlyHouseholdTakeHome: 8240,
     monthlyHouseholdExpenses: 6900,
@@ -269,7 +268,6 @@ export const FALLBACK_WORKSPACE: HouseholdWorkspace = {
     { owner: 'partner', sharing: 'TOTAL_ONLY', status: 'CONNECTED', countsTowardTotals: true, type: "Lila's OCBC account", number: null, holder: 'Lila Tan', role: null, balance: 3800, interestRate: null },
   ],
   investments: [{ platform: 'OCBC RoboInvest', name: 'Global Balanced Growth Portfolio', value: 14200, owner: 'primary' }],
-  manualAssets: [{ id: 'manual-ssb', label: 'Singapore Savings Bonds', owner: 'primary', balance: 5000, selfDeclared: true }],
 };
 
 export const PLAN_MILESTONES: Record<string, Milestone[]> = {

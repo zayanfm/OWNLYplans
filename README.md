@@ -5,7 +5,7 @@ OWNLYplans is an AI-driven, multi-agent family financial cockpit embedded inside
 ---
 
 ### Core Value Pillars ("The White Paper Blueprint")
-1. **Household Financial View**: Combine each adult's OCBC accounts, joint accounts, CPF (OA/SA/MA) and partner finances via **MockPass** (Singpass/MyInfo simulation). Each owner chooses whether an account is shared, total-only or private; savings held outside OCBC can be self-declared.
+1. **Household Financial View**: Combine each adult's OCBC accounts, joint accounts, CPF (OA/SA/MA) and partner finances via **MockPass** (Singpass/MyInfo simulation). Each owner chooses whether an account is shared, total-only or private.
 2. **Progressive Financial Planning**: Adaptive monthly surplus optimization across high-yield cash sweeps (LionGlobal SGD MMF @ 3.85% p.a.), housing pots, and family milestones.
 3. **"We Guide. You Decide."**: Explainable AI recommendations with explicit confidence scores, transparent trade-offs, and user-controlled autonomy levels (*Notify & Wait*, *24h Window*, *Full Auto*).
 4. **"Stay Connected" RM Advisory Handoff**: Context-rich household financial snapshot export for OCBC Relationship Managers with granular privacy consent filtering.
@@ -71,7 +71,6 @@ The prototype has one coherent sandbox household used by login, the household wo
 | `/api/auth/mockpass/session/:id` | `GET` | Consume the authenticated sandbox profile once |
 | `/api/household/workspace` | `GET` | Family workspace: MyInfo CPF plus consented OCBC accounts |
 | `/api/household/sharing` | `POST` | Set an account to shared, total-only or private |
-| `/api/household/manual-assets` | `POST` | Add a self-declared asset held outside OCBC |
 | `/api/household/picture` | `GET` | Cash flow, goals with deadlines/dependencies, support per goal |
 | `/api/scenarios/plans` | `GET` | Recommended allocation plan plus two alternatives |
 | `/api/scenarios/simulate` | `POST` | What-if levers: another child, income change, school fees, extra savings |

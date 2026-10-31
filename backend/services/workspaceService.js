@@ -48,15 +48,13 @@ class WorkspaceService {
 
     const countedAccounts = workspaceAccounts.filter((account) => account.countsTowardTotals);
     const investments = (accounts.investments || []).filter((item) => item.owner !== 'partner' || partnerVisible);
-    const manualAssets = household.manualAssets || [];
 
     const totalLiquidCash = sum(countedAccounts, 'balance');
     const totalInvestments = sum(investments, 'value');
-    const totalManualAssets = sum(manualAssets, 'balance');
     const primaryCpf = cpfTotal(primaryUser.cpf);
     const partnerCpf = partner && partnerVisible ? cpfTotal(partner.cpf) : 0;
     const householdCpfTotal = primaryCpf + partnerCpf;
-    const totalAssets = totalLiquidCash + totalInvestments + totalManualAssets + householdCpfTotal;
+    const totalAssets = totalLiquidCash + totalInvestments + householdCpfTotal;
     const totalLiabilities = financials.totalLiabilities || 0;
 
     return {
@@ -68,7 +66,6 @@ class WorkspaceService {
       summary: {
         totalLiquidCash,
         totalInvestments,
-        totalManualAssets,
         householdCpfTotal,
         totalAssets,
         totalLiabilities,
@@ -82,7 +79,6 @@ class WorkspaceService {
       },
       accounts: workspaceAccounts,
       investments,
-      manualAssets,
       cpf: {
         primaryUser: { name: primaryUser.name, ...primaryUser.cpf, total: primaryCpf },
         partner: partner && partnerVisible ? { name: partner.name, ...partner.cpf, total: partnerCpf } : null,
@@ -110,22 +106,6 @@ class WorkspaceService {
     return account;
   }
 
-  addManualAsset(householdId = null, asset = {}) {
-    const label = String(asset.label || '').trim();
-    const balance = Number(asset.balance);
-    if (!label || !Number.isFinite(balance) || balance < 0) {
-      throw new Error('A label and a non-negative balance are required');
-    }
-    const household = householdId ? householdStore.getHousehold(householdId) : householdStore.getHousehold();
-    if (!household) {
-      throw new Error('Household not found');
-    }
-    return householdStore.addManualAsset(household.id, {
-      label: label.slice(0, 60),
-      owner: asset.owner === 'partner' ? 'partner' : 'primary',
-      balance: Math.round(balance)
-    });
-  }
 }
 
 module.exports = new WorkspaceService();

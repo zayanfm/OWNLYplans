@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import api from '../../../services/api';
 import type { AccountSharing, HouseholdWorkspace, MockPassAuthResponse, WorkspaceAccount } from '../../../services/api';
 import { FALLBACK_WORKSPACE } from '../../../constants/mockData';
@@ -13,7 +13,7 @@ const OFFLINE_APPROVAL_MS = 3000;
 
 /**
  * Setup (#1): one screen for the verified MyInfo profile, the household's OCBC accounts with
- * each owner's sharing choice, self-declared savings, and a non-blocking family invite.
+ * each owner's sharing choice, and a non-blocking family invite.
  */
 export const HouseholdStep: React.FC<{
   profile: MockPassAuthResponse | null;
@@ -25,9 +25,6 @@ export const HouseholdStep: React.FC<{
   const [workspace, setWorkspace] = useState<HouseholdWorkspace | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [sending, setSending] = useState<boolean>(false);
-  const [addingAsset, setAddingAsset] = useState<boolean>(false);
-  const [assetLabel, setAssetLabel] = useState<string>('');
-  const [assetBalance, setAssetBalance] = useState<string>('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const familyRef = useRef(family);
   familyRef.current = family;
@@ -111,25 +108,6 @@ export const HouseholdStep: React.FC<{
     } catch {
       // Offline: the choice is kept for this session.
     }
-  };
-
-  const saveAsset = async () => {
-    const balance = Number(assetBalance.replace(/[^0-9.]/g, ''));
-    if (!assetLabel.trim() || !Number.isFinite(balance) || !workspace) return;
-    let saved = { id: `local-${Date.now()}`, label: assetLabel.trim(), owner: 'primary' as const, balance, selfDeclared: true as const };
-    try {
-      saved = (await api.addManualAsset({ label: saved.label, balance })).asset as typeof saved;
-    } catch {
-      // Offline: keep the self-declared asset for this session.
-    }
-    setWorkspace({
-      ...workspace,
-      manualAssets: [...workspace.manualAssets, saved],
-      summary: { ...workspace.summary, totalManualAssets: workspace.summary.totalManualAssets + balance, netWorth: workspace.summary.netWorth + balance },
-    });
-    setAssetLabel('');
-    setAssetBalance('');
-    setAddingAsset(false);
   };
 
   const user = profile?.user;
@@ -252,34 +230,6 @@ export const HouseholdStep: React.FC<{
 
         {workspace ? (
           <View style={stepStyles.card}>
-            <Text style={stepStyles.sectionLabel}>Savings outside OCBC</Text>
-            {workspace.manualAssets.map((asset) => (
-              <View key={asset.id} style={[stepStyles.row, stepStyles.rowDivider]}>
-                <View style={styles.flex}>
-                  <Text style={styles.accountName}>{asset.label}</Text>
-                  <Text style={stepStyles.cardSub}>Self-declared · counts toward net worth only</Text>
-                </View>
-                <Text style={stepStyles.rowValue}>{money(asset.balance)}</Text>
-              </View>
-            ))}
-            {addingAsset ? (
-              <View style={styles.assetForm}>
-                <TextInput style={styles.input} placeholder="e.g. DBS savings" value={assetLabel} onChangeText={setAssetLabel} />
-                <TextInput style={styles.input} placeholder="Balance (S$)" keyboardType="numeric" value={assetBalance} onChangeText={setAssetBalance} />
-                <TouchableOpacity style={stepStyles.secondaryButton} onPress={saveAsset} activeOpacity={0.8}>
-                  <Text style={stepStyles.secondaryButtonText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity onPress={() => setAddingAsset(true)} activeOpacity={0.7}>
-                <Text style={[stepStyles.linkText, styles.topGap]}>+ Add other savings</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : null}
-
-        {workspace ? (
-          <View style={stepStyles.card}>
             <Text style={[stepStyles.sectionLabel, styles.greenLabel]}>Household total</Text>
             <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Shared OCBC cash</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.totalLiquidCash)}</Text></View>
             <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Investments</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.totalInvestments)}</Text></View>
@@ -323,8 +273,6 @@ const styles = StyleSheet.create({
   sharePill: { borderRadius: 999, borderWidth: 1, borderColor: COLORS.red, paddingHorizontal: 8, paddingVertical: 2 },
   sharePillText: { fontSize: 10, fontWeight: '800', color: COLORS.red },
   shareStatic: { fontSize: 10, fontWeight: '700', color: COLORS.faint },
-  assetForm: { gap: 8, marginTop: 10 },
-  input: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: COLORS.ink },
   greenLabel: { color: COLORS.green },
 });
 

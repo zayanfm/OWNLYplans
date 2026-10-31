@@ -29,13 +29,8 @@ async function testApi() {
     assert.strictEqual(wsRes.partnerConsent, 'NOT_INVITED', 'Partner accounts wait for consent');
     assert.strictEqual(wsRes.summary.totalLiquidCash, 27650, 'Only Alex and joint OCBC cash before Lila consents');
     assert(wsRes.accounts.filter(a => a.owner === 'partner').every(a => a.balance === null), 'Partner balances hidden before consent');
-    assert.strictEqual(wsRes.summary.totalManualAssets, 5000, 'Self-declared assets count toward net worth');
-    const manualRes = await fetch(`${baseUrl}/api/household/manual-assets`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ asset: { label: 'DBS savings', balance: -1 } })
-    });
-    assert.strictEqual(manualRes.status, 400, 'Negative manual balances are rejected');
+    const manualRes = await fetch(`${baseUrl}/api/household/manual-assets`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.strictEqual(manualRes.status, 404, 'Savings outside OCBC are not collected');
     const jointSharing = await fetch(`${baseUrl}/api/household/sharing`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

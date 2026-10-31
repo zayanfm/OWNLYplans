@@ -39,10 +39,7 @@ class RMExportService {
     if (shareJointOnly) {
       visibleAccounts = sharedAccounts.filter(a => a.owner === 'joint' || a.role?.toLowerCase().includes('salary'));
     } else {
-      visibleAccounts = [
-        ...sharedAccounts,
-        ...(household.manualAssets || []).map(asset => ({ type: asset.label, holder: asset.owner, balance: asset.balance, note: 'Self-declared, held outside OCBC' }))
-      ];
+      visibleAccounts = sharedAccounts;
     }
 
     const advisorBriefing = {

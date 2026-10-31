@@ -77,14 +77,6 @@ export interface WorkspaceAccount {
   interestRate: number | null;
 }
 
-export interface ManualAsset {
-  id: string;
-  label: string;
-  owner: 'primary' | 'partner';
-  balance: number;
-  selfDeclared: true;
-}
-
 export interface HouseholdWorkspace {
   success: boolean;
   lastSynced: string;
@@ -93,7 +85,6 @@ export interface HouseholdWorkspace {
   summary: {
     totalLiquidCash: number;
     totalInvestments: number;
-    totalManualAssets: number;
     householdCpfTotal: number;
     totalAssets: number;
     totalLiabilities: number;
@@ -107,7 +98,6 @@ export interface HouseholdWorkspace {
   };
   accounts: WorkspaceAccount[];
   investments: any[];
-  manualAssets: ManualAsset[];
 }
 
 export type GoalStatus = 'ON_TRACK' | 'AT_RISK' | 'REACHED';
@@ -428,13 +418,6 @@ class ApiService {
     return this.request('/api/household/sharing', {
       method: 'POST',
       body: JSON.stringify({ accountNumber, sharing, householdId })
-    });
-  }
-
-  async addManualAsset(asset: { label: string; balance: number; owner?: 'primary' | 'partner' }, householdId?: string): Promise<{ success: boolean; asset: ManualAsset }> {
-    return this.request('/api/household/manual-assets', {
-      method: 'POST',
-      body: JSON.stringify({ asset, householdId })
     });
   }
 

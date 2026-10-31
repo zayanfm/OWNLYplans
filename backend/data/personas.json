@@ -242,15 +242,6 @@
         }
       ]
     },
-    "manualAssets": [
-      {
-        "id": "manual-ssb",
-        "label": "Singapore Savings Bonds",
-        "owner": "primary",
-        "balance": 5000,
-        "selfDeclared": true
-      }
-    ],
     "goalSettings": {
       "emergency": {
         "targetMonthsOfEssentials": 6,
