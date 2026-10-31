@@ -6,8 +6,8 @@ import { FALLBACK_WORKSPACE } from '../../../constants/mockData';
 import { FamilyMember } from '../types';
 import { COLORS, money, stepStyles } from '../stepStyles';
 
-const SHARING_LABELS: Record<AccountSharing, string> = { FULL: 'Shared', TOTAL_ONLY: 'Total only', PRIVATE: 'Private' };
-const NEXT_SHARING: Record<AccountSharing, AccountSharing> = { FULL: 'TOTAL_ONLY', TOTAL_ONLY: 'PRIVATE', PRIVATE: 'FULL' };
+const SHARING_LABELS: Record<AccountSharing, string> = { FULL: 'Shared', TOTAL_ONLY: 'Total only', PRIVATE: 'Private · tap to share' };
+const NEXT_SHARING: Record<AccountSharing, AccountSharing> = { PRIVATE: 'FULL', FULL: 'TOTAL_ONLY', TOTAL_ONLY: 'PRIVATE' };
 const APPROVAL_POLL_MS = 1000;
 const OFFLINE_APPROVAL_MS = 3000;
 
@@ -128,7 +128,7 @@ export const HouseholdStep: React.FC<{
         <Text style={stepStyles.eyebrow}>Setup</Text>
         <Text style={stepStyles.title}>Here&apos;s your household</Text>
         <Text style={stepStyles.subtitle}>
-          From Singpass MyInfo and your OCBC accounts. Accounts keep their owners and operating rules.
+          From Singpass MyInfo and your OCBC accounts. Nothing personal is shared until you choose: tap an account to share it. Accounts keep their owners and operating rules.
         </Text>
 
         {user ? (

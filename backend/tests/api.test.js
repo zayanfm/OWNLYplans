@@ -28,7 +28,11 @@ async function testApi() {
     assert(wsRes.success, 'Workspace should succeed');
     assert.deepStrictEqual(wsRes.sources, ['Singpass MyInfo', 'OCBC accounts']);
     assert.strictEqual(wsRes.partnerConsent, 'NOT_INVITED', 'Partner accounts wait for consent');
-    assert.strictEqual(wsRes.summary.totalLiquidCash, 27650, 'Only Alex and joint OCBC cash before Lila consents');
+    assert.strictEqual(wsRes.summary.totalLiquidCash, 9200, 'Only the joint account counts until Alex chooses to share');
+    const share360 = await fetch(`${baseUrl}/api/household/sharing`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountNumber: '512-882910-001', sharing: 'FULL' }) }).then(r => r.json());
+    assert.strictEqual(share360.sharing, 'FULL');
+    const wsShared = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
+    assert.strictEqual(wsShared.summary.totalLiquidCash, 27650, 'Alex opted in his 360 account');
     assert(wsRes.accounts.filter(a => a.owner === 'partner').every(a => a.balance === null), 'Partner balances hidden before consent');
     const manualRes = await fetch(`${baseUrl}/api/household/manual-assets`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     assert.strictEqual(manualRes.status, 404, 'Savings outside OCBC are not collected');
@@ -213,6 +217,17 @@ async function testApi() {
     assert.strictEqual(privateRes.data.scenariosExplored.length, 0, 'Scenarios respect consent');
     assert.strictEqual(privateRes.data.familyGoals.length, 0, 'Goals respect consent');
     console.log('✓ RM Brief Export OK');
+
+    // 9. Anyone can leave
+    const partnerLeaves = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'partner' }) }).then(r => r.json());
+    assert(partnerLeaves.success && partnerLeaves.reviewNote, 'Partner leaves with a review note for Alex');
+    const leaveAgain = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'partner' }) });
+    assert.strictEqual(leaveAgain.status, 409);
+    const primaryLeaves = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'primary' }) }).then(r => r.json());
+    assert(primaryLeaves.deleted, 'Leaving as the primary user deletes the household data');
+    const fresh = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
+    assert(fresh.goals.every(g => g.status !== 'CONFIRMED'), 'No decisions survive deletion');
+    console.log('✓ Leave Household OK');
 
     console.log('--- ALL API INTEGRATION TESTS PASSED ---\n');
   } finally {

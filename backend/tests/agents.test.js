@@ -9,13 +9,26 @@ const cashflowService = require('../services/cashflowService');
 const optimiserService = require('../services/optimiserService');
 const scenarioService = require('../services/scenarioService');
 const goalInputService = require('../services/goalInputService');
-const { confirmSuggestedGoals } = require('./helpers');
+const { confirmSuggestedGoals, shareAndConsent } = require('./helpers');
+const workspaceService = require('../services/workspaceService');
 
 async function runTests() {
   console.log('--- RUNNING AGENTS UNIT TESTS ---');
 
   const alexHousehold = householdStore.getHousehold('alex_family');
   assert(alexHousehold, 'Alex household should exist in store');
+
+  // 0. Nobody's private data is shared by default
+  const before = workspaceService.getWorkspace('alex_family');
+  assert(before.accounts.filter(a => a.owner !== 'joint').every(a => a.sharing === 'PRIVATE'), 'Personal accounts start private');
+  assert.strictEqual(before.summary.totalLiquidCash, 9200, 'Only the joint account counts until someone shares');
+  assert.strictEqual(goalInputService.getInputs(alexHousehold).find(g => g.key === 'retirement_partner').status, 'AWAITING_PARTNER', 'Lila confirms her own goal');
+  shareAndConsent('alex_family');
+  const after = workspaceService.getWorkspace('alex_family');
+  assert.strictEqual(after.summary.totalLiquidCash, 32200, 'Alex shared his 360 account and Lila shared her Frank account');
+  const lilaSavings = after.accounts.find(a => a.owner === 'partner' && a.sharing === 'PRIVATE');
+  assert(lilaSavings && lilaSavings.balance === null && lilaSavings.number === null, 'Lila keeps her savings account private');
+  console.log('✓ Private by default; only chosen accounts are shared');
 
   // 1. Health Agent
   const healthRes = await healthAgent.analyze(alexHousehold);
@@ -27,12 +40,12 @@ async function runTests() {
   // 2. Goals Agent: nothing is planned until the family confirms it
   const unconfirmed = await goalsAgent.analyze(alexHousehold);
   assert.deepStrictEqual(unconfirmed.goals.map(g => g.key), ['emergency', 'housing', 'education', 'retirement_primary', 'retirement_partner']);
-  assert(unconfirmed.goals.every(g => !g.planned), 'Suggestions are not planned until confirmed');
-  assert.strictEqual(unconfirmed.goals.find(g => g.key === 'retirement_partner').inputStatus, 'AWAITING_PARTNER', 'Lila confirms her own goal');
+  assert(unconfirmed.goals.filter(g => g.input.owner !== 'partner').every(g => !g.planned), 'Suggestions are not planned until confirmed');
+  assert.strictEqual(unconfirmed.goals.find(g => g.key === 'retirement_partner').input.confirmedBy, 'partner', 'Lila confirmed her own goal when she accepted');
   assert.throws(() => goalInputService.update('alex_family', 'retirement_partner', { amount: 300000 }), /Only Lila/, 'Alex cannot set the partner goal');
   assert.throws(() => goalInputService.update('alex_family', 'education', { startYear: 2020 }), /future year/);
   assert.throws(() => goalInputService.update('alex_family', 'emergency', { months: 30 }), /between 3 and 12/);
-  assert.strictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.length, 0, 'The optimiser plans no unconfirmed goal');
+  assert.deepStrictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.map(g => g.key), ['retirement_partner'], 'The optimiser plans only confirmed goals');
 
   confirmSuggestedGoals('alex_family');
   const goalsRes = await goalsAgent.analyze(alexHousehold);
@@ -75,7 +88,7 @@ async function runTests() {
   assert.strictEqual(optimised.plans.length, 3, 'One recommended plan and two alternatives');
   assert.strictEqual(optimised.plans.filter(p => p.recommended).length, 1);
   assert.strictEqual(optimised.recommendedPlanId, 'balanced');
-  assert.strictEqual(optimised.lumpSum.amount, 1100, 'Spare cash beyond the floor and working cash tops up the buffer');
+  assert.strictEqual(optimised.lumpSum, null, 'Shared cash does not exceed the emergency fund plus a month of bills; private savings are never counted');
   optimised.plans.forEach(plan => {
     const routed = Object.values(plan.routes).reduce((sum, value) => sum + value, 0);
     assert.strictEqual(routed, optimised.investable, `${plan.id} routes the whole investable surplus`);
@@ -158,6 +171,16 @@ async function runTests() {
   const chatYield = await orchestratorAgent.handleChat(alexHousehold, [], 'Why sweep idle cash?');
   assert(chatYield.reply.includes('emergency floor'), 'Chat should explain the protected emergency floor');
   console.log('✓ Chat reasoning verified');
+
+  // 6. Anyone can leave
+  const leaving = householdStore.partnerLeaves('alex_family');
+  assert(leaving.partner.left, 'Lila has left');
+  assert.strictEqual(leaving.financials.monthlySurplus, 4400 - 6900, 'Her income stops being used; shared commitments need review');
+  assert(!workspaceService.getWorkspace('alex_family').accounts.some(a => a.owner === 'partner'), 'Her accounts are gone from the workspace');
+  assert(!goalInputService.getInputs(alexHousehold).some(g => g.key === 'retirement_partner'), 'Her personal goal is gone');
+  assert.strictEqual(workspaceService.getWorkspace('alex_family').partnerConsent, 'LEFT');
+  householdStore.reset('alex_family');
+  console.log('✓ Leaving removes the partner\'s data from planning');
 
   console.log('--- ALL AGENT UNIT TESTS PASSED ---\n');
 }

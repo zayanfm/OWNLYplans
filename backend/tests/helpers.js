@@ -1,5 +1,6 @@
 const goalInputService = require('../services/goalInputService');
 const householdStore = require('../models/householdStore');
+const workspaceService = require('../services/workspaceService');
 
 // Confirms every suggested goal as the family would in the app. With includePartner, the
 // partner confirms their own retirement goal (in the sandbox that happens on invite approval).
@@ -10,4 +11,13 @@ const confirmSuggestedGoals = (householdId = 'alex_family', { includePartner = t
   });
 };
 
-module.exports = { confirmSuggestedGoals };
+// What the family does in setup: Alex shares his own account, and Lila accepts the invite
+// (her sandbox choices then apply). The invite delay is skipped for unit tests.
+const shareAndConsent = (householdId = 'alex_family') => {
+  workspaceService.setAccountSharing(householdId, '512-882910-001', 'FULL');
+  householdStore.inviteFamilyMembers(householdId, [{ name: 'Lila Tan', relation: 'Spouse', nric: 'S****56B' }]);
+  householdStore.familyInvites[householdId].invitedAt = new Date(Date.now() - 60000).toISOString();
+  householdStore.getFamilyInviteStatus(householdId);
+};
+
+module.exports = { confirmSuggestedGoals, shareAndConsent };

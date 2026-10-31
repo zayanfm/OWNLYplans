@@ -31,6 +31,12 @@
         "oa": 38000,
         "sa": 22000,
         "ma": 16000
+      },
+      "consentChoices": {
+        "shareAccounts": [
+          "512-441920-002"
+        ],
+        "note": "Sandbox: what Lila chooses in her own app when she accepts. Her income is shared for the household cash flow; her savings account stays private."
       }
     },
     "dependents": [
@@ -189,7 +195,7 @@
           "number": "512-882910-001",
           "holder": "Alex Lim",
           "owner": "primary",
-          "sharing": "FULL",
+          "sharing": "PRIVATE",
           "balance": 18450,
           "interestRate": 0.05,
           "role": "Emergency / Salary credit"
@@ -199,7 +205,7 @@
           "number": "512-441920-002",
           "holder": "Lila Tan",
           "owner": "partner",
-          "sharing": "FULL",
+          "sharing": "PRIVATE",
           "balance": 4550,
           "interestRate": 0.05,
           "role": "Daily Expenses"
@@ -219,7 +225,7 @@
           "number": "512-660281-004",
           "holder": "Lila Tan",
           "owner": "partner",
-          "sharing": "TOTAL_ONLY",
+          "sharing": "PRIVATE",
           "balance": 3800,
           "interestRate": 0.05,
           "role": "Personal savings"

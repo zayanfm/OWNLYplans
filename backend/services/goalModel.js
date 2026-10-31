@@ -1,4 +1,5 @@
 const goalInputService = require('./goalInputService');
+const { plannableAccounts } = require('./workspaceService');
 const { requiredMonthly, monthsUntil, addMonthsIso, money } = require('../utils/finance');
 
 const SCENARIO_RATES = { conservative: 0.025, balanced: 0.045, growth: 0.065 };
@@ -114,10 +115,10 @@ const buildGoals = (household, options = {}) => {
   });
 };
 
-// Cash above the emergency fund and one month of commitments (working cash for bills),
-// which can be used as a one-off lump sum.
+// Shared cash above the emergency fund and one month of commitments (working cash for bills),
+// which can be used as a one-off lump sum. Accounts kept private are never counted.
 const spareCash = (household) => {
-  const liquid = (household.accounts?.ocbc || []).reduce((sum, account) => sum + Number(account.balance || 0), 0);
+  const liquid = plannableAccounts(household).reduce((sum, account) => sum + Number(account.balance || 0), 0);
   const workingCash = Number(household.financials.householdMonthlyExpenses || 0);
   return Math.max(0, liquid - Number(household.financials.emergencyFund || 0) - workingCash);
 };

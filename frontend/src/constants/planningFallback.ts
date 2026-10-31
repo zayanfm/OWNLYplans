@@ -1,5 +1,6 @@
 // Generated from the backend alex_family fixture so the prototype works offline.
-// The picture is captured before any goal is confirmed; plan options and grow after confirming the suggestions.
+// Captured after Alex shares his account and Lila accepts. The picture is captured before goals
+// are confirmed; plan options and grow after confirming the suggestions.
 // Regenerate after changing backend/data/personas.json or the goal suggestions.
 import type { FamilyPicture, PlanOptions, GrowOverview } from '../services/api';
 
@@ -469,8 +470,8 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "support": []
     },
     {
-      "inputStatus": "AWAITING_PARTNER",
-      "planned": false,
+      "inputStatus": "CONFIRMED",
+      "planned": true,
       "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Lila can confirm this goal.",
       "input": {
         "key": "retirement_partner",
@@ -491,9 +492,9 @@ export const FALLBACK_PICTURE: FamilyPicture = {
           "amount": 200000,
           "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Lila can confirm this goal."
         },
-        "confirmed": false,
-        "confirmedBy": null,
-        "status": "AWAITING_PARTNER"
+        "confirmed": true,
+        "confirmedBy": "partner",
+        "status": "CONFIRMED"
       },
       "id": "goal_retirement_partner",
       "key": "retirement_partner",
@@ -513,14 +514,14 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       ],
       "basis": "Savings on top of CPF LIFE by age 65",
       "icon": "trending-up",
-      "suggestedMonthlyAllocation": 0,
-      "projectedCompletion": null,
-      "status": "AWAITING_PARTNER",
+      "suggestedMonthlyAllocation": 1312,
+      "projectedCompletion": "2036-12",
+      "status": "ON_TRACK",
       "support": []
     }
   ],
   "fundingGap": 0,
-  "totalRequiredMonthly": 0,
+  "totalRequiredMonthly": 186,
   "support": {
     "totalGrantValue": 2800,
     "restrictedValue": 2800,
@@ -575,7 +576,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
   "findings": [
     "All goals can be funded on time from the S$1,340 monthly surplus.",
     "BTO home purchase fund: S$16,000 still needed by 2028-09.",
-    "5 goal(s) need your decision before they are planned.",
+    "4 goal(s) need your decision before they are planned.",
     "Projected returns are assumptions, not guarantees."
   ]
 };
@@ -585,11 +586,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
   "monthlySurplus": 1340,
   "protectionPremium": 28,
   "investable": 1312,
-  "lumpSum": {
-    "amount": 1100,
-    "toGoal": "emergency",
-    "reason": "Spare OCBC cash above the emergency fund and a month of working cash tops up the buffer today."
-  },
+  "lumpSum": null,
   "recommendedPlanId": "balanced",
   "needsDecision": [],
   "plans": [
@@ -598,11 +595,11 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "name": "Balanced",
       "tagline": "Every goal on time, retirement steps up as earlier goals finish",
       "routes": {
-        "emergency": 310,
+        "emergency": 372,
         "housing": 618,
         "education": 102,
         "custom": 0,
-        "wealth": 282
+        "wealth": 220
       },
       "unallocated": 0,
       "goals": [
@@ -611,12 +608,12 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "routeKey": "emergency",
           "name": "Emergency buffer",
           "targetAmount": 35400,
-          "startingAmount": 29100,
+          "startingAmount": 28000,
           "deadline": "2028-05",
           "requiredMonthly": 372,
-          "monthlyNow": 310,
+          "monthlyNow": 372,
           "completesBy": "2028-05",
-          "projectedAtDeadline": 35401,
+          "projectedAtDeadline": 35404,
           "status": "ON_TRACK"
         },
         {
@@ -653,9 +650,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 122,
-          "completesBy": "2045-04",
-          "projectedAtDeadline": 406296,
+          "monthlyNow": 95,
+          "completesBy": "2045-05",
+          "projectedAtDeadline": 405220,
           "status": "ON_TRACK"
         },
         {
@@ -666,9 +663,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 160,
-          "completesBy": "2044-07",
-          "projectedAtDeadline": 456649,
+          "monthlyNow": 125,
+          "completesBy": "2044-08",
+          "projectedAtDeadline": 455278,
           "status": "ON_TRACK"
         }
       ],
@@ -676,8 +673,8 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         {
           "month": "2028-05",
           "fromGoal": "emergency",
-          "amount": 310,
-          "text": "Emergency buffer complete: S$310/month moves to retirement"
+          "amount": 372,
+          "text": "Emergency buffer complete: S$372/month moves to retirement"
         },
         {
           "month": "2028-09",
@@ -704,11 +701,11 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "name": "Home first",
       "tagline": "BTO fund finishes early with a cushion for renovation",
       "routes": {
-        "emergency": 223,
+        "emergency": 269,
         "housing": 711,
         "education": 102,
         "custom": 0,
-        "wealth": 276
+        "wealth": 230
       },
       "unallocated": 0,
       "goals": [
@@ -717,12 +714,12 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "routeKey": "emergency",
           "name": "Emergency buffer",
           "targetAmount": 35400,
-          "startingAmount": 29100,
+          "startingAmount": 28000,
           "deadline": "2028-11",
           "requiredMonthly": 372,
-          "monthlyNow": 223,
+          "monthlyNow": 269,
           "completesBy": "2028-11",
-          "projectedAtDeadline": 35415,
+          "projectedAtDeadline": 35402,
           "status": "ON_TRACK"
         },
         {
@@ -759,9 +756,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 120,
-          "completesBy": "2045-04",
-          "projectedAtDeadline": 404058,
+          "monthlyNow": 100,
+          "completesBy": "2045-05",
+          "projectedAtDeadline": 404580,
           "status": "ON_TRACK"
         },
         {
@@ -772,9 +769,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 156,
+          "monthlyNow": 130,
           "completesBy": "2044-08",
-          "projectedAtDeadline": 457226,
+          "projectedAtDeadline": 454225,
           "status": "ON_TRACK"
         }
       ],
@@ -788,8 +785,8 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         {
           "month": "2028-11",
           "fromGoal": "emergency",
-          "amount": 223,
-          "text": "Emergency buffer complete: S$223/month moves to retirement"
+          "amount": 269,
+          "text": "Emergency buffer complete: S$269/month moves to retirement"
         },
         {
           "month": "2042-08",
@@ -803,7 +800,8 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "recommended": false,
       "tradeOffs": [
         "Emergency buffer completes later (2028-11 vs 2028-05).",
-        "BTO home purchase fund completes earlier (2028-07 vs 2028-09)."
+        "BTO home purchase fund completes earlier (2028-07 vs 2028-09).",
+        "Retirement starts with S$10/month more."
       ]
     },
     {
@@ -811,11 +809,11 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "name": "Education first",
       "tagline": "Front-loads education savings while time in the market is longest",
       "routes": {
-        "emergency": 223,
+        "emergency": 269,
         "housing": 618,
         "education": 153,
         "custom": 0,
-        "wealth": 318
+        "wealth": 272
       },
       "unallocated": 0,
       "goals": [
@@ -824,12 +822,12 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "routeKey": "emergency",
           "name": "Emergency buffer",
           "targetAmount": 35400,
-          "startingAmount": 29100,
+          "startingAmount": 28000,
           "deadline": "2028-11",
           "requiredMonthly": 372,
-          "monthlyNow": 223,
+          "monthlyNow": 269,
           "completesBy": "2028-11",
-          "projectedAtDeadline": 35415,
+          "projectedAtDeadline": 35402,
           "status": "ON_TRACK"
         },
         {
@@ -866,9 +864,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 138,
-          "completesBy": "2045-06",
-          "projectedAtDeadline": 400443,
+          "monthlyNow": 118,
+          "completesBy": "2045-07",
+          "projectedAtDeadline": 399415,
           "status": "ON_TRACK"
         },
         {
@@ -879,9 +877,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 180,
-          "completesBy": "2044-10",
-          "projectedAtDeadline": 452256,
+          "monthlyNow": 154,
+          "completesBy": "2044-11",
+          "projectedAtDeadline": 450930,
           "status": "ON_TRACK"
         }
       ],
@@ -895,8 +893,8 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         {
           "month": "2028-11",
           "fromGoal": "emergency",
-          "amount": 223,
-          "text": "Emergency buffer complete: S$223/month moves to retirement"
+          "amount": 269,
+          "text": "Emergency buffer complete: S$269/month moves to retirement"
         },
         {
           "month": "2039-03",
@@ -911,7 +909,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "tradeOffs": [
         "Emergency buffer completes later (2028-11 vs 2028-05).",
         "Percy's education completes earlier (2039-03 vs 2042-08).",
-        "Retirement starts with S$36/month more."
+        "Retirement starts with S$52/month more."
       ]
     }
   ]
@@ -952,19 +950,19 @@ export const FALLBACK_GROW: GrowOverview = {
       {
         "goalKey": "retirement_primary",
         "goalName": "Alex's retirement",
-        "monthlyAmount": 122,
+        "monthlyAmount": 95,
         "product": "OCBC RoboInvest",
         "horizon": "2060-11"
       },
       {
         "goalKey": "retirement_partner",
         "goalName": "Lila's retirement",
-        "monthlyAmount": 160,
+        "monthlyAmount": 125,
         "product": "OCBC RoboInvest",
         "horizon": "2062-11"
       }
     ],
-    "totalMonthly": 384,
+    "totalMonthly": 322,
     "handoff": {
       "label": "Continue in OCBC",
       "destination": "OCBC investment set-up",

@@ -80,7 +80,7 @@ function MainAppContent() {
               OWNLYplan progress instead of restarting onboarding. */}
           {planMounted && (
             <View style={[styles.fill, screen !== 'plan' && styles.hidden]}>
-              <PlanTabShell authenticatedProfile={authenticatedProfile} initialPill={planEntryPill} activePlan={activePlan} onPlanActivated={setActivePlan} onNav={nav} onHelp={() => setShowHelp(true)} />
+              <PlanTabShell authenticatedProfile={authenticatedProfile} initialPill={planEntryPill} activePlan={activePlan} onPlanActivated={setActivePlan} onPlanCleared={() => setActivePlan(null)} onNav={nav} onHelp={() => setShowHelp(true)} />
             </View>
           )}
         </View>

@@ -27,7 +27,7 @@ async function runE2ETests() {
     // 1.2 Family Financial Workspace
     const ws1 = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
     assert(Number.isFinite(ws1.summary.netWorth), 'Household net worth calculated from MyInfo and OCBC');
-    assert.strictEqual(ws1.summary.totalLiquidCash, 27650, 'Alex and joint OCBC cash before Lila consents');
+    assert.strictEqual(ws1.summary.totalLiquidCash, 9200, 'Only the joint account counts until someone shares');
     console.log(`  ✓ Workspace Built: Net Worth = S$${ws1.summary.netWorth.toLocaleString()}, Surplus = S$${ws1.summary.monthlySurplus}/mo`);
 
     // 1.3 4-Agent Execution
@@ -89,6 +89,11 @@ async function runE2ETests() {
     const approvedStatus = await fetch(`${baseUrl}/api/auth/family/status`).then(r => r.json());
     assert.strictEqual(approvedStatus.allApproved, true, 'Consent resolves after the simulated delay');
     assert(approvedStatus.members.every(m => m.status === 'APPROVED'), 'All members approved');
+    await fetch(`${baseUrl}/api/household/sharing`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountNumber: '512-882910-001', sharing: 'FULL' }) });
+    const ws2 = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
+    assert.strictEqual(ws2.partnerConsent, 'APPROVED');
+    assert.strictEqual(ws2.summary.totalLiquidCash, 32200, 'Alex shared his account; Lila shared her Frank account only');
+    assert(ws2.accounts.some(a => a.owner === 'partner' && a.sharing === 'PRIVATE' && a.balance === null), 'Lila\'s savings stay private');
     console.log('  ✓ Accounts Connected — all household members approved\n');
 
     // -------------------------------------------------------------

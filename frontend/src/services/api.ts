@@ -81,7 +81,7 @@ export interface HouseholdWorkspace {
   success: boolean;
   lastSynced: string;
   sources: string[];
-  partnerConsent: 'NONE' | 'NOT_INVITED' | 'PENDING' | 'APPROVED';
+  partnerConsent: 'NONE' | 'NOT_INVITED' | 'PENDING' | 'APPROVED' | 'LEFT';
   summary: {
     totalLiquidCash: number;
     totalInvestments: number;
@@ -478,6 +478,14 @@ class ApiService {
     return this.request(`/api/household/goals/${encodeURIComponent(key)}`, {
       method: 'PUT',
       body: JSON.stringify(patch)
+    });
+  }
+
+  // Anyone can leave: the partner (simulated from their own app) or you, which deletes the plan.
+  async leaveHousehold(member: 'primary' | 'partner'): Promise<{ success: boolean; reviewNote?: string; deleted?: boolean }> {
+    return this.request('/api/household/leave', {
+      method: 'POST',
+      body: JSON.stringify({ member })
     });
   }
 

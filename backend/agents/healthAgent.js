@@ -1,4 +1,5 @@
 const { spareCash } = require('../services/goalModel');
+const { plannableAccounts } = require('../services/workspaceService');
 
 class HealthAgent {
   async analyze(household) {
@@ -20,7 +21,7 @@ class HealthAgent {
     const protectionGap = Math.max(0, recommendedLife - existingLife);
 
     // Idle Cash Analysis
-    const lowYieldCash = accounts.ocbc.reduce((sum, account) => (
+    const lowYieldCash = plannableAccounts(household).reduce((sum, account) => (
       account.interestRate <= 0.05 ? sum + Number(account.balance || 0) : sum
     ), 0);
     const idleCashInLowYield = spareCash(household);

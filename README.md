@@ -70,7 +70,8 @@ The prototype has one coherent sandbox household used by login, the household wo
 | `/api/auth/mockpass/callback` | `GET` | Exchange the one-time authorization code |
 | `/api/auth/mockpass/session/:id` | `GET` | Consume the authenticated sandbox profile once |
 | `/api/household/workspace` | `GET` | Family workspace: MyInfo CPF plus consented OCBC accounts |
-| `/api/household/sharing` | `POST` | Set an account to shared, total-only or private |
+| `/api/household/sharing` | `POST` | Share an account (personal accounts start private; joint accounts are visible to both holders) |
+| `/api/household/leave` | `POST` | Anyone can leave: the partner's data stops being used, or the primary user deletes the household plan |
 | `/api/household/picture` | `GET` | Cash flow, goals with deadlines/dependencies, support per goal |
 | `/api/household/goals` | `GET` | Goal suggestions (with sources), the family's inputs and each goal's status |
 | `/api/household/goals/:key` | `PUT` | Confirm or edit a goal; only the owner can confirm a personal goal |

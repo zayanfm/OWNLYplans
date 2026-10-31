@@ -241,19 +241,20 @@ export const FALLBACK_FAMILY_MEMBERS = [
   { id: 'child-1', name: 'Percy Lim', relation: 'Child', maskedNric: 'T****91Z' },
 ];
 
-// Offline mirror of GET /api/household/workspace once Lila has approved the invite.
+// Offline mirror of GET /api/household/workspace once Lila has approved the invite: her Frank
+// account is shared, her savings stay private, and Alex has not yet shared his own account.
 export const FALLBACK_WORKSPACE: HouseholdWorkspace = {
   success: true,
   lastSynced: new Date().toISOString(),
   sources: ['Singpass MyInfo', 'OCBC accounts'],
   partnerConsent: 'APPROVED',
   summary: {
-    totalLiquidCash: 36000,
+    totalLiquidCash: 13750,
     totalInvestments: 14200,
     householdCpfTotal: 164000,
-    totalAssets: 214200,
+    totalAssets: 191950,
     totalLiabilities: 0,
-    netWorth: 214200,
+    netWorth: 191950,
     monthlyHouseholdIncome: 10300,
     monthlyHouseholdTakeHome: 8240,
     monthlyHouseholdExpenses: 6900,
@@ -262,10 +263,10 @@ export const FALLBACK_WORKSPACE: HouseholdWorkspace = {
     emergencyBufferMonths: 4.1,
   },
   accounts: [
-    { owner: 'primary', sharing: 'FULL', status: 'CONNECTED', countsTowardTotals: true, type: 'OCBC 360 Account', number: '512-882910-001', holder: 'Alex Lim', role: 'Emergency / Salary credit', balance: 18450, interestRate: 0.05 },
+    { owner: 'primary', sharing: 'PRIVATE', status: 'CONNECTED', countsTowardTotals: false, type: 'OCBC 360 Account', number: '512-882910-001', holder: 'Alex Lim', role: 'Emergency / Salary credit', balance: 18450, interestRate: 0.05 },
     { owner: 'joint', sharing: 'FULL', status: 'CONNECTED', countsTowardTotals: true, type: 'OCBC 360 Joint Account', number: '512-773104-003', holder: 'Alex Lim & Lila Tan', role: 'Joint household bills', balance: 9200, interestRate: 0.05 },
     { owner: 'partner', sharing: 'FULL', status: 'CONNECTED', countsTowardTotals: true, type: 'OCBC Frank Account', number: '512-441920-002', holder: 'Lila Tan', role: 'Daily Expenses', balance: 4550, interestRate: 0.05 },
-    { owner: 'partner', sharing: 'TOTAL_ONLY', status: 'CONNECTED', countsTowardTotals: true, type: "Lila's OCBC account", number: null, holder: 'Lila Tan', role: null, balance: 3800, interestRate: null },
+    { owner: 'partner', sharing: 'PRIVATE', status: 'CONNECTED', countsTowardTotals: false, type: "Lila's OCBC account", number: null, holder: 'Lila Tan', role: null, balance: null, interestRate: null },
   ],
   investments: [{ platform: 'OCBC RoboInvest', name: 'Global Balanced Growth Portfolio', value: 14200, owner: 'primary' }],
 };

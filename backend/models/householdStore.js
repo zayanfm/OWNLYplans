@@ -110,15 +110,54 @@ class HouseholdStore {
 
     if (approved) {
       record.members.forEach((m) => {
-        m.status = 'APPROVED';
+        if (m.status === 'PENDING') m.status = 'APPROVED';
       });
+      if (!record.consentApplied) {
+        record.consentApplied = true;
+        this.applyPartnerConsent(householdId);
+      }
     }
 
     return {
       invitedAt: record.invitedAt,
-      allApproved: approved,
+      allApproved: approved && record.members.every((m) => m.status === 'APPROVED'),
       members: record.members
     };
+  }
+
+  // The partner's own choices from their app (simulated): only the accounts they pick are shared.
+  applyPartnerConsent(householdId) {
+    const household = this.getHousehold(householdId);
+    const choices = household?.partner?.consentChoices;
+    if (!choices) return;
+    household.accounts.ocbc
+      .filter((account) => account.owner === 'partner' && choices.shareAccounts.includes(account.number))
+      .forEach((account) => { account.sharing = 'FULL'; });
+    this.recordAudit(householdId, 'PARTNER_CONSENT_APPLIED', { sharedAccounts: choices.shareAccounts.length });
+  }
+
+  /**
+   * Anyone can leave. When the partner leaves, their income, accounts, CPF and personal goals stop
+   * being used, any open proposal or custom plan is withdrawn, and the active plan needs review.
+   */
+  partnerLeaves(householdId = this.activePersonaId) {
+    const household = this.getHousehold(householdId);
+    if (!household?.partner || household.partner.left) return null;
+    const { partner, financials } = household;
+    partner.left = true;
+    financials.householdTakeHome -= Number(partner.monthlyTakeHome || 0);
+    financials.householdMonthlyIncome -= Number(partner.monthlyGrossIncome || 0);
+    financials.monthlySurplus = financials.householdTakeHome - financials.householdMonthlyExpenses;
+    const invite = this.familyInvites[householdId];
+    (invite?.members || []).filter((m) => m.relation === 'Spouse').forEach((m) => { m.status = 'LEFT'; });
+    delete this.proposals[householdId];
+    delete this.customPlans[householdId];
+    const { retirement_partner: removedGoal, ...goals } = this.getGoalInputs(householdId);
+    this.goalInputs[householdId] = goals;
+    if (household.activePlan) household.activePlan.status = 'NEEDS_REVIEW';
+    household.reviewNote = `${partner.name.split(' ')[0]} left. Shared commitments were planned with two incomes; review them now.`;
+    this.recordAudit(householdId, 'MEMBER_LEFT', { member: 'partner' });
+    return household;
   }
 
   getCustomPlan(householdId = this.activePersonaId) {

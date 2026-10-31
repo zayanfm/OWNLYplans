@@ -20,7 +20,7 @@ class CashflowService {
     const { primaryUser, partner, financials } = household;
     const income = [
       { owner: 'primary', name: primaryUser.name, monthlyTakeHome: Number(primaryUser.monthlyTakeHome || 0) },
-      ...(partner ? [{ owner: 'partner', name: partner.name, monthlyTakeHome: Number(partner.monthlyTakeHome || 0) }] : [])
+      ...(partner && !partner.left ? [{ owner: 'partner', name: partner.name, monthlyTakeHome: Number(partner.monthlyTakeHome || 0) }] : [])
     ];
     const totalTakeHome = Number(financials.householdTakeHome || income.reduce((sum, item) => sum + item.monthlyTakeHome, 0));
 

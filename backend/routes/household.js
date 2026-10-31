@@ -3,6 +3,7 @@ const router = express.Router();
 const workspaceService = require('../services/workspaceService');
 const pictureService = require('../services/pictureService');
 const goalInputService = require('../services/goalInputService');
+const householdStore = require('../models/householdStore');
 
 /**
  * GET /api/household/workspace
@@ -78,6 +79,32 @@ router.post('/goals', (req, res) => {
 router.delete('/goals/:key', (req, res) => {
   try {
     res.json({ success: true, ...goalInputService.remove(req.query.householdId, req.params.key) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/household/leave
+ * Anyone can leave. member 'partner': the partner leaves the household (their data stops being
+ * used). member 'primary': you leave and your OWNLYplan household data is deleted.
+ */
+router.post('/leave', (req, res) => {
+  try {
+    const { householdId, member } = req.body || {};
+    const household = goalInputService.household(householdId);
+    if (member === 'primary') {
+      householdStore.reset(household.id);
+      return res.json({ success: true, member, deleted: true });
+    }
+    if (member !== 'partner') {
+      return res.status(400).json({ success: false, error: 'member must be primary or partner' });
+    }
+    const updated = householdStore.partnerLeaves(household.id);
+    if (!updated) {
+      return res.status(409).json({ success: false, error: 'There is no partner in this household' });
+    }
+    res.json({ success: true, member, reviewNote: updated.reviewNote, monthlySurplus: updated.financials.monthlySurplus });
   } catch (error) {
     sendError(res, error);
   }
