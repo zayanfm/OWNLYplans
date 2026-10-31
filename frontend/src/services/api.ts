@@ -189,7 +189,7 @@ export interface FamilyPicture {
     income: Array<{ owner: string; name: string; monthlyTakeHome: number }>;
     totalTakeHome: number;
     commitments: Commitment[];
-    groups: Array<{ category: string; label: string; monthlyAmount: number; items: Commitment[] }>;
+    groups: Array<{ category: string; label: string; monthlyAmount: number; items: Commitment[]; benchmark: { amount: number; label: string; source: string } | null }>;
     totalCommitments: number;
     essentialMonthly: number;
     flexibleMonthly: number;

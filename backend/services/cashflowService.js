@@ -10,6 +10,16 @@ const CATEGORY_LABELS = {
   LIFESTYLE: 'Lifestyle'
 };
 
+// Average monthly household expenditure, SingStat Household Expenditure Survey 2023. Only
+// categories with a like-for-like survey category are compared; the rest show no benchmark.
+const BENCHMARK_SOURCE = 'SingStat average monthly household expenditure, 2023';
+const BENCHMARKS = {
+  HOUSING: { amount: 2122, label: 'housing and related' },
+  LIVING: { amount: 1422 + 951 + 270, label: 'food, transport, and information and communication' },
+  CHILDCARE: { amount: 404, label: 'education' },
+  LIFESTYLE: { amount: 335 + 120, label: 'recreation, sport and culture, and clothing' }
+};
+
 class CashflowService {
   /**
    * Household Cash Flow & Commitment Analysis: take-home income minus itemised commitments.
@@ -31,7 +41,13 @@ class CashflowService {
 
     const groups = Object.values(commitments.reduce((acc, item) => {
       const key = item.category;
-      acc[key] = acc[key] || { category: key, label: CATEGORY_LABELS[key] || key, monthlyAmount: 0, items: [] };
+      acc[key] = acc[key] || {
+        category: key,
+        label: CATEGORY_LABELS[key] || key,
+        monthlyAmount: 0,
+        items: [],
+        benchmark: BENCHMARKS[key] ? { ...BENCHMARKS[key], source: BENCHMARK_SOURCE } : null
+      };
       acc[key].monthlyAmount += item.monthlyAmount;
       acc[key].items.push(item);
       return acc;

@@ -4,18 +4,18 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 const HIGHLIGHTS = [
   {
     icon: '👨‍👩‍👦',
-    title: 'One household view',
-    detail: 'Every member, account, CPF balance and goal in a single place.',
+    title: 'Decide together',
+    detail: 'Home, children and retirement compete for the same money. See the trade-offs side by side and agree on them as a family.',
   },
   {
     icon: '🇸🇬',
-    title: 'Never miss a grant',
-    detail: 'We scan HDB, CPF and MSF schemes your family is eligible for.',
+    title: 'Support in context',
+    detail: 'Government support is estimated from published rules and shown inside the goal it helps, for you to confirm.',
   },
   {
     icon: '🧠',
-    title: 'We guide. You decide.',
-    detail: 'Explainable next-best actions — every decision stays with you.',
+    title: 'We suggest. You decide.',
+    detail: 'You set every goal and date. Nothing moves without your OK, and you share only what you choose.',
   },
 ];
 
@@ -41,8 +41,8 @@ export const IntroStep: React.FC<{ onStart: () => void; onHelp?: () => void }> =
 
       <Text style={styles.title}>OWNLYplan</Text>
       <Text style={styles.description}>
-        Your family&apos;s finances, life stages and government support brought into one evolving plan.
-        OWNLYplan connects your household through Singpass and your OCBC accounts, then keeps the plan up to
+        Bring your family together to work through competing financial priorities, one step at a time.
+        OWNLYplan uses Singpass and the OCBC accounts each of you chooses to share, then keeps the plan up to
         date as life changes.
       </Text>
 

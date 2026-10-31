@@ -81,6 +81,8 @@ async function runTests() {
   assert.strictEqual(cashflow.totalCommitments, 6900, 'Itemised commitments match household expenses');
   assert.strictEqual(cashflow.freeToPlan, 1340, 'Free-to-plan equals the monthly surplus');
   assert.strictEqual(cashflow.essentialMonthly, 5900);
+  assert.strictEqual(cashflow.groups.find(g => g.category === 'HOUSING').benchmark.amount, 2122, 'Housing compared with the SingStat 2023 average');
+  assert.strictEqual(cashflow.groups.find(g => g.category === 'FAMILY').benchmark, null, 'No benchmark without a like-for-like category');
   console.log('✓ Cashflow Free To Plan:', cashflow.freeToPlan);
 
   // 2c. Goal optimiser

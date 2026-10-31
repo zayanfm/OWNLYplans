@@ -125,7 +125,12 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": true,
             "owner": "joint"
           }
-        ]
+        ],
+        "benchmark": {
+          "amount": 2643,
+          "label": "food, transport, and information and communication",
+          "source": "SingStat average monthly household expenditure, 2023"
+        }
       },
       {
         "category": "HOUSING",
@@ -140,7 +145,12 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": true,
             "owner": "joint"
           }
-        ]
+        ],
+        "benchmark": {
+          "amount": 2122,
+          "label": "housing and related",
+          "source": "SingStat average monthly household expenditure, 2023"
+        }
       },
       {
         "category": "CHILDCARE",
@@ -155,7 +165,12 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": true,
             "owner": "joint"
           }
-        ]
+        ],
+        "benchmark": {
+          "amount": 404,
+          "label": "education",
+          "source": "SingStat average monthly household expenditure, 2023"
+        }
       },
       {
         "category": "LIFESTYLE",
@@ -170,7 +185,12 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": false,
             "owner": "joint"
           }
-        ]
+        ],
+        "benchmark": {
+          "amount": 455,
+          "label": "recreation, sport and culture, and clothing",
+          "source": "SingStat average monthly household expenditure, 2023"
+        }
       },
       {
         "category": "FAMILY",
@@ -185,7 +205,8 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": true,
             "owner": "joint"
           }
-        ]
+        ],
+        "benchmark": null
       },
       {
         "category": "INSURANCE",
@@ -200,7 +221,8 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": true,
             "owner": "joint"
           }
-        ]
+        ],
+        "benchmark": null
       },
       {
         "category": "SAVINGS",
@@ -215,7 +237,8 @@ export const FALLBACK_PICTURE: FamilyPicture = {
             "essential": false,
             "owner": "primary"
           }
-        ]
+        ],
+        "benchmark": null
       }
     ],
     "totalCommitments": 6900,

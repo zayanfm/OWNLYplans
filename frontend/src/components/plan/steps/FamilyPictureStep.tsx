@@ -174,7 +174,10 @@ export const FamilyPictureStep: React.FC<{
           {cashflow.groups.map((group, index) => (
             <View key={group.category} style={stepStyles.row}>
               <View style={[styles.dot, { backgroundColor: GROUP_COLORS[index % GROUP_COLORS.length] }]} />
-              <Text style={stepStyles.rowLabel}>{group.label}</Text>
+              <View style={styles.flex}>
+                <Text style={stepStyles.rowLabel}>{group.label}</Text>
+                {group.benchmark ? <Text style={styles.benchmark}>Average household: {money(group.benchmark.amount)}</Text> : null}
+              </View>
               <Text style={stepStyles.rowValue}>−{money(group.monthlyAmount)}</Text>
             </View>
           ))}
@@ -183,7 +186,7 @@ export const FamilyPictureStep: React.FC<{
             <Text style={styles.freeValue}>{money(cashflow.freeToPlan)}/month</Text>
           </View>
           <Text style={stepStyles.note}>
-            {money(cashflow.essentialMonthly)} is essential; {money(cashflow.flexibleMonthly)} is flexible. Account balances are not treated as spendable income.
+            {money(cashflow.essentialMonthly)} is essential; {money(cashflow.flexibleMonthly)} is flexible. Account balances are not treated as spendable income. Averages: {cashflow.groups.find((group) => group.benchmark)?.benchmark?.source || 'SingStat'}, for context only.
           </Text>
         </View>
 
@@ -258,6 +261,7 @@ const styles = StyleSheet.create({
   offCard: { opacity: 0.6 },
   stackBar: { flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', marginVertical: 12 },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  benchmark: { fontSize: 10, color: COLORS.faint, marginTop: 1 },
   freeRow: { marginTop: 4, backgroundColor: COLORS.greenBg, borderRadius: 10, paddingHorizontal: 10 },
   freeLabel: { fontSize: 13, fontWeight: '900', color: COLORS.green, flex: 1 },
   freeValue: { fontSize: 15, fontWeight: '900', color: COLORS.green },
