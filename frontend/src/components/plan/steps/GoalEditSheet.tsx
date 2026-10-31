@@ -42,7 +42,7 @@ export const GoalEditSheet: React.FC<{
     if (!visible) return;
     const initial: Partial<GoalInput> = goal
       ? { ...goal }
-      : { type: 'CUSTOM', name: '', amount: 10000, dueDate: nextYearMonth(), priority: 3 };
+      : { type: 'CUSTOM', name: '', amount: 10000, dueDate: nextYearMonth() };
     setDraft(initial);
     setAmountText(String(initial.amount ?? ''));
     setCostText(String(initial.annualCost ?? ''));
@@ -63,7 +63,7 @@ export const GoalEditSheet: React.FC<{
         : { path: draft.path, startYear: draft.startYear, years: draft.years, annualCost: toNumber(costText), enabled: true };
     }
     if (type === 'RETIREMENT') return { retireAge: draft.retireAge, amount: toNumber(amountText), enabled: true };
-    return { name: draft.name, amount: toNumber(amountText), dueDate: draft.dueDate, priority: draft.priority, enabled: true };
+    return { name: draft.name, amount: toNumber(amountText), dueDate: draft.dueDate, enabled: true };
   };
 
   const save = async () => {
@@ -72,7 +72,7 @@ export const GoalEditSheet: React.FC<{
     try {
       if (creating) {
         const body = payload();
-        const result = await api.addGoal({ name: String(body.name || ''), amount: Number(body.amount), dueDate: String(body.dueDate), priority: Number(body.priority) });
+        const result = await api.addGoal({ name: String(body.name || ''), amount: Number(body.amount), dueDate: String(body.dueDate) });
         onSaved({ key: result.goal.key, input: result.goal });
       } else {
         const result = await api.updateGoal(goal.key, payload());
@@ -154,8 +154,7 @@ export const GoalEditSheet: React.FC<{
                 <Stepper label="Needed by" value={0} step={1} min={-600} max={600}
                   display={monthLabel(draft.dueDate)} onChange={(delta) => update({ dueDate: shiftMonth(String(draft.dueDate), delta) })} />
                 {type === 'CUSTOM' ? (
-                  <Stepper label="Priority (1 = highest)" value={draft.priority || 3} step={1} min={1} max={5}
-                    display={String(draft.priority || 3)} onChange={(priority) => update({ priority })} />
+                  <Text style={stepStyles.note}>You&apos;ll put all your goals in order of priority together when you build the plan.</Text>
                 ) : null}
               </>
             ) : null}

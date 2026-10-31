@@ -61,7 +61,8 @@ router.put('/goals/:key', (req, res) => {
 
 /**
  * POST /api/household/goals
- * Adds the family's own goal: name, amount, dueDate (YYYY-MM), priority 1-5.
+ * Adds the family's own goal: name, amount, dueDate (YYYY-MM). Its priority is set with the
+ * other goals when the family builds the plan.
  */
 router.post('/goals', (req, res) => {
   try {

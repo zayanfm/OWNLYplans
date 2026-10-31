@@ -95,7 +95,7 @@ const buildGoals = (household, options = {}) => {
     // CUSTOM: the family's own goal; short horizons stay in cash.
     const months = monthsUntil(input.dueDate, now);
     return {
-      ...base, name: input.name, category: 'CUSTOM', routeKey: 'custom', priority: 2 + input.priority,
+      ...base, name: input.name, category: 'CUSTOM', routeKey: 'custom', priority: 3,
       targetAmount: input.amount,
       currentAmount: 0,
       deadline: input.dueDate,

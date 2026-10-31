@@ -192,7 +192,7 @@ export const FamilyPictureStep: React.FC<{
 
         <Text style={[stepStyles.sectionLabel, styles.sectionGap]}>Our goals · {decided} of {decided + toDecide} decided</Text>
         <Text style={[stepStyles.note, styles.bottomGap]}>
-          Each goal starts as a suggestion with its source. You choose the amounts and dates; nothing is planned until you confirm it.
+          Each goal starts as a suggestion with its source. You choose the amounts and dates; nothing is planned until you confirm it. You&apos;ll put them in order of priority on the next step.
         </Text>
         {goals.map((goal) => <GoalCard key={goal.key} goal={goal} goalsByKey={goalsByKey} onPress={() => openGoal(goal.input)} />)}
         <TouchableOpacity style={[stepStyles.secondaryButton, styles.bottomGap]} onPress={() => openGoal(null)} activeOpacity={0.8}>

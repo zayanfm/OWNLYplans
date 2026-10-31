@@ -64,7 +64,7 @@ async function testApi() {
       const put = await fetch(`${baseUrl}/api/household/goals/${goal.key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json());
       assert(put.goal.confirmed, `${goal.key} confirmed`);
     }
-    const customRes = await fetch(`${baseUrl}/api/household/goals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Renovation', amount: 25000, dueDate: '2029-01', priority: 2 }) }).then(r => r.json());
+    const customRes = await fetch(`${baseUrl}/api/household/goals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Renovation', amount: 25000, dueDate: '2029-01' }) }).then(r => r.json());
     assert(customRes.goal.key.startsWith('custom_'), 'Custom goal added');
     const deleted = await fetch(`${baseUrl}/api/household/goals/${customRes.goal.key}`, { method: 'DELETE' }).then(r => r.json());
     assert(deleted.removed, 'Custom goal removed');

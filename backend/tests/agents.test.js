@@ -67,7 +67,7 @@ async function runTests() {
   const polyGoal = (await goalsAgent.analyze(alexHousehold)).goals.find(g => g.key === 'education');
   assert.strictEqual(polyGoal.deadline, '2040-08');
   assert.strictEqual(polyGoal.targetAmount, 9300, 'Polytechnic: 3 years at the suggested S$3,100');
-  const custom = goalInputService.addCustom('alex_family', { name: 'Family car', amount: 30000, dueDate: '2030-06', priority: 2 });
+  const custom = goalInputService.addCustom('alex_family', { name: 'Family car', amount: 30000, dueDate: '2030-06' });
   assert((await goalsAgent.analyze(alexHousehold)).goals.some(g => g.key === custom.key && g.planned), 'Custom goals are planned');
   goalInputService.remove('alex_family', custom.key);
   goalInputService.remove('alex_family', 'emergency');

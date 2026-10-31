@@ -13,8 +13,7 @@ const LIMITS = {
   retireAge: [55, 70],
   years: [1, 6],
   annualCost: [0, 100000],
-  amount: [1000, 2000000],
-  priority: [1, 5]
+  amount: [1000, 2000000]
 };
 
 const inRange = (value, [min, max]) => Number.isFinite(value) && value >= min && value <= max;
@@ -129,7 +128,6 @@ class GoalInputService {
       if (current.type === 'CUSTOM') {
         next.name = patch.name === undefined ? current.name : String(patch.name).trim().slice(0, 40);
         if (!next.name) throw this.error(400, 'name is required');
-        next.priority = check('priority', number('priority'));
       }
     } else if (current.type === 'EDUCATION') {
       const path = patch.path === undefined ? current.path : String(patch.path);
@@ -162,16 +160,17 @@ class GoalInputService {
     return { key, ...saved };
   }
 
-  addCustom(householdId, { name, amount, dueDate, priority = 3 } = {}) {
+  // Priority is not set here: the family orders all goals together when building the plan.
+  addCustom(householdId, { name, amount, dueDate } = {}) {
     const household = this.household(householdId);
     const key = `custom_${Date.now().toString(36)}`;
     householdStore.saveGoalInput(household.id, key, {
       key, type: 'CUSTOM', owner: 'household', enabled: true, confirmed: false,
-      name: '', amount: 0, dueDate: null, priority: 3,
+      name: '', amount: 0, dueDate: null,
       source: 'Your own goal.'
     });
     try {
-      return this.update(household.id, key, { name, amount, dueDate, priority });
+      return this.update(household.id, key, { name, amount, dueDate });
     } catch (error) {
       householdStore.removeGoalInput(household.id, key);
       throw error;

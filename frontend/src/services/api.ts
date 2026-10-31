@@ -142,7 +142,6 @@ export interface GoalInput {
   adultName?: string;
   retireAge?: number;
   name?: string;
-  priority?: number;
   suggested?: Partial<GoalInput>;
 }
 
@@ -489,7 +488,7 @@ class ApiService {
     });
   }
 
-  async addGoal(goal: { name: string; amount: number; dueDate: string; priority: number }): Promise<{ success: boolean; goal: GoalInput }> {
+  async addGoal(goal: { name: string; amount: number; dueDate: string }): Promise<{ success: boolean; goal: GoalInput }> {
     return this.request('/api/household/goals', {
       method: 'POST',
       body: JSON.stringify(goal)
