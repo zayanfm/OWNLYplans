@@ -18,7 +18,7 @@ class GoalsAgent {
     const timelineYears = Number(options.timelineYears || 5);
     const months = timelineYears * 12;
     const deadline = addYearsIso(timelineYears);
-    const liquidCash = [...(accounts.ocbc || []), ...(accounts.otherBanks || [])]
+    const liquidCash = (accounts.ocbc || [])
       .reduce((sum, account) => sum + Number(account.balance || 0), 0);
     const investments = (accounts.investments || []).reduce((sum, item) => sum + Number(item.value || 0), 0);
     const availableBeyondEmergency = Math.max(0, liquidCash - Number(financials.emergencyFund || 0));

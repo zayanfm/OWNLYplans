@@ -285,7 +285,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
               <Text style={styles.greetingText}>{getGreeting()}, {primaryName}</Text>
               <Text style={styles.welcomeText}>Your OWNLYplan</Text>
               <Text style={styles.planStatusText}>{label} · Active · {activePlan?.predictionScenario || 'balanced'} outlook</Text>
-              <Text style={styles.syncText}>SGFinDex synced {lastSyncedLabel}</Text>
+              <Text style={styles.syncText}>OCBC synced {lastSyncedLabel}</Text>
               <Text style={styles.intelligenceSourceText}>
                 {analysis?.intelligenceSource === 'GEMINI_2_5_FLASH' ? 'Gemini-enhanced explanation · verified calculations' : 'Explainable rules · deterministic fallback'}
               </Text>
@@ -311,7 +311,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
                 <Text style={styles.cardTitle}>How we calculated your surplus</Text>
                 <Text style={styles.cardSubHeader}>From linked household income and spending</Text>
               </View>
-              <View style={styles.verifiedPill}><Text style={styles.verifiedPillText}>SGFinDex</Text></View>
+              <View style={styles.verifiedPill}><Text style={styles.verifiedPillText}>MyInfo + OCBC</Text></View>
             </View>
             <View style={styles.surplusEquation}>
               <View><Text style={styles.equationLabel}>Take-home</Text><Text style={styles.equationValue}>S${(snapshot?.monthlyTakeHome || aggregate?.summary?.monthlyHouseholdTakeHome || 0).toLocaleString()}</Text></View>

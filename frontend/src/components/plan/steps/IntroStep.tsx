@@ -42,7 +42,7 @@ export const IntroStep: React.FC<{ onStart: () => void; onHelp?: () => void }> =
       <Text style={styles.title}>OWNLYplan</Text>
       <Text style={styles.description}>
         Your family&apos;s finances, life stages and government support brought into one evolving plan.
-        OWNLYplan connects your household through Singpass and SGFinDex, then keeps the plan up to
+        OWNLYplan connects your household through Singpass and your OCBC accounts, then keeps the plan up to
         date as life changes.
       </Text>
 

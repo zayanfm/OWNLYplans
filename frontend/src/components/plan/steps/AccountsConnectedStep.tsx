@@ -27,7 +27,7 @@ export const AccountsConnectedStep: React.FC<{
             <Text style={styles.summaryValue}>{linked.length + 1}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Institutions aggregated</Text>
+            <Text style={styles.summaryLabel}>OCBC accounts connected</Text>
             <Text style={styles.summaryValue}>{institutionsCount}</Text>
           </View>
           <View style={styles.summaryRow}>

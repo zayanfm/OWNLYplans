@@ -50,7 +50,7 @@ export const MyInfoReviewStep: React.FC<{
         <View style={styles.insightCard}>
           <Text style={styles.insightTitle}>Your verified profile</Text>
           <Text style={styles.insightBody}>
-            OWNLYplan will next connect financial data through SGFinDex. Any eligible dependents
+            OWNLYplan will next connect your OCBC accounts. Any eligible dependents
             returned by the sandbox can then be invited through the simulated consent journey.
           </Text>
         </View>

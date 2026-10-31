@@ -20,7 +20,7 @@ class HealthAgent {
     const protectionGap = Math.max(0, recommendedLife - existingLife);
 
     // Idle Cash Analysis
-    const lowYieldCash = [...accounts.ocbc, ...accounts.otherBanks].reduce((sum, account) => (
+    const lowYieldCash = accounts.ocbc.reduce((sum, account) => (
       account.interestRate <= 0.05 ? sum + Number(account.balance || 0) : sum
     ), 0);
     const idleCashInLowYield = Math.max(0, lowYieldCash - emergencyFund);
@@ -57,7 +57,7 @@ class HealthAgent {
       findings: [
         `Emergency buffer stands at ${bufferMonths} months of household expenses (target: 6 months).`,
         idleCashInLowYield > 0
-          ? `S$${idleCashInLowYield.toLocaleString()} idle cash is earning 0.05% base interest across secondary accounts.`
+          ? `S$${idleCashInLowYield.toLocaleString()} idle cash in OCBC accounts is above the emergency floor and earning 0.05% base interest.`
           : `Cash balances are efficiently deployed across high-yield vaults.`,
         protectionGap > 0
           ? `Identified S$${protectionGap.toLocaleString()} family protection gap against outstanding liabilities.`

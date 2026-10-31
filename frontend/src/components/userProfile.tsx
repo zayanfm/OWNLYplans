@@ -50,7 +50,7 @@ export const UserProfile: React.FC<{
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Your Household Profile</Text>
-        <Text style={styles.subtitle}>Verified Singpass & SGFinDex baseline for OWNLYplans</Text>
+        <Text style={styles.subtitle}>Verified Singpass & OCBC baseline for OWNLYplans</Text>
 
         {loading ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
@@ -60,7 +60,7 @@ export const UserProfile: React.FC<{
         ) : (
           <View style={styles.card}>
             <View style={styles.statusBanner}>
-              <Text style={styles.statusText}>🔒 MockPass Sandbox | SGFinDex Connected</Text>
+              <Text style={styles.statusText}>🔒 MockPass Sandbox | OCBC Connected</Text>
             </View>
 
             <View style={styles.profileSection}>
@@ -96,7 +96,7 @@ export const UserProfile: React.FC<{
               </View>
 
               <Text style={styles.disclaimer}>
-                These details are auto-synced via MockPass & SGFinDex and cannot be edited here.
+                These details are auto-synced via MockPass & OCBC and cannot be edited here.
               </Text>
             </View>
           </View>

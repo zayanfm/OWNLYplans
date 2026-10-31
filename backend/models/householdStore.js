@@ -117,6 +117,16 @@ class HouseholdStore {
     };
   }
 
+  addManualAsset(householdId = this.activePersonaId, asset) {
+    const household = this.getHousehold(householdId);
+    if (!household) return null;
+
+    const saved = { id: `manual-${Date.now().toString(36)}`, selfDeclared: true, ...asset };
+    household.manualAssets = [...(household.manualAssets || []), saved];
+    this.recordAudit(householdId, 'ADD_MANUAL_ASSET', { label: saved.label, balance: saved.balance });
+    return saved;
+  }
+
   approveSurplusPlan(householdId = this.activePersonaId, planDetails) {
     const household = this.getHousehold(householdId);
     if (!household) return null;

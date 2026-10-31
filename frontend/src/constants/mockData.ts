@@ -1,4 +1,5 @@
 // frontend/src/constants/mockData.ts
+import type { HouseholdWorkspace } from '../services/api';
 
 export interface AgentStatus {
   id: string;
@@ -240,23 +241,20 @@ export const FALLBACK_FAMILY_MEMBERS = [
   { id: 'child-1', name: 'Percy Lim', relation: 'Child', maskedNric: 'T****91Z' },
 ];
 
-export const FALLBACK_SGFINDEX_INSTITUTIONS = [
-  { id: 'ocbc', name: 'OCBC Bank', detail: 'Deposits, cards & investments' },
-  { id: 'dbs', name: 'DBS Bank', detail: 'Multiplier Account' },
-  { id: 'uob', name: 'UOB Bank', detail: 'One Account' },
-  { id: 'cpf', name: 'CPF Board', detail: 'OA · SA · MediSave' },
-  { id: 'iras', name: 'IRAS', detail: 'Notice of Assessment' },
-];
-
-export const FALLBACK_SGFINDEX_AGGREGATE = {
+// Offline mirror of GET /api/household/workspace once Lila has approved the invite.
+export const FALLBACK_WORKSPACE: HouseholdWorkspace = {
   success: true,
+  lastSynced: new Date().toISOString(),
+  sources: ['Singpass MyInfo', 'OCBC accounts'],
+  partnerConsent: 'APPROVED',
   summary: {
     totalLiquidCash: 36000,
     totalInvestments: 14200,
+    totalManualAssets: 5000,
     householdCpfTotal: 164000,
-    totalAssets: 214200,
+    totalAssets: 219200,
     totalLiabilities: 0,
-    netWorth: 214200,
+    netWorth: 219200,
     monthlyHouseholdIncome: 10300,
     monthlyHouseholdTakeHome: 8240,
     monthlyHouseholdExpenses: 6900,
@@ -264,6 +262,14 @@ export const FALLBACK_SGFINDEX_AGGREGATE = {
     emergencyFund: 28000,
     emergencyBufferMonths: 4.1,
   },
+  accounts: [
+    { owner: 'primary', sharing: 'FULL', status: 'CONNECTED', countsTowardTotals: true, type: 'OCBC 360 Account', number: '512-882910-001', holder: 'Alex Lim', role: 'Emergency / Salary credit', balance: 18450, interestRate: 0.05 },
+    { owner: 'joint', sharing: 'FULL', status: 'CONNECTED', countsTowardTotals: true, type: 'OCBC 360 Joint Account', number: '512-773104-003', holder: 'Alex Lim & Lila Tan', role: 'Joint household bills', balance: 9200, interestRate: 0.05 },
+    { owner: 'partner', sharing: 'FULL', status: 'CONNECTED', countsTowardTotals: true, type: 'OCBC Frank Account', number: '512-441920-002', holder: 'Lila Tan', role: 'Daily Expenses', balance: 4550, interestRate: 0.05 },
+    { owner: 'partner', sharing: 'TOTAL_ONLY', status: 'CONNECTED', countsTowardTotals: true, type: "Lila's OCBC account", number: null, holder: 'Lila Tan', role: null, balance: 3800, interestRate: null },
+  ],
+  investments: [{ platform: 'OCBC RoboInvest', name: 'Global Balanced Growth Portfolio', value: 14200, owner: 'primary' }],
+  manualAssets: [{ id: 'manual-ssb', label: 'Singapore Savings Bonds', owner: 'primary', balance: 5000, selfDeclared: true }],
 };
 
 export const PLAN_MILESTONES: Record<string, Milestone[]> = {
@@ -284,7 +290,7 @@ export const PLAN_MILESTONES: Record<string, Milestone[]> = {
 };
 
 // Canonical OCBC-only balances, mirrored from backend/data/personas.json.
-// SGFinDex totals also include S$13,000 held at DBS/UOB and S$164,000 in CPF.
+// The household workspace also includes the joint account, Lila's accounts and S$164,000 in CPF.
 export const MOCK_OCBC_ACCOUNTS = [
   { id: 'frank', label: 'OCBC FRANK Account', maskedNumber: '•••• 0002', balance: 4550, debitCardNumber: '4532-7814-9206-1148', avatarLabel: 'FRA', avatarBg: '#EE6C4D' },
   { id: '360', label: 'OCBC 360 Account', maskedNumber: '•••• 0001', balance: 18450, debitCardNumber: '5241-6830-1759-4027', avatarLabel: '360', avatarBg: '#60A5FA' },

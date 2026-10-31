@@ -131,7 +131,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 <Text style={styles.botName}>OWNLYplans AI Assistant</Text>
                 <View style={styles.statusRow}>
                   <View style={styles.activeDot} />
-                  <Text style={styles.statusText}>Multi-Agent Active · Live SGFinDex Context</Text>
+                  <Text style={styles.statusText}>Multi-Agent Active · Live Household Context</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>

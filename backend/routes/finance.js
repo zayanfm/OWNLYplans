@@ -30,14 +30,14 @@ router.get('/overview', (req, res) => {
         monthlySurplus: household.financials.monthlySurplus,
         emergencyFund: household.financials.emergencyFund,
         totalNetWorth: (household.accounts.ocbc.reduce((s, a) => s + a.balance, 0) +
-          household.accounts.otherBanks.reduce((s, a) => s + a.balance, 0) +
+          (household.manualAssets || []).reduce((s, a) => s + a.balance, 0) +
           household.accounts.investments.reduce((s, a) => s + a.value, 0) +
           household.primaryUser.cpf.oa + household.primaryUser.cpf.sa + household.primaryUser.cpf.ma +
           (household.partner ? (household.partner.cpf.oa + household.partner.cpf.sa + household.partner.cpf.ma) : 0))
       },
       accounts: {
         ocbc: household.accounts.ocbc,
-        otherBanks: household.accounts.otherBanks,
+        manualAssets: household.manualAssets || [],
         investments: household.accounts.investments
       },
       routes: plan.routes,

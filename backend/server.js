@@ -3,7 +3,7 @@ const cors = require('cors');
 const env = require('./config/env');
 
 const authRoutes = require('./routes/auth');
-const sgfindexRoutes = require('./routes/sgfindex');
+const householdRoutes = require('./routes/household');
 const financeRoutes = require('./routes/finance');
 const configRoutes = require('./routes/config');
 const agentsRoutes = require('./routes/agents');
@@ -36,7 +36,7 @@ app.get('/api/health', (req, res) => {
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/sgfindex', sgfindexRoutes);
+app.use('/api/household', householdRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/agents', agentsRoutes);

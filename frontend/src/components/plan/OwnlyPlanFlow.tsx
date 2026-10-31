@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import api, { AgentAnalysisData, MockPassAuthResponse } from '../../services/api';
-import { FALLBACK_FAMILY_MEMBERS, FALLBACK_SGFINDEX_INSTITUTIONS } from '../../constants/mockData';
+import { FALLBACK_FAMILY_MEMBERS, FALLBACK_WORKSPACE } from '../../constants/mockData';
 import { AIPlanDashboard } from '../AIPlanDashboard';
 
 import { IntroStep } from './steps/IntroStep';
 import { SingpassLoginStep } from './steps/SingpassLoginStep';
 import { MyInfoReviewStep } from './steps/MyInfoReviewStep';
-import { SgFinDexStep } from './steps/SgFinDexStep';
+import { OcbcAccountsStep } from './steps/OcbcAccountsStep';
 import { FamilyConsentStep } from './steps/FamilyConsentStep';
 import { InvitePendingStep } from './steps/InvitePendingStep';
 import { AccountsConnectedStep } from './steps/AccountsConnectedStep';
@@ -168,8 +168,14 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     setStep('invited');
   };
 
-  const handleApproved = useCallback(() => {
+  const handleApproved = useCallback(async () => {
     setFamily((prev) => prev.map((m) => (m.selected ? { ...m, status: 'APPROVED' } : m)));
+    // Partner accounts join the workspace only after consent, so refresh it.
+    try {
+      setAggregate(await api.getWorkspace());
+    } catch {
+      setAggregate(FALLBACK_WORKSPACE);
+    }
     setStep('connected');
   }, []);
 
@@ -201,8 +207,7 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     }
   }, [aggregate, myInfo, onPlanActivated]);
 
-  const institutionsCount =
-    aggregate?.sgfindexConsent?.financialInstitutions?.length || FALLBACK_SGFINDEX_INSTITUTIONS.length;
+  const institutionsCount = aggregate?.accounts?.length || 4;
 
   return (
     <View style={styles.container}>
@@ -215,13 +220,14 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
       {step === 'myinfo' && myInfo && (
         <MyInfoReviewStep
           profile={myInfo}
-          onNext={() => setStep('sgfindex')}
+          onNext={() => setStep('accounts')}
           onBack={() => setStep('singpass')}
         />
       )}
 
-      {step === 'sgfindex' && (
-        <SgFinDexStep
+      {step === 'accounts' && (
+        <OcbcAccountsStep
+          partnerFirstName={myInfo?.partner?.name?.split(' ')[0]}
           onNext={(result) => {
             setAggregate(result);
             setStep('family');
@@ -236,7 +242,7 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
           sending={sending}
           onToggleMember={handleToggleMember}
           onSendInvite={handleSendInvite}
-          onBack={() => setStep('sgfindex')}
+          onBack={() => setStep('accounts')}
         />
       )}
 

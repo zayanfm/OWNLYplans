@@ -72,7 +72,7 @@ export const personalizePlan = (
       ? [profile.user.cpf, profile.partner?.cpf].filter(Boolean).reduce((total, cpf) => total + Object.values(cpf || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0)
       : 0),
     emergencyFund: aggregate?.summary?.emergencyFund || 0,
-    lastSynced: aggregate?.sgfindexConsent?.lastSynced || profile?.authenticatedAt || new Date().toISOString(),
+    lastSynced: aggregate?.lastSynced || profile?.authenticatedAt || new Date().toISOString(),
   };
 
   const rates: Record<PlanRouteId, number> = {

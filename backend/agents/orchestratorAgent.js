@@ -26,12 +26,12 @@ class OrchestratorAgent {
       category: 'CASHFLOW',
       confidence: 0.98,
       impact: `+S$${annualYieldGain}/year Net Yield`,
-      reason: `Boosts annual yield on S$${idleCash.toLocaleString()} secondary bank cash from 0.05% to 3.85% p.a. with zero lock-in.`,
+      reason: `Boosts annual yield on S$${idleCash.toLocaleString()} of OCBC cash above the emergency floor from 0.05% to 3.85% p.a. with zero lock-in.`,
       urgency: 'HIGH',
       badge: 'Immediate Yield Lift',
       actionPayload: {
         type: 'AUTO_SWEEP',
-        source: 'DBS & Secondary Accounts',
+        source: 'OCBC cash above the emergency floor',
         destination: 'LionGlobal SGD Money Market Fund',
         amount: idleCash
       }

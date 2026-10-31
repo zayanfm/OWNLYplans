@@ -62,6 +62,54 @@ export interface FamilyInviteStatus {
   members: FamilyInviteMember[];
 }
 
+export type AccountSharing = 'FULL' | 'TOTAL_ONLY' | 'PRIVATE';
+
+export interface WorkspaceAccount {
+  owner: 'primary' | 'partner' | 'joint';
+  sharing: AccountSharing;
+  status: 'CONNECTED' | 'AWAITING_CONSENT';
+  countsTowardTotals: boolean;
+  type: string;
+  number: string | null;
+  holder: string;
+  role: string | null;
+  balance: number | null;
+  interestRate: number | null;
+}
+
+export interface ManualAsset {
+  id: string;
+  label: string;
+  owner: 'primary' | 'partner';
+  balance: number;
+  selfDeclared: true;
+}
+
+export interface HouseholdWorkspace {
+  success: boolean;
+  lastSynced: string;
+  sources: string[];
+  partnerConsent: 'NONE' | 'NOT_INVITED' | 'PENDING' | 'APPROVED';
+  summary: {
+    totalLiquidCash: number;
+    totalInvestments: number;
+    totalManualAssets: number;
+    householdCpfTotal: number;
+    totalAssets: number;
+    totalLiabilities: number;
+    netWorth: number;
+    monthlyHouseholdIncome: number;
+    monthlyHouseholdTakeHome: number;
+    monthlyHouseholdExpenses: number;
+    monthlySurplus: number;
+    emergencyFund: number;
+    emergencyBufferMonths: number;
+  };
+  accounts: WorkspaceAccount[];
+  investments: any[];
+  manualAssets: ManualAsset[];
+}
+
 export interface NextBestAction {
   id: string;
   title: string;
@@ -188,10 +236,24 @@ class ApiService {
     return this.request<FamilyInviteStatus>('/api/auth/family/status');
   }
 
-  // SGFinDex Aggregation
-  async getSgFinDexAggregate(householdId?: string): Promise<any> {
+  // Family Financial Workspace (Singpass MyInfo + OCBC accounts)
+  async getWorkspace(householdId?: string): Promise<HouseholdWorkspace> {
     const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
-    return this.request(`/api/sgfindex/aggregate${q}`);
+    return this.request<HouseholdWorkspace>(`/api/household/workspace${q}`);
+  }
+
+  async setAccountSharing(accountNumber: string, sharing: AccountSharing, householdId?: string): Promise<{ success: boolean }> {
+    return this.request('/api/household/sharing', {
+      method: 'POST',
+      body: JSON.stringify({ accountNumber, sharing, householdId })
+    });
+  }
+
+  async addManualAsset(asset: { label: string; balance: number; owner?: 'primary' | 'partner' }, householdId?: string): Promise<{ success: boolean; asset: ManualAsset }> {
+    return this.request('/api/household/manual-assets', {
+      method: 'POST',
+      body: JSON.stringify({ asset, householdId })
+    });
   }
 
   // Multi-Agent Engine

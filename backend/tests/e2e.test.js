@@ -24,11 +24,11 @@ async function runE2ETests() {
     assert.strictEqual(auth1.protocol, 'OAUTH2_AUTHORIZATION_CODE');
     console.log('  ✓ Custom MockPass authorization handoff created');
 
-    // 1.2 SGFinDex Aggregation
-    const sgf1 = await fetch(`${baseUrl}/api/sgfindex/aggregate`).then(r => r.json());
-    assert(Number.isFinite(sgf1.summary.netWorth), 'Consolidated net worth verified including mortgage liabilities');
-    assert.strictEqual(sgf1.summary.totalLiquidCash, 36000, 'Linked cash should remain consistent');
-    console.log(`  ✓ SGFinDex Synced: Net Worth = S$${sgf1.summary.netWorth.toLocaleString()}, Surplus = S$${sgf1.summary.monthlySurplus}/mo`);
+    // 1.2 Family Financial Workspace
+    const ws1 = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
+    assert(Number.isFinite(ws1.summary.netWorth), 'Household net worth calculated from MyInfo and OCBC');
+    assert.strictEqual(ws1.summary.totalLiquidCash, 27650, 'Alex and joint OCBC cash before Lila consents');
+    console.log(`  ✓ Workspace Built: Net Worth = S$${ws1.summary.netWorth.toLocaleString()}, Surplus = S$${ws1.summary.monthlySurplus}/mo`);
 
     // 1.3 4-Agent Execution
     const agent1 = await fetch(`${baseUrl}/api/agents/analyze`, {

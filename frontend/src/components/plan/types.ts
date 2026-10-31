@@ -4,7 +4,7 @@ export type OwnlyStep =
   | 'intro'
   | 'singpass'
   | 'myinfo'
-  | 'sgfindex'
+  | 'accounts'
   | 'family'
   | 'invited'
   | 'connected'

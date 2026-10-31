@@ -27,14 +27,19 @@ class RMExportService {
     const partnerName = household.partner ? household.partner.name : null;
     const maskedNric = maskNric ? household.primaryUser.nric : household.primaryUser.nric.replace(/\*/g, '8');
 
-    // Filter accounts based on consent
+    // Filter accounts based on consent; each owner's sharing choice still applies to the RM.
+    const sharedAccounts = household.accounts.ocbc
+      .filter(a => a.sharing !== 'PRIVATE')
+      .map(a => (a.sharing === 'TOTAL_ONLY'
+        ? { type: 'OCBC account (details private)', holder: a.holder, balance: a.balance }
+        : a));
     let visibleAccounts = [];
     if (shareJointOnly) {
-      visibleAccounts = household.accounts.ocbc.filter(a => a.role?.toLowerCase().includes('joint') || a.role?.toLowerCase().includes('salary'));
+      visibleAccounts = sharedAccounts.filter(a => a.owner === 'joint' || a.role?.toLowerCase().includes('salary'));
     } else {
       visibleAccounts = [
-        ...household.accounts.ocbc,
-        ...household.accounts.otherBanks.map(b => ({ ...b, bank: b.bank, note: 'SGFinDex Consolidated' }))
+        ...sharedAccounts,
+        ...(household.manualAssets || []).map(asset => ({ type: asset.label, holder: asset.owner, balance: asset.balance, note: 'Self-declared, held outside OCBC' }))
       ];
     }
 

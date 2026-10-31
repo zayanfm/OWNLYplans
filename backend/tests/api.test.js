@@ -22,12 +22,27 @@ async function testApi() {
     assert(authRes.authorizationUrl.includes('/api/auth/mockpass/authorize'), 'Sandbox authorization URL expected');
     console.log('✓ Custom MockPass authorization handoff OK');
 
-    // 3. SGFinDex Aggregation
-    const sgfRes = await fetch(`${baseUrl}/api/sgfindex/aggregate`).then(r => r.json());
-    assert(sgfRes.success, 'SGFinDex should succeed');
-    assert(Number.isFinite(sgfRes.summary.netWorth), 'Net worth should be calculated including the mortgage');
-    assert.strictEqual(sgfRes.summary.totalLiquidCash, 36000, 'Linked cash should match the Alex fixture');
-    console.log('✓ SGFinDex Aggregation OK');
+    // 3. Family Financial Workspace (MyInfo + OCBC accounts)
+    const wsRes = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
+    assert(wsRes.success, 'Workspace should succeed');
+    assert.deepStrictEqual(wsRes.sources, ['Singpass MyInfo', 'OCBC accounts']);
+    assert.strictEqual(wsRes.partnerConsent, 'NOT_INVITED', 'Partner accounts wait for consent');
+    assert.strictEqual(wsRes.summary.totalLiquidCash, 27650, 'Only Alex and joint OCBC cash before Lila consents');
+    assert(wsRes.accounts.filter(a => a.owner === 'partner').every(a => a.balance === null), 'Partner balances hidden before consent');
+    assert.strictEqual(wsRes.summary.totalManualAssets, 5000, 'Self-declared assets count toward net worth');
+    const manualRes = await fetch(`${baseUrl}/api/household/manual-assets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ asset: { label: 'DBS savings', balance: -1 } })
+    });
+    assert.strictEqual(manualRes.status, 400, 'Negative manual balances are rejected');
+    const jointSharing = await fetch(`${baseUrl}/api/household/sharing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountNumber: '512-773104-003', sharing: 'PRIVATE' })
+    });
+    assert.strictEqual(jointSharing.status, 400, 'Joint accounts cannot be made private by one holder');
+    console.log('✓ Family Workspace OK');
 
     // 4. Multi-Agent Analysis
     const agentRes = await fetch(`${baseUrl}/api/agents/analyze`, {
