@@ -10,6 +10,7 @@ class HouseholdStore {
     this.familyInvites = {};
     this.proposals = {};
     this.scenarioLogs = {};
+    this.goalInputs = {};
     this.init();
   }
 
@@ -117,6 +118,22 @@ class HouseholdStore {
       allApproved: approved,
       members: record.members
     };
+  }
+
+  getGoalInputs(householdId = this.activePersonaId) {
+    return this.goalInputs[householdId] || {};
+  }
+
+  saveGoalInput(householdId = this.activePersonaId, key, input) {
+    this.goalInputs[householdId] = { ...this.getGoalInputs(householdId), [key]: input };
+    this.recordAudit(householdId, input.enabled === false ? 'GOAL_SWITCHED_OFF' : 'GOAL_CONFIRMED', { key, by: input.confirmedBy });
+    return input;
+  }
+
+  removeGoalInput(householdId = this.activePersonaId, key) {
+    const { [key]: removed, ...rest } = this.getGoalInputs(householdId);
+    this.goalInputs[householdId] = rest;
+    if (removed) this.recordAudit(householdId, 'GOAL_REMOVED', { key });
   }
 
   recordScenario(householdId = this.activePersonaId, scenario) {
@@ -230,6 +247,7 @@ class HouseholdStore {
     this.familyInvites = {};
     this.proposals = {};
     this.scenarioLogs = {};
+    this.goalInputs = {};
     return true;
   }
 }

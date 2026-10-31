@@ -1,7 +1,9 @@
+const goalInputService = require('./goalInputService');
 const { requiredMonthly, monthsUntil, addMonthsIso, money } = require('../utils/finance');
 
 const SCENARIO_RATES = { conservative: 0.025, balanced: 0.045, growth: 0.065 };
 const CASH_RATE = 0.015;
+const SHORT_HORIZON_MONTHS = 60;
 
 const essentialMonthly = (financials) => {
   const commitments = financials.commitments || [];
@@ -10,100 +12,95 @@ const essentialMonthly = (financials) => {
     : Number(financials.householdMonthlyExpenses || 0);
 };
 
-const addYearsToMonth = (isoDate, years) => {
-  const [year, month] = String(isoDate).split('-').map(Number);
-  return `${year + years}-${String(month || 1).padStart(2, '0')}`;
-};
-
 /**
- * Builds the household's family goals with real deadlines, shortfalls and dependencies.
- * This is the single source of goal requirements for the goals agent, the optimiser and scenarios.
+ * Builds the household's family goals from what the family has decided (goalInputService).
+ * Every goal is returned with its input status; only CONFIRMED goals (plus any keys passed in
+ * options.includeKeys, used by what-ifs) are marked `planned` and fed to the optimiser.
  */
 const buildGoals = (household, options = {}) => {
   const { financials, housing = {}, dependents = [], primaryUser, partner, accounts = {} } = household;
-  const settings = household.goalSettings || {};
   const scenarioRate = SCENARIO_RATES[options.predictionScenario] || SCENARIO_RATES.balanced;
   const now = options.now || new Date();
-  const goals = [];
-
-  // 1. Emergency buffer: months of essential spending, kept in cash.
-  const emergencySettings = settings.emergency || { targetMonthsOfEssentials: 6, deadlineMonths: 12 };
-  const emergencyTarget = essentialMonthly(financials) * emergencySettings.targetMonthsOfEssentials;
-  const emergencyCurrent = Number(financials.emergencyFund || 0);
-  goals.push({
-    key: 'emergency',
-    name: 'Emergency buffer',
-    category: 'EMERGENCY',
-    routeKey: 'emergency',
-    priority: 1,
-    targetAmount: emergencyTarget,
-    currentAmount: emergencyCurrent,
-    deadline: addMonthsIso(emergencySettings.deadlineMonths, now),
-    annualRate: CASH_RATE,
-    dependsOn: [],
-    basis: `${emergencySettings.targetMonthsOfEssentials} months of essential spending (${money(essentialMonthly(financials))}/month)`
-  });
-
-  // 2. Home: BTO purchase fund by key collection, or a 12-month mortgage reserve.
-  const isPendingBto = String(housing.type || '').includes('BTO') && Number(housing.mortgageOutstanding || 0) === 0;
-  goals.push({
-    key: 'housing',
-    name: isPendingBto ? 'BTO home purchase fund' : 'Home loan safety reserve',
-    category: 'HOUSING',
-    routeKey: 'housing',
-    priority: 2,
-    targetAmount: isPendingBto ? Number(housing.downpaymentRequired || 0) : Number(housing.monthlyLoanInstalment || 0) * 12,
-    currentAmount: isPendingBto ? Number(housing.downpaymentAccumulated || 0) : 0,
-    deadline: isPendingBto && housing.keyCollectionDate ? housing.keyCollectionDate : addMonthsIso(24, now),
-    annualRate: CASH_RATE,
-    dependsOn: ['emergency'],
-    basis: isPendingBto
-      ? `Downpayment due at key collection (${housing.keyCollectionDate})`
-      : '12 months of mortgage instalments'
-  });
-
-  // 3. Education: one goal per child, due when the child reaches the target age.
-  const educationSettings = settings.education || { targetAmountPerChild: 30000, targetAge: 18 };
-  dependents.filter((child) => child.relation === 'Child').forEach((child, index) => {
-    const firstName = String(child.name || `Child ${index + 1}`).split(' ')[0];
-    goals.push({
-      key: index === 0 ? 'education' : `education_${index + 1}`,
-      name: `${firstName}'s education`,
-      category: 'EDUCATION',
-      routeKey: 'education',
-      priority: 3,
-      targetAmount: educationSettings.targetAmountPerChild,
-      currentAmount: Number(child.cda?.balance || 0),
-      deadline: child.birthDate ? addYearsToMonth(child.birthDate, educationSettings.targetAge) : addMonthsIso(180, now),
-      annualRate: scenarioRate,
-      dependsOn: [],
-      childName: child.name,
-      basis: `University and living costs by age ${educationSettings.targetAge}; starts from the CDA balance, which moves to Edusave/PSEA for education use`
-    });
-  });
-
-  // 4. Retirement: one goal per adult, as a top-up beyond CPF LIFE payouts.
-  const retirementSettings = settings.retirement || { targetAge: 65, targetAmountPerAdult: 120000 };
+  const includeKeys = options.includeKeys || [];
   const investments = accounts.investments || [];
-  [['primary', primaryUser], ['partner', partner]].forEach(([owner, adult]) => {
-    if (!adult) return;
-    const firstName = String(adult.name).split(' ')[0];
-    const owned = investments.filter((item) => (item.owner || 'primary') === owner)
-      .reduce((sum, item) => sum + Number(item.value || 0), 0);
-    goals.push({
-      key: `retirement_${owner}`,
-      name: `${firstName}'s retirement`,
-      category: 'RETIREMENT',
-      routeKey: 'wealth',
-      priority: 4,
-      targetAmount: retirementSettings.targetAmountPerAdult,
-      currentAmount: owned,
-      deadline: addMonthsIso(Math.max(12, (retirementSettings.targetAge - Number(adult.age || 30)) * 12), now),
-      annualRate: scenarioRate,
-      dependsOn: ['housing'],
-      owner,
-      basis: retirementSettings.note || `Savings by age ${retirementSettings.targetAge}`
-    });
+  const adults = { primary: primaryUser, partner };
+
+  const goals = goalInputService.getInputs(household).map((input) => {
+    const base = {
+      key: input.key,
+      inputStatus: input.status,
+      planned: input.status === 'CONFIRMED' || (includeKeys.includes(input.key) && input.status !== 'OFF'),
+      source: input.source,
+      input
+    };
+
+    if (input.type === 'EMERGENCY') {
+      const essentials = essentialMonthly(financials);
+      return {
+        ...base, name: 'Emergency buffer', category: 'EMERGENCY', routeKey: 'emergency', priority: 1,
+        targetAmount: essentials * input.months,
+        currentAmount: Number(financials.emergencyFund || 0),
+        deadline: addMonthsIso(input.withinMonths, now),
+        annualRate: CASH_RATE, dependsOn: [],
+        basis: `${input.months} months of essential spending (${money(essentials)}/month), built within ${input.withinMonths} months`
+      };
+    }
+
+    if (input.type === 'HOUSING') {
+      return {
+        ...base, name: 'BTO home purchase fund', category: 'HOUSING', routeKey: 'housing', priority: 2,
+        targetAmount: input.amount,
+        currentAmount: Number(housing.downpaymentAccumulated || 0),
+        deadline: input.dueDate,
+        annualRate: CASH_RATE, dependsOn: ['emergency'],
+        basis: `Downpayment due ${input.dueDate}`
+      };
+    }
+
+    if (input.type === 'EDUCATION') {
+      const child = dependents.filter((item) => item.relation === 'Child')[input.childIndex] || {};
+      const firstName = String(input.childName || 'Child').split(' ')[0];
+      const undecided = input.path === 'UNDECIDED';
+      return {
+        ...base, name: `${firstName}'s education`, category: 'EDUCATION', routeKey: 'education', priority: 3,
+        targetAmount: undecided ? 0 : input.annualCost * input.years,
+        currentAmount: Number(child.cda?.balance || 0),
+        deadline: undecided ? addMonthsIso(12, now) : `${input.startYear}-08`,
+        annualRate: scenarioRate, dependsOn: [],
+        childName: input.childName,
+        basis: undecided
+          ? 'Path not decided yet'
+          : `${input.path === 'POLYTECHNIC' ? 'Polytechnic' : 'University'} from ${input.startYear}: ${input.years} years at ${money(input.annualCost)} a year (today's prices); starts from the CDA balance`
+      };
+    }
+
+    if (input.type === 'RETIREMENT') {
+      const adult = adults[input.owner] || {};
+      const firstName = String(adult.name || 'Adult').split(' ')[0];
+      const owned = investments.filter((item) => (item.owner || 'primary') === input.owner)
+        .reduce((sum, item) => sum + Number(item.value || 0), 0);
+      const months = Math.max(12, (input.retireAge - Number(adult.age || 30)) * 12);
+      return {
+        ...base, name: `${firstName}'s retirement`, category: 'RETIREMENT', routeKey: 'wealth', priority: 4,
+        targetAmount: input.amount,
+        currentAmount: owned,
+        deadline: addMonthsIso(months, now),
+        annualRate: scenarioRate, dependsOn: ['housing'],
+        owner: input.owner,
+        basis: `Savings on top of CPF LIFE by age ${input.retireAge}`
+      };
+    }
+
+    // CUSTOM: the family's own goal; short horizons stay in cash.
+    const months = monthsUntil(input.dueDate, now);
+    return {
+      ...base, name: input.name, category: 'CUSTOM', routeKey: 'custom', priority: 2 + input.priority,
+      targetAmount: input.amount,
+      currentAmount: 0,
+      deadline: input.dueDate,
+      annualRate: months < SHORT_HORIZON_MONTHS ? CASH_RATE : scenarioRate, dependsOn: [],
+      basis: `Your goal, due ${input.dueDate}`
+    };
   });
 
   return goals.map((goal) => {

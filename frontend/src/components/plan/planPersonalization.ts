@@ -122,7 +122,7 @@ export const personalizePlan = (
 
   // Prefer the planning engine's real targets and deadlines (BTO keys, child at 18, age 65).
   (['housing', 'education', 'wealth'] as PlanRouteId[]).forEach((key) => {
-    const goals = (picture?.goals || []).filter((goal) => goal.routeKey === key);
+    const goals = (picture?.goals || []).filter((goal) => goal.routeKey === key && goal.planned);
     if (!goals.length) return;
     const real = routeBaseline(goals);
     baselines[key] = {

@@ -72,6 +72,10 @@ The prototype has one coherent sandbox household used by login, the household wo
 | `/api/household/workspace` | `GET` | Family workspace: MyInfo CPF plus consented OCBC accounts |
 | `/api/household/sharing` | `POST` | Set an account to shared, total-only or private |
 | `/api/household/picture` | `GET` | Cash flow, goals with deadlines/dependencies, support per goal |
+| `/api/household/goals` | `GET` | Goal suggestions (with sources), the family's inputs and each goal's status |
+| `/api/household/goals/:key` | `PUT` | Confirm or edit a goal; only the owner can confirm a personal goal |
+| `/api/household/goals` | `POST` | Add the family's own goal |
+| `/api/household/goals/:key` | `DELETE` | Delete a custom goal or switch off a suggested one |
 | `/api/scenarios/plans` | `GET` | Recommended allocation plan plus two alternatives |
 | `/api/scenarios/simulate` | `POST` | What-if levers: another child, income change, school fees, extra savings |
 | `/api/scenarios/proposals` | `POST` | Propose a plan to the partner (reply simulated after 3s) |

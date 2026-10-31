@@ -242,21 +242,6 @@
         }
       ]
     },
-    "goalSettings": {
-      "emergency": {
-        "targetMonthsOfEssentials": 6,
-        "deadlineMonths": 18
-      },
-      "education": {
-        "targetAmountPerChild": 80000,
-        "targetAge": 18
-      },
-      "retirement": {
-        "targetAge": 65,
-        "targetAmountPerAdult": 200000,
-        "note": "Top-up beyond CPF LIFE payouts"
-      }
-    },
     "riskProfile": {
       "level": "BALANCED",
       "assessedVia": "Sandbox questionnaire",

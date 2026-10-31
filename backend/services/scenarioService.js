@@ -27,7 +27,9 @@ class ScenarioService {
 
     const modified = this.applyLevers(household, levers, options.now);
     const before = optimiserService.optimise(household, options);
-    const after = optimiserService.optimise(modified, options);
+    // A hypothetical new child's education goal is included so its impact shows.
+    const newChildKeys = levers.extraChild ? [`education_${modified.dependents.filter((item) => item.relation === 'Child').length}`] : [];
+    const after = optimiserService.optimise(modified, { ...options, includeKeys: newChildKeys });
     const planId = options.planId || before.recommendedPlanId;
     const beforePlan = before.plans.find((plan) => plan.id === planId) || before.plans[0];
     const afterPlan = after.plans.find((plan) => plan.id === planId) || after.plans[0];

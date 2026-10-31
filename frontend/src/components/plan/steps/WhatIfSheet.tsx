@@ -3,31 +3,9 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, Switch, Ac
 import api from '../../../services/api';
 import type { PlanOptionId, ScenarioLevers, ScenarioResult } from '../../../services/api';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
+import { Stepper, stepperStyles } from '../Stepper';
 
 const DEFAULT_LEVERS: ScenarioLevers = { extraChild: false, incomeChangePct: 0, schoolFeesMonthly: 0, extraSavingsMonthly: 0 };
-
-const Stepper = ({ label, value, display, onChange, step, min, max }: {
-  label: string;
-  value: number;
-  display: string;
-  onChange: (value: number) => void;
-  step: number;
-  min: number;
-  max: number;
-}) => (
-  <View style={styles.leverRow}>
-    <Text style={styles.leverLabel}>{label}</Text>
-    <View style={styles.stepper}>
-      <TouchableOpacity style={styles.stepButton} onPress={() => onChange(Math.max(min, value - step))} accessibilityLabel={`Decrease ${label}`}>
-        <Text style={styles.stepButtonText}>−</Text>
-      </TouchableOpacity>
-      <Text style={styles.stepValue}>{display}</Text>
-      <TouchableOpacity style={styles.stepButton} onPress={() => onChange(Math.min(max, value + step))} accessibilityLabel={`Increase ${label}`}>
-        <Text style={styles.stepButtonText}>+</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
 
 /**
  * AI What-if Scenario Simulator (#6). Preset levers are recalculated by the planning engine;
@@ -71,8 +49,8 @@ export const WhatIfSheet: React.FC<{
             <Text style={stepStyles.title}>What if…</Text>
             <Text style={stepStyles.subtitle}>Change one thing and see the effect on every goal at once.</Text>
 
-            <View style={styles.leverRow}>
-              <Text style={styles.leverLabel}>Another child</Text>
+            <View style={stepperStyles.row}>
+              <Text style={stepperStyles.label}>Another child</Text>
               <Switch value={levers.extraChild} onValueChange={(extraChild) => update({ extraChild })} trackColor={{ true: COLORS.red }} />
             </View>
             <Stepper label="Household income" value={levers.incomeChangePct} step={5} min={-30} max={20}
@@ -127,12 +105,6 @@ const styles = StyleSheet.create({
   topGap: { marginTop: 12 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: COLORS.page, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '88%' },
-  leverRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 8 },
-  leverLabel: { fontSize: 13, fontWeight: '700', color: COLORS.ink, flex: 1 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stepButton: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: COLORS.red, alignItems: 'center', justifyContent: 'center' },
-  stepButtonText: { fontSize: 16, fontWeight: '900', color: COLORS.red },
-  stepValue: { minWidth: 76, textAlign: 'center', fontSize: 13, fontWeight: '800', color: COLORS.ink },
   summaryLine: { fontSize: 12, lineHeight: 18, color: COLORS.ink, marginTop: 4 },
   goalName: { fontSize: 13, fontWeight: '700', color: COLORS.ink },
 });

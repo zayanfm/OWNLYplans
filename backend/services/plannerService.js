@@ -50,6 +50,7 @@ class PlannerService {
     let amounts;
     let emergencyReserve = null;
     let optimiserPlanId = null;
+    let customGoals = null;
     if (config.split) {
       const requestedSplits = {
         housing: config.split.housing !== undefined ? Number(config.split.housing) : 0.50,
@@ -72,6 +73,7 @@ class PlannerService {
         completesBy: emergencyGoal?.completesBy || null,
         targetProduct: 'LionGlobal SGD Money Market Fund (T+0)'
       };
+      customGoals = { monthlyAmount: chosen.routes.custom || 0 };
     }
     const share = (amount) => (investableSurplus ? amount / investableSurplus : 0);
     const housingSplit = share(amounts.housing);
@@ -148,6 +150,7 @@ class PlannerService {
       routes: priorities.map((key) => routes.find((route) => route.key === key)),
       optimiserPlanId,
       emergencyReserve,
+      customGoals,
       protection,
       assumptions: { annualReturnRate, inflationRate },
       milestones,

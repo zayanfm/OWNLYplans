@@ -116,12 +116,46 @@ export interface SupportItem {
   nextDate: string | null;
 }
 
+export type GoalInputStatus = 'CONFIRMED' | 'NEEDS_DECISION' | 'AWAITING_PARTNER' | 'OFF';
+export type EducationPath = 'UNIVERSITY' | 'POLYTECHNIC' | 'UNDECIDED';
+
+// What the family decided for one goal, plus the suggestion it started from.
+export interface GoalInput {
+  key: string;
+  type: 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT' | 'CUSTOM';
+  owner: 'household' | 'primary' | 'partner';
+  enabled: boolean;
+  confirmed?: boolean;
+  confirmedBy?: string | null;
+  source: string;
+  status: GoalInputStatus;
+  months?: number;
+  withinMonths?: number;
+  amount?: number;
+  dueDate?: string;
+  childName?: string;
+  childIndex?: number;
+  path?: EducationPath;
+  startYear?: number;
+  years?: number;
+  annualCost?: number;
+  adultName?: string;
+  retireAge?: number;
+  name?: string;
+  priority?: number;
+  suggested?: Partial<GoalInput>;
+}
+
 export interface FamilyGoal {
   id: string;
   key: string;
-  routeKey: 'emergency' | 'housing' | 'education' | 'wealth';
+  routeKey: 'emergency' | 'housing' | 'education' | 'wealth' | 'custom';
   name: string;
-  category: 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT';
+  category: 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT' | 'CUSTOM';
+  inputStatus: GoalInputStatus;
+  planned: boolean;
+  source: string;
+  input: GoalInput;
   priority: number;
   targetAmount: number;
   currentAmount: number;
@@ -135,7 +169,7 @@ export interface FamilyGoal {
   icon: string;
   suggestedMonthlyAllocation: number;
   projectedCompletion: string | null;
-  status: GoalStatus;
+  status: GoalStatus | GoalInputStatus;
   support: SupportItem[];
 }
 
@@ -196,7 +230,7 @@ export interface PlanOption {
   id: PlanOptionId;
   name: string;
   tagline: string;
-  routes: { emergency: number; housing: number; education: number; wealth: number };
+  routes: { emergency: number; housing: number; education: number; custom: number; wealth: number };
   unallocated: number;
   goals: PlanGoalOutcome[];
   stepUps: Array<{ month: string; fromGoal: string; amount: number; text: string }>;
@@ -213,6 +247,7 @@ export interface PlanOptions {
   investable: number;
   lumpSum: { amount: number; toGoal: string; reason: string } | null;
   recommendedPlanId: PlanOptionId;
+  needsDecision: Array<{ key: string; name: string; status: GoalInputStatus }>;
   plans: PlanOption[];
 }
 
@@ -339,7 +374,10 @@ class ApiService {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
+        const body = await res.json().catch(() => null);
+        const error: Error & { status?: number } = new Error(body?.error || `HTTP Error ${res.status}: ${res.statusText}`);
+        error.status = res.status;
+        throw error;
       }
       return await res.json();
     } catch (err: any) {
@@ -425,6 +463,25 @@ class ApiService {
   async getPicture(householdId?: string): Promise<FamilyPicture> {
     const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
     return this.request<FamilyPicture>(`/api/household/picture${q}`);
+  }
+
+  // Goals: suggestions the family confirms, edits, switches off or adds to
+  async updateGoal(key: string, patch: Partial<GoalInput>): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch)
+    });
+  }
+
+  async addGoal(goal: { name: string; amount: number; dueDate: string; priority: number }): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request('/api/household/goals', {
+      method: 'POST',
+      body: JSON.stringify(goal)
+    });
+  }
+
+  async removeGoal(key: string): Promise<{ success: boolean }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}`, { method: 'DELETE' });
   }
 
   // Decision engine: plan options, what-if scenarios and partner proposals

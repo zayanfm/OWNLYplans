@@ -13,24 +13,24 @@ const PLAN_DEFINITIONS = [
     id: 'balanced',
     name: 'Balanced',
     tagline: 'Every goal on time, retirement steps up as earlier goals finish',
-    order: ['housing', 'education', 'emergency'],
-    emergencyMonths: 18,
+    order: ['housing', 'education', 'custom', 'emergency'],
+    emergencyStretchMonths: 0,
     multipliers: {}
   },
   {
     id: 'home_first',
     name: 'Home first',
     tagline: 'BTO fund finishes early with a cushion for renovation',
-    order: ['housing', 'emergency', 'education'],
-    emergencyMonths: 24,
+    order: ['housing', 'emergency', 'education', 'custom'],
+    emergencyStretchMonths: 6,
     multipliers: { housing: 1.15 }
   },
   {
     id: 'education_first',
     name: 'Education first',
     tagline: 'Front-loads education savings while time in the market is longest',
-    order: ['housing', 'education', 'emergency'],
-    emergencyMonths: 24,
+    order: ['housing', 'education', 'custom', 'emergency'],
+    emergencyStretchMonths: 6,
     multipliers: { education: 1.5 }
   }
 ];
@@ -52,7 +52,11 @@ class OptimiserService {
     const investable = Math.max(0, monthlySurplus - premium);
 
     // Spare cash completes as much of the emergency gap as it can, today.
-    const goals = buildGoals(household, { predictionScenario: options.predictionScenario, now });
+    // Only goals the family has confirmed are planned; the rest are reported as needing a decision.
+    const allGoals = buildGoals(household, { predictionScenario: options.predictionScenario, includeKeys: options.includeKeys, now });
+    const goals = allGoals.filter((goal) => goal.planned);
+    const needsDecision = allGoals.filter((goal) => !goal.planned && goal.inputStatus !== 'OFF')
+      .map((goal) => ({ key: goal.key, name: goal.name, status: goal.inputStatus }));
     const emergency = goals.find((goal) => goal.key === 'emergency');
     const lumpSumAmount = emergency ? Math.min(spareCash(household), emergency.shortfall) : 0;
     if (emergency && lumpSumAmount > 0) {
@@ -73,15 +77,20 @@ class OptimiserService {
         ? { amount: lumpSumAmount, toGoal: 'emergency', reason: `Spare OCBC cash above the emergency fund and a month of working cash tops up the buffer today.` }
         : null,
       recommendedPlanId: recommended.id,
+      needsDecision,
       plans
     };
   }
 
   simulate(definition, sourceGoals, investable, now) {
-    // The emergency top-up runs over the plan's own window; the other deadlines are fixed.
-    const goals = sourceGoals.map((goal) => (goal.key === 'emergency'
-      ? { ...goal, monthsRemaining: definition.emergencyMonths, deadline: addMonthsIso(definition.emergencyMonths, now) }
-      : { ...goal }));
+    // Alternatives may take longer over the emergency top-up than the family's chosen window;
+    // every other deadline is the family's own and is never moved.
+    const goals = sourceGoals.map((goal) => {
+      const stretch = definition.emergencyStretchMonths || 0;
+      return goal.key === 'emergency' && stretch
+        ? { ...goal, monthsRemaining: goal.monthsRemaining + stretch, deadline: addMonthsIso(goal.monthsRemaining + stretch, now) }
+        : { ...goal };
+    });
     const ordered = definition.order.flatMap((routeKey) => goals.filter((goal) => goal.routeKey === routeKey));
     const sinks = goals.filter(isSink);
     const horizon = Math.max(...goals.map((goal) => goal.monthsRemaining), 1);
@@ -165,7 +174,7 @@ class OptimiserService {
     const routeTotals = goalResults.reduce((acc, goal) => {
       acc[goal.routeKey] = (acc[goal.routeKey] || 0) + goal.monthlyNow;
       return acc;
-    }, { emergency: 0, housing: 0, education: 0, wealth: 0 });
+    }, { emergency: 0, housing: 0, education: 0, custom: 0, wealth: 0 });
 
     return {
       id: definition.id,

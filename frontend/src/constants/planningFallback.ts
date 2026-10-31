@@ -1,5 +1,6 @@
 // Generated from the backend alex_family fixture so the prototype works offline.
-// Regenerate after changing backend/data/personas.json.
+// The picture is captured before any goal is confirmed; plan options and grow after confirming the suggestions.
+// Regenerate after changing backend/data/personas.json or the goal suggestions.
 import type { FamilyPicture, PlanOptions, GrowOverview } from '../services/api';
 
 export const FALLBACK_PICTURE: FamilyPicture = {
@@ -224,6 +225,28 @@ export const FALLBACK_PICTURE: FamilyPicture = {
   },
   "goals": [
     {
+      "inputStatus": "NEEDS_DECISION",
+      "planned": false,
+      "source": "Suggested: 3–6 months of essential spending is a common guideline. Choose what lets you sleep at night.",
+      "input": {
+        "key": "emergency",
+        "type": "EMERGENCY",
+        "owner": "household",
+        "enabled": true,
+        "months": 6,
+        "withinMonths": 18,
+        "source": "Suggested: 3–6 months of essential spending is a common guideline. Choose what lets you sleep at night.",
+        "suggested": {
+          "key": "emergency",
+          "type": "EMERGENCY",
+          "owner": "household",
+          "enabled": true,
+          "months": 6,
+          "withinMonths": 18,
+          "source": "Suggested: 3–6 months of essential spending is a common guideline. Choose what lets you sleep at night."
+        },
+        "status": "NEEDS_DECISION"
+      },
       "id": "goal_emergency",
       "key": "emergency",
       "routeKey": "emergency",
@@ -238,14 +261,36 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "requiredMonthlyAllocation": 372,
       "annualRate": 0.015,
       "dependsOn": [],
-      "basis": "6 months of essential spending (S$5,900/month)",
+      "basis": "6 months of essential spending (S$5,900/month), built within 18 months",
       "icon": "shield",
-      "suggestedMonthlyAllocation": 310,
-      "projectedCompletion": "2028-05",
-      "status": "ON_TRACK",
+      "suggestedMonthlyAllocation": 0,
+      "projectedCompletion": null,
+      "status": "NEEDS_DECISION",
       "support": []
     },
     {
+      "inputStatus": "NEEDS_DECISION",
+      "planned": false,
+      "source": "From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs.",
+      "input": {
+        "key": "housing",
+        "type": "HOUSING",
+        "owner": "household",
+        "enabled": true,
+        "amount": 96000,
+        "dueDate": "2028-09",
+        "source": "From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs.",
+        "suggested": {
+          "key": "housing",
+          "type": "HOUSING",
+          "owner": "household",
+          "enabled": true,
+          "amount": 96000,
+          "dueDate": "2028-09",
+          "source": "From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs."
+        },
+        "status": "NEEDS_DECISION"
+      },
       "id": "goal_housing",
       "key": "housing",
       "routeKey": "housing",
@@ -262,11 +307,11 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "dependsOn": [
         "emergency"
       ],
-      "basis": "Downpayment due at key collection (2028-09)",
+      "basis": "Downpayment due 2028-09",
       "icon": "home",
-      "suggestedMonthlyAllocation": 618,
-      "projectedCompletion": "2028-09",
-      "status": "ON_TRACK",
+      "suggestedMonthlyAllocation": 0,
+      "projectedCompletion": null,
+      "status": "NEEDS_DECISION",
       "support": [
         {
           "id": "climate_vouchers",
@@ -284,25 +329,55 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       ]
     },
     {
+      "inputStatus": "NEEDS_DECISION",
+      "planned": false,
+      "source": "Suggested: local university tuition S$10,000–12,000 a year (CNA, 2024). Start year is your choice.",
+      "input": {
+        "key": "education",
+        "type": "EDUCATION",
+        "owner": "household",
+        "enabled": true,
+        "childName": "Percy Lim",
+        "childIndex": 0,
+        "path": "UNIVERSITY",
+        "startYear": 2042,
+        "years": 4,
+        "annualCost": 11000,
+        "source": "Suggested: local university tuition S$10,000–12,000 a year (CNA, 2024). Start year is your choice.",
+        "suggested": {
+          "key": "education",
+          "type": "EDUCATION",
+          "owner": "household",
+          "enabled": true,
+          "childName": "Percy Lim",
+          "childIndex": 0,
+          "path": "UNIVERSITY",
+          "startYear": 2042,
+          "years": 4,
+          "annualCost": 11000,
+          "source": "Suggested: local university tuition S$10,000–12,000 a year (CNA, 2024). Start year is your choice."
+        },
+        "status": "NEEDS_DECISION"
+      },
       "id": "goal_education",
       "key": "education",
       "routeKey": "education",
       "name": "Percy's education",
       "category": "EDUCATION",
       "priority": 3,
-      "targetAmount": 80000,
+      "targetAmount": 44000,
       "currentAmount": 8000,
-      "shortfall": 72000,
-      "deadline": "2041-04",
-      "monthsRemaining": 173,
-      "requiredMonthlyAllocation": 267,
+      "shortfall": 36000,
+      "deadline": "2042-08",
+      "monthsRemaining": 189,
+      "requiredMonthlyAllocation": 102,
       "annualRate": 0.045,
       "dependsOn": [],
-      "basis": "University and living costs by age 18; starts from the CDA balance, which moves to Edusave/PSEA for education use",
+      "basis": "University from 2042: 4 years at S$11,000 a year (today's prices); starts from the CDA balance",
       "icon": "graduation-cap",
-      "suggestedMonthlyAllocation": 267,
-      "projectedCompletion": "2041-04",
-      "status": "ON_TRACK",
+      "suggestedMonthlyAllocation": 0,
+      "projectedCompletion": null,
+      "status": "NEEDS_DECISION",
       "support": [
         {
           "id": "cash_gift_percy",
@@ -346,6 +421,30 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       ]
     },
     {
+      "inputStatus": "NEEDS_DECISION",
+      "planned": false,
+      "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Alex can confirm this goal.",
+      "input": {
+        "key": "retirement_primary",
+        "type": "RETIREMENT",
+        "owner": "primary",
+        "enabled": true,
+        "adultName": "Alex Lim",
+        "retireAge": 65,
+        "amount": 200000,
+        "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Alex can confirm this goal.",
+        "suggested": {
+          "key": "retirement_primary",
+          "type": "RETIREMENT",
+          "owner": "primary",
+          "enabled": true,
+          "adultName": "Alex Lim",
+          "retireAge": 65,
+          "amount": 200000,
+          "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Alex can confirm this goal."
+        },
+        "status": "NEEDS_DECISION"
+      },
       "id": "goal_retirement_primary",
       "key": "retirement_primary",
       "routeKey": "wealth",
@@ -362,14 +461,40 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "dependsOn": [
         "housing"
       ],
-      "basis": "Top-up beyond CPF LIFE payouts",
+      "basis": "Savings on top of CPF LIFE by age 65",
       "icon": "trending-up",
-      "suggestedMonthlyAllocation": 51,
-      "projectedCompletion": "2046-08",
-      "status": "ON_TRACK",
+      "suggestedMonthlyAllocation": 0,
+      "projectedCompletion": null,
+      "status": "NEEDS_DECISION",
       "support": []
     },
     {
+      "inputStatus": "AWAITING_PARTNER",
+      "planned": false,
+      "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Lila can confirm this goal.",
+      "input": {
+        "key": "retirement_partner",
+        "type": "RETIREMENT",
+        "owner": "partner",
+        "enabled": true,
+        "adultName": "Lila Tan",
+        "retireAge": 65,
+        "amount": 200000,
+        "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Lila can confirm this goal.",
+        "suggested": {
+          "key": "retirement_partner",
+          "type": "RETIREMENT",
+          "owner": "partner",
+          "enabled": true,
+          "adultName": "Lila Tan",
+          "retireAge": 65,
+          "amount": 200000,
+          "source": "Suggested: savings on top of CPF LIFE payouts, which start from age 65. Only Lila can confirm this goal."
+        },
+        "confirmed": false,
+        "confirmedBy": null,
+        "status": "AWAITING_PARTNER"
+      },
       "id": "goal_retirement_partner",
       "key": "retirement_partner",
       "routeKey": "wealth",
@@ -386,16 +511,16 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "dependsOn": [
         "housing"
       ],
-      "basis": "Top-up beyond CPF LIFE payouts",
+      "basis": "Savings on top of CPF LIFE by age 65",
       "icon": "trending-up",
-      "suggestedMonthlyAllocation": 66,
-      "projectedCompletion": "2046-01",
-      "status": "ON_TRACK",
+      "suggestedMonthlyAllocation": 0,
+      "projectedCompletion": null,
+      "status": "AWAITING_PARTNER",
       "support": []
     }
   ],
-  "fundingGap": 244,
-  "totalRequiredMonthly": 1584,
+  "fundingGap": 0,
+  "totalRequiredMonthly": 0,
   "support": {
     "totalGrantValue": 2800,
     "restrictedValue": 2800,
@@ -448,8 +573,9 @@ export const FALLBACK_PICTURE: FamilyPicture = {
     "disclaimer": "Estimates from published scheme rules and MyInfo data. Confirm with the agency before relying on them."
   },
   "findings": [
-    "Funding every goal at once would need S$1,584/month, S$244 more than the S$1,340 surplus. Sequencing them, with retirement stepping up as earlier goals finish, keeps every deadline.",
+    "All goals can be funded on time from the S$1,340 monthly surplus.",
     "BTO home purchase fund: S$16,000 still needed by 2028-09.",
+    "5 goal(s) need your decision before they are planned.",
     "Projected returns are assumptions, not guarantees."
   ]
 };
@@ -465,6 +591,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
     "reason": "Spare OCBC cash above the emergency fund and a month of working cash tops up the buffer today."
   },
   "recommendedPlanId": "balanced",
+  "needsDecision": [],
   "plans": [
     {
       "id": "balanced",
@@ -473,8 +600,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "routes": {
         "emergency": 310,
         "housing": 618,
-        "education": 267,
-        "wealth": 117
+        "education": 102,
+        "custom": 0,
+        "wealth": 282
       },
       "unallocated": 0,
       "goals": [
@@ -508,13 +636,13 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "key": "education",
           "routeKey": "education",
           "name": "Percy's education",
-          "targetAmount": 80000,
+          "targetAmount": 44000,
           "startingAmount": 8000,
-          "deadline": "2041-04",
-          "requiredMonthly": 267,
-          "monthlyNow": 267,
-          "completesBy": "2041-04",
-          "projectedAtDeadline": 80138,
+          "deadline": "2042-08",
+          "requiredMonthly": 102,
+          "monthlyNow": 102,
+          "completesBy": "2042-08",
+          "projectedAtDeadline": 44212,
           "status": "ON_TRACK"
         },
         {
@@ -525,9 +653,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 51,
-          "completesBy": "2046-08",
-          "projectedAtDeadline": 380339,
+          "monthlyNow": 122,
+          "completesBy": "2045-04",
+          "projectedAtDeadline": 406296,
           "status": "ON_TRACK"
         },
         {
@@ -538,9 +666,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 66,
-          "completesBy": "2046-01",
-          "projectedAtDeadline": 428356,
+          "monthlyNow": 160,
+          "completesBy": "2044-07",
+          "projectedAtDeadline": 456649,
           "status": "ON_TRACK"
         }
       ],
@@ -558,17 +686,17 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "text": "BTO home purchase fund complete: S$618/month moves to retirement"
         },
         {
-          "month": "2041-04",
+          "month": "2042-08",
           "fromGoal": "education",
-          "amount": 267,
-          "text": "Percy's education complete: S$267/month moves to retirement"
+          "amount": 102,
+          "text": "Percy's education complete: S$102/month moves to retirement"
         }
       ],
       "allOnTrack": true,
       "atRisk": [],
       "recommended": true,
       "tradeOffs": [
-        "Retirement steps up as earlier goals finish: 2028-05, 2028-09, 2041-04."
+        "Retirement steps up as earlier goals finish: 2028-05, 2028-09, 2042-08."
       ]
     },
     {
@@ -578,8 +706,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "routes": {
         "emergency": 223,
         "housing": 711,
-        "education": 267,
-        "wealth": 111
+        "education": 102,
+        "custom": 0,
+        "wealth": 276
       },
       "unallocated": 0,
       "goals": [
@@ -613,13 +742,13 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "key": "education",
           "routeKey": "education",
           "name": "Percy's education",
-          "targetAmount": 80000,
+          "targetAmount": 44000,
           "startingAmount": 8000,
-          "deadline": "2041-04",
-          "requiredMonthly": 267,
-          "monthlyNow": 267,
-          "completesBy": "2041-04",
-          "projectedAtDeadline": 80138,
+          "deadline": "2042-08",
+          "requiredMonthly": 102,
+          "monthlyNow": 102,
+          "completesBy": "2042-08",
+          "projectedAtDeadline": 44212,
           "status": "ON_TRACK"
         },
         {
@@ -630,9 +759,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 48,
-          "completesBy": "2046-08",
-          "projectedAtDeadline": 379561,
+          "monthlyNow": 120,
+          "completesBy": "2045-04",
+          "projectedAtDeadline": 404058,
           "status": "ON_TRACK"
         },
         {
@@ -643,9 +772,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 63,
-          "completesBy": "2046-01",
-          "projectedAtDeadline": 427336,
+          "monthlyNow": 156,
+          "completesBy": "2044-08",
+          "projectedAtDeadline": 457226,
           "status": "ON_TRACK"
         }
       ],
@@ -663,10 +792,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "text": "Emergency buffer complete: S$223/month moves to retirement"
         },
         {
-          "month": "2041-04",
+          "month": "2042-08",
           "fromGoal": "education",
-          "amount": 267,
-          "text": "Percy's education complete: S$267/month moves to retirement"
+          "amount": 102,
+          "text": "Percy's education complete: S$102/month moves to retirement"
         }
       ],
       "allOnTrack": true,
@@ -684,8 +813,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "routes": {
         "emergency": 223,
         "housing": 618,
-        "education": 401,
-        "wealth": 70
+        "education": 153,
+        "custom": 0,
+        "wealth": 318
       },
       "unallocated": 0,
       "goals": [
@@ -719,13 +849,13 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "key": "education",
           "routeKey": "education",
           "name": "Percy's education",
-          "targetAmount": 80000,
+          "targetAmount": 44000,
           "startingAmount": 8000,
-          "deadline": "2041-04",
-          "requiredMonthly": 267,
-          "monthlyNow": 401,
-          "completesBy": "2037-09",
-          "projectedAtDeadline": 94011,
+          "deadline": "2042-08",
+          "requiredMonthly": 102,
+          "monthlyNow": 153,
+          "completesBy": "2039-03",
+          "projectedAtDeadline": 51436,
           "status": "ON_TRACK"
         },
         {
@@ -736,9 +866,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 31,
-          "completesBy": "2047-02",
-          "projectedAtDeadline": 372531,
+          "monthlyNow": 138,
+          "completesBy": "2045-06",
+          "projectedAtDeadline": 400443,
           "status": "ON_TRACK"
         },
         {
@@ -749,9 +879,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 39,
-          "completesBy": "2046-07",
-          "projectedAtDeadline": 417836,
+          "monthlyNow": 180,
+          "completesBy": "2044-10",
+          "projectedAtDeadline": 452256,
           "status": "ON_TRACK"
         }
       ],
@@ -769,10 +899,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "text": "Emergency buffer complete: S$223/month moves to retirement"
         },
         {
-          "month": "2037-09",
+          "month": "2039-03",
           "fromGoal": "education",
-          "amount": 401,
-          "text": "Percy's education complete: S$401/month moves to retirement"
+          "amount": 153,
+          "text": "Percy's education complete: S$153/month moves to retirement"
         }
       ],
       "allOnTrack": true,
@@ -780,8 +910,8 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "recommended": false,
       "tradeOffs": [
         "Emergency buffer completes later (2028-11 vs 2028-05).",
-        "Percy's education completes earlier (2037-09 vs 2041-04).",
-        "Retirement starts with S$47/month less."
+        "Percy's education completes earlier (2039-03 vs 2042-08).",
+        "Retirement starts with S$36/month more."
       ]
     }
   ]
@@ -815,21 +945,21 @@ export const FALLBACK_GROW: GrowOverview = {
       {
         "goalKey": "education",
         "goalName": "Percy's education",
-        "monthlyAmount": 267,
+        "monthlyAmount": 102,
         "product": "OCBC Blue Chip Investment Plan",
-        "horizon": "2041-04"
+        "horizon": "2042-08"
       },
       {
         "goalKey": "retirement_primary",
         "goalName": "Alex's retirement",
-        "monthlyAmount": 51,
+        "monthlyAmount": 122,
         "product": "OCBC RoboInvest",
         "horizon": "2060-11"
       },
       {
         "goalKey": "retirement_partner",
         "goalName": "Lila's retirement",
-        "monthlyAmount": 66,
+        "monthlyAmount": 160,
         "product": "OCBC RoboInvest",
         "horizon": "2062-11"
       }

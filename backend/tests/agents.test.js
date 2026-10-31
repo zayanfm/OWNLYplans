@@ -8,6 +8,8 @@ const householdStore = require('../models/householdStore');
 const cashflowService = require('../services/cashflowService');
 const optimiserService = require('../services/optimiserService');
 const scenarioService = require('../services/scenarioService');
+const goalInputService = require('../services/goalInputService');
+const { confirmSuggestedGoals } = require('./helpers');
 
 async function runTests() {
   console.log('--- RUNNING AGENTS UNIT TESTS ---');
@@ -22,19 +24,44 @@ async function runTests() {
   assert(healthRes.metrics.emergencyBufferMonths > 0, 'Buffer months should be calculated');
   assert(healthRes.metrics.protectionGap === 160000, 'Alex household protection gap should be 160k');
 
-  // 2. Goals Agent
+  // 2. Goals Agent: nothing is planned until the family confirms it
+  const unconfirmed = await goalsAgent.analyze(alexHousehold);
+  assert.deepStrictEqual(unconfirmed.goals.map(g => g.key), ['emergency', 'housing', 'education', 'retirement_primary', 'retirement_partner']);
+  assert(unconfirmed.goals.every(g => !g.planned), 'Suggestions are not planned until confirmed');
+  assert.strictEqual(unconfirmed.goals.find(g => g.key === 'retirement_partner').inputStatus, 'AWAITING_PARTNER', 'Lila confirms her own goal');
+  assert.throws(() => goalInputService.update('alex_family', 'retirement_partner', { amount: 300000 }), /Only Lila/, 'Alex cannot set the partner goal');
+  assert.throws(() => goalInputService.update('alex_family', 'education', { startYear: 2020 }), /future year/);
+  assert.throws(() => goalInputService.update('alex_family', 'emergency', { months: 30 }), /between 3 and 12/);
+  assert.strictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.length, 0, 'The optimiser plans no unconfirmed goal');
+
+  confirmSuggestedGoals('alex_family');
   const goalsRes = await goalsAgent.analyze(alexHousehold);
   console.log('✓ GoalsAgent Count:', goalsRes.goals.length);
-  assert.deepStrictEqual(goalsRes.goals.map(g => g.key), ['emergency', 'housing', 'education', 'retirement_primary', 'retirement_partner']);
   const homeGoal = goalsRes.goals.find(g => g.key === 'housing');
-  assert.strictEqual(homeGoal.deadline, '2028-09', 'BTO goal is due at key collection');
+  assert.strictEqual(homeGoal.deadline, '2028-09', 'BTO goal comes from the HDB key collection date');
   assert.deepStrictEqual(homeGoal.dependsOn, ['emergency'], 'Home savings depend on the emergency buffer');
-  assert.strictEqual(goalsRes.goals.find(g => g.key === 'education').deadline, '2041-04', 'Education is due when Percy turns 18');
+  const educationGoal = goalsRes.goals.find(g => g.key === 'education');
+  assert.strictEqual(educationGoal.deadline, '2042-08', 'Suggested university start at 19, which the family confirmed');
+  assert.strictEqual(educationGoal.targetAmount, 44000, '4 years at the suggested S$11,000');
   assert.strictEqual(goalsRes.goals.find(g => g.key === 'emergency').targetAmount, 35400, 'Six months of essential spending');
   assert(goalsRes.fundingGap > 0, 'Goals compete for the surplus');
   assert(goalsRes.goals.every(g => g.status === 'ON_TRACK'), 'The recommended plan sequences goals so each meets its deadline');
   const growthGoals = await goalsAgent.analyze(alexHousehold, { predictionScenario: 'growth' });
   assert(growthGoals.goals[2].requiredMonthlyAllocation < goalsRes.goals[2].requiredMonthlyAllocation, 'Higher assumed returns lower required education funding');
+
+  // 2a. The family's own choices drive the plan
+  goalInputService.update('alex_family', 'education', { path: 'POLYTECHNIC', startYear: 2040 });
+  const polyGoal = (await goalsAgent.analyze(alexHousehold)).goals.find(g => g.key === 'education');
+  assert.strictEqual(polyGoal.deadline, '2040-08');
+  assert.strictEqual(polyGoal.targetAmount, 9300, 'Polytechnic: 3 years at the suggested S$3,100');
+  const custom = goalInputService.addCustom('alex_family', { name: 'Family car', amount: 30000, dueDate: '2030-06', priority: 2 });
+  assert((await goalsAgent.analyze(alexHousehold)).goals.some(g => g.key === custom.key && g.planned), 'Custom goals are planned');
+  goalInputService.remove('alex_family', custom.key);
+  goalInputService.remove('alex_family', 'emergency');
+  assert(!optimiserService.optimise(alexHousehold).plans[0].goals.some(g => g.key === 'emergency'), 'Switched-off goals are not planned');
+  householdStore.goalInputs = {};
+  confirmSuggestedGoals('alex_family');
+  console.log('✓ Goal Inputs: confirm, edit, switch off, custom');
 
   // 2b. Cash flow
   const cashflow = cashflowService.analyze(alexHousehold);

@@ -14,6 +14,10 @@ class GoalsAgent {
     const recommended = optimised.plans.find((plan) => plan.id === optimised.recommendedPlanId);
     const outcome = (key) => recommended.goals.find((goal) => goal.key === key) || {};
     const goals = buildGoals(household, options).map((goal) => ({
+      inputStatus: goal.inputStatus,
+      planned: goal.planned,
+      source: goal.source,
+      input: goal.input,
       id: `goal_${goal.key}`,
       key: goal.key,
       routeKey: goal.routeKey,
@@ -32,10 +36,11 @@ class GoalsAgent {
       icon: ICONS[goal.category],
       suggestedMonthlyAllocation: outcome(goal.key).monthlyNow ?? 0,
       projectedCompletion: outcome(goal.key).completesBy ?? null,
-      status: goal.shortfall === 0 ? 'REACHED' : outcome(goal.key).status || 'AT_RISK'
+      status: !goal.planned ? goal.inputStatus : goal.shortfall === 0 ? 'REACHED' : outcome(goal.key).status || 'AT_RISK'
     }));
 
-    const totalRequired = goals.reduce((sum, goal) => sum + goal.requiredMonthlyAllocation, 0);
+    const planned = goals.filter((goal) => goal.planned);
+    const totalRequired = planned.reduce((sum, goal) => sum + goal.requiredMonthlyAllocation, 0);
     const surplus = Number(household.financials.monthlySurplus || 0);
     const home = goals.find((goal) => goal.category === 'HOUSING');
 
@@ -47,12 +52,14 @@ class GoalsAgent {
       fundingGap: Math.max(0, totalRequired - surplus),
       recommendedPlanId: optimised.recommendedPlanId,
       lumpSum: optimised.lumpSum,
+      needsDecision: optimised.needsDecision,
       goals,
       findings: [
         totalRequired > surplus
-          ? `Funding every goal at once would need ${money(totalRequired)}/month, ${money(totalRequired - surplus)} more than the ${money(surplus)} surplus. ${goals.every((goal) => goal.status !== 'AT_RISK') ? 'Sequencing them, with retirement stepping up as earlier goals finish, keeps every deadline.' : 'Even sequenced, some deadlines are at risk.'}`
+          ? `Funding every goal at once would need ${money(totalRequired)}/month, ${money(totalRequired - surplus)} more than the ${money(surplus)} surplus. ${planned.every((goal) => goal.status !== 'AT_RISK') ? 'Sequencing them, with retirement stepping up as earlier goals finish, keeps every deadline.' : 'Even sequenced, some deadlines are at risk.'}`
           : `All goals can be funded on time from the ${money(surplus)} monthly surplus.`,
         home ? `${home.name}: ${money(home.shortfall)} still needed by ${home.deadline}.` : 'No home goal is set.',
+        ...(optimised.needsDecision.length ? [`${optimised.needsDecision.length} goal(s) need your decision before they are planned.`] : []),
         'Projected returns are assumptions, not guarantees.'
       ]
     };

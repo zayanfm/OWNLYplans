@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import api from '../../../services/api';
-import type { FamilyGoal, FamilyPicture, SupportItem } from '../../../services/api';
+import type { FamilyGoal, FamilyPicture, GoalInput, GoalInputStatus, SupportItem } from '../../../services/api';
 import { FALLBACK_PICTURE } from '../../../constants/planningFallback';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
+import { GoalEditSheet, GoalSheetResult } from './GoalEditSheet';
 
 const GROUP_COLORS = ['#D81E05', '#E86A55', '#F2A08F', '#7AB5E8', '#A8CDEE', '#22A06B', '#8FD3B0'];
 const SUPPORT_STATUS: Record<SupportItem['status'], string> = {
@@ -33,11 +34,17 @@ const SupportChip = ({ item }: { item: SupportItem }) => (
   </View>
 );
 
-const GoalCard = ({ goal, goalsByKey }: { goal: FamilyGoal; goalsByKey: Record<string, FamilyGoal> }) => {
-  const pill = statusPill(goal.status);
+const DECISION_BADGES: Record<Exclude<GoalInputStatus, 'CONFIRMED'>, { bg: string; fg: string; label: string }> = {
+  NEEDS_DECISION: { bg: '#FDECEA', fg: COLORS.red, label: 'Suggested · review' },
+  AWAITING_PARTNER: { bg: '#F3F1EC', fg: COLORS.muted, label: 'Waiting for partner' },
+  OFF: { bg: '#F3F1EC', fg: COLORS.faint, label: 'Switched off' },
+};
+
+const GoalCard = ({ goal, goalsByKey, onPress }: { goal: FamilyGoal; goalsByKey: Record<string, FamilyGoal>; onPress: () => void }) => {
+  const pill = goal.inputStatus === 'CONFIRMED' ? statusPill(goal.status) : DECISION_BADGES[goal.inputStatus];
   const progress = Math.min(1, goal.currentAmount / Math.max(1, goal.targetAmount));
   return (
-    <View style={stepStyles.card}>
+    <TouchableOpacity style={[stepStyles.card, goal.inputStatus === 'NEEDS_DECISION' && styles.reviewCard, goal.inputStatus === 'OFF' && styles.offCard]} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.goalHead}>
         <View style={styles.flex}>
           <Text style={stepStyles.cardTitle}>{goal.name}</Text>
@@ -50,9 +57,10 @@ const GoalCard = ({ goal, goalsByKey }: { goal: FamilyGoal; goalsByKey: Record<s
         <Text style={stepStyles.rowLabel}>{money(goal.currentAmount)} of {money(goal.targetAmount)}</Text>
         <Text style={stepStyles.rowValue}>{goal.shortfall > 0 ? `${money(goal.shortfall)} to go` : 'Fully funded'}</Text>
       </View>
-      {goal.shortfall > 0 ? (
+      {goal.planned && goal.shortfall > 0 ? (
         <Text style={stepStyles.note}>Needs about {money(goal.requiredMonthlyAllocation)}/month if funded on its own.</Text>
       ) : null}
+      {!goal.planned ? <Text style={styles.sourceNote}>{goal.source}</Text> : null}
       {goal.dependsOn.length ? (
         <View style={styles.dependsRow}>
           {goal.dependsOn.map((key) => (
@@ -62,10 +70,23 @@ const GoalCard = ({ goal, goalsByKey }: { goal: FamilyGoal; goalsByKey: Record<s
           ))}
         </View>
       ) : null}
-      {goal.support.map((item) => <SupportChip key={item.id} item={item} />)}
-    </View>
+      {goal.inputStatus === 'CONFIRMED' ? goal.support.map((item) => <SupportChip key={item.id} item={item} />) : null}
+      <Text style={[stepStyles.linkText, styles.topGap]}>
+        {goal.inputStatus === 'NEEDS_DECISION' ? 'Review and confirm →' : goal.inputStatus === 'OFF' ? 'Switch back on →' : goal.inputStatus === 'AWAITING_PARTNER' ? 'Details' : 'Change →'}
+      </Text>
+    </TouchableOpacity>
   );
 };
+
+// Offline: apply decisions made in this session on top of the saved picture.
+const applyLocalDecisions = (picture: FamilyPicture, decisions: Record<string, GoalInput>): FamilyPicture => ({
+  ...picture,
+  goals: picture.goals.map((goal) => {
+    const input = decisions[goal.key];
+    if (!input) return goal;
+    return { ...goal, input, inputStatus: input.status, planned: input.status === 'CONFIRMED', status: input.status === 'CONFIRMED' ? 'ON_TRACK' : input.status };
+  }),
+});
 
 /**
  * Our Family Picture (Understand): cash flow (#2), goals with deadlines and dependencies (#3),
@@ -78,22 +99,47 @@ export const FamilyPictureStep: React.FC<{
   const [picture, setPicture] = useState<FamilyPicture | null>(null);
   const [offline, setOffline] = useState<boolean>(false);
   const [showIneligible, setShowIneligible] = useState<boolean>(false);
+  const [editing, setEditing] = useState<GoalInput | null>(null);
+  const [sheetOpen, setSheetOpen] = useState<boolean>(false);
+  const [localDecisions, setLocalDecisions] = useState<Record<string, GoalInput>>({});
 
-  useEffect(() => {
+  const load = (decisions = localDecisions) => {
     api.getPicture()
       .then(setPicture)
       .catch(() => {
         setOffline(true);
-        setPicture(FALLBACK_PICTURE);
+        setPicture(applyLocalDecisions(FALLBACK_PICTURE, decisions));
       });
+  };
+
+  useEffect(() => {
+    load();
   }, []);
+
+  const openGoal = (input: GoalInput | null) => {
+    setEditing(input);
+    setSheetOpen(true);
+  };
+
+  const handleSaved = (result: GoalSheetResult) => {
+    setSheetOpen(false);
+    const decisions = result.offline && result.input ? { ...localDecisions, [result.key]: result.input } : localDecisions;
+    setLocalDecisions(decisions);
+    load(decisions);
+  };
 
   if (!picture) {
     return <View style={styles.loading}><ActivityIndicator color={COLORS.red} /></View>;
   }
 
   const { cashflow, support } = picture;
-  const goals = [...picture.goals].sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const goals = [...picture.goals].sort((a, b) => {
+    // Decided goals by deadline first, then those still waiting for a decision.
+    const rank = (goal: FamilyGoal) => (goal.planned ? 0 : goal.inputStatus === 'NEEDS_DECISION' ? 1 : 2);
+    return rank(a) - rank(b) || a.deadline.localeCompare(b.deadline);
+  });
+  const toDecide = picture.goals.filter((goal) => goal.inputStatus === 'NEEDS_DECISION').length;
+  const decided = picture.goals.filter((goal) => goal.inputStatus === 'CONFIRMED' || goal.inputStatus === 'OFF').length;
   const goalsByKey = Object.fromEntries(picture.goals.map((goal) => [goal.key, goal]));
   const segments = [
     ...cashflow.groups.map((group, index) => ({ label: group.label, amount: group.monthlyAmount, color: GROUP_COLORS[index % GROUP_COLORS.length] })),
@@ -141,8 +187,14 @@ export const FamilyPictureStep: React.FC<{
           </Text>
         </View>
 
-        <Text style={[stepStyles.sectionLabel, styles.sectionGap]}>Our goals, by deadline</Text>
-        {goals.map((goal) => <GoalCard key={goal.key} goal={goal} goalsByKey={goalsByKey} />)}
+        <Text style={[stepStyles.sectionLabel, styles.sectionGap]}>Our goals · {decided} of {decided + toDecide} decided</Text>
+        <Text style={[stepStyles.note, styles.bottomGap]}>
+          Each goal starts as a suggestion with its source. You choose the amounts and dates; nothing is planned until you confirm it.
+        </Text>
+        {goals.map((goal) => <GoalCard key={goal.key} goal={goal} goalsByKey={goalsByKey} onPress={() => openGoal(goal.input)} />)}
+        <TouchableOpacity style={[stepStyles.secondaryButton, styles.bottomGap]} onPress={() => openGoal(null)} activeOpacity={0.8}>
+          <Text style={stepStyles.secondaryButtonText}>+ Add our own goal</Text>
+        </TouchableOpacity>
 
         <View style={stepStyles.card}>
           <Text style={stepStyles.cardTitle}>Government support</Text>
@@ -178,9 +230,18 @@ export const FamilyPictureStep: React.FC<{
         </View>
       </ScrollView>
 
+      <GoalEditSheet visible={sheetOpen} goal={editing} onClose={() => setSheetOpen(false)} onSaved={handleSaved} />
+
       <View style={stepStyles.footer}>
-        <TouchableOpacity style={stepStyles.primaryButton} onPress={() => onNext(picture)} activeOpacity={0.85}>
-          <Text style={stepStyles.primaryButtonText}>Build our plan</Text>
+        <TouchableOpacity
+          style={[stepStyles.primaryButton, toDecide > 0 && stepStyles.primaryButtonDisabled]}
+          onPress={() => onNext(picture)}
+          disabled={toDecide > 0}
+          activeOpacity={0.85}
+        >
+          <Text style={stepStyles.primaryButtonText}>
+            {toDecide > 0 ? `Review ${toDecide} suggested goal${toDecide === 1 ? '' : 's'} first` : 'Build our plan'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -191,7 +252,10 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topGap: { marginTop: 8 },
-  sectionGap: { marginTop: 6, marginBottom: 8 },
+  sectionGap: { marginTop: 6, marginBottom: 4 },
+  bottomGap: { marginBottom: 10 },
+  reviewCard: { borderColor: '#F3C9C1', borderStyle: 'dashed' },
+  offCard: { opacity: 0.6 },
   stackBar: { flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', marginVertical: 12 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   freeRow: { marginTop: 4, backgroundColor: COLORS.greenBg, borderRadius: 10, paddingHorizontal: 10 },
@@ -207,6 +271,7 @@ const styles = StyleSheet.create({
   supportHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   supportName: { fontSize: 12, fontWeight: '800', color: COLORS.ink, flex: 1 },
   supportAmount: { fontSize: 12, fontWeight: '900', color: '#1F5FA8' },
+  sourceNote: { fontSize: 11, lineHeight: 16, color: '#1F5FA8', marginTop: 6 },
   supportMeta: { fontSize: 10, fontWeight: '700', color: '#1F5FA8', marginVertical: 3 },
   insight: { backgroundColor: '#FFF8F6', borderColor: '#F6D5CF' },
   insightText: { fontSize: 12, lineHeight: 18, color: COLORS.ink },

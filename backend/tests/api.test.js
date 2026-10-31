@@ -1,6 +1,7 @@
 process.env.NODE_ENV = 'test';
 const assert = require('assert');
 const app = require('../server');
+const { confirmSuggestedGoals } = require('./helpers');
 
 async function testApi() {
   console.log('--- RUNNING API INTEGRATION TESTS ---');
@@ -47,6 +48,24 @@ async function testApi() {
     assert(educationGoal.support.some(s => s.id === 'cda_matching_percy'), 'CDA support appears inside the education goal');
     assert(pictureRes.support.notEligible.some(s => s.id === 'ehg_housing_grant'), 'Ineligible schemes are explained');
     console.log('✓ Family Picture OK');
+
+    // Goals are suggestions until confirmed; only the owner can confirm a personal goal.
+    const goalsList = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
+    assert(goalsList.goals.every(g => g.source), 'Every goal shows where its suggestion came from');
+    const partnerPut = await fetch(`${baseUrl}/api/household/goals/retirement_partner`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.strictEqual(partnerPut.status, 403, 'Alex cannot confirm the partner retirement goal');
+    const badPut = await fetch(`${baseUrl}/api/household/goals/education`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startYear: 2001 }) });
+    assert.strictEqual(badPut.status, 400, 'Past start years are rejected');
+    for (const goal of goalsList.goals.filter(g => g.owner !== 'partner')) {
+      const put = await fetch(`${baseUrl}/api/household/goals/${goal.key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json());
+      assert(put.goal.confirmed, `${goal.key} confirmed`);
+    }
+    const customRes = await fetch(`${baseUrl}/api/household/goals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Renovation', amount: 25000, dueDate: '2029-01', priority: 2 }) }).then(r => r.json());
+    assert(customRes.goal.key.startsWith('custom_'), 'Custom goal added');
+    const deleted = await fetch(`${baseUrl}/api/household/goals/${customRes.goal.key}`, { method: 'DELETE' }).then(r => r.json());
+    assert(deleted.removed, 'Custom goal removed');
+    confirmSuggestedGoals('alex_family');
+    console.log('✓ Goal Confirmation OK');
 
     // 4. Multi-Agent Analysis
     const agentRes = await fetch(`${baseUrl}/api/agents/analyze`, {

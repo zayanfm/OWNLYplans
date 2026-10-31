@@ -98,6 +98,14 @@ async function runE2ETests() {
     // Scenario 2b: Decide together (optimise -> what-if -> propose -> partner reply -> agree)
     // -------------------------------------------------------------
     console.log('[Scenario 2b] Testing the decide-together journey...');
+    const goalList = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
+    assert.strictEqual(goalList.goals.find(g => g.key === 'retirement_partner').status, 'CONFIRMED', 'Lila confirmed her own goal when she accepted');
+    for (const goal of goalList.goals.filter(g => g.status === 'NEEDS_DECISION')) {
+      await fetch(`${baseUrl}/api/household/goals/${goal.key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    }
+    const unplanned = (await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json())).needsDecision;
+    assert.strictEqual(unplanned.length, 0, 'Every goal is decided before planning');
+    console.log('  ✓ Family confirmed every goal; Lila confirmed her own');
     const options = await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json());
     assert.strictEqual(options.plans.length, 3);
     const whatIf = await fetch(`${baseUrl}/api/scenarios/simulate`, {
@@ -111,7 +119,7 @@ async function runE2ETests() {
     const proposed = await fetch(`${baseUrl}/api/scenarios/proposals`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId: 'education_first' })
+      body: JSON.stringify({ planId: 'balanced' })
     }).then(r => r.json());
     assert.strictEqual(proposed.proposal.status, 'PENDING');
     assert.strictEqual(proposed.proposal.partnerResponse, undefined, 'The prepared reply is not leaked early');
@@ -121,8 +129,7 @@ async function runE2ETests() {
     await new Promise(resolve => setTimeout(resolve, 3100));
 
     const replied = await fetch(`${baseUrl}/api/scenarios/proposals/latest`).then(r => r.json());
-    assert.strictEqual(replied.proposal.status, 'SUGGESTED_CHANGE', 'Lila pushes back on a plan that starts retirement lower');
-    assert.strictEqual(replied.proposal.response.suggestedPlanId, 'balanced');
+    assert.strictEqual(replied.proposal.status, 'AGREED', 'Lila agrees to a plan that keeps every goal on track');
     const agreed = await fetch(`${baseUrl}/api/scenarios/proposals/resolve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
