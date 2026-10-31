@@ -586,10 +586,11 @@ class ApiService {
     });
   }
 
-  async executeRoute(routeId: string, amount: number, householdId?: string): Promise<any> {
+  // A transfer runs only when the owner of the source account confirms it.
+  async executeRoute(routeId: string, amount: number, fromAccount: string, confirmedBy: 'primary' | 'partner', householdId?: string): Promise<any> {
     return this.request('/api/finance/execute-route', {
       method: 'POST',
-      body: JSON.stringify({ routeId, amount, householdId })
+      body: JSON.stringify({ routeId, amount, fromAccount, confirmedBy, householdId })
     });
   }
 

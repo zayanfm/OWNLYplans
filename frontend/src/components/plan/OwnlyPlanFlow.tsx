@@ -37,7 +37,7 @@ const buildFallbackPlan = (planId: PlanOptionId): OwnlyPlan => {
     monthlySurplus: options.monthlySurplus,
     investableSurplus: options.investable,
     timelineYears: 5,
-    autonomyMode: '24H_WINDOW',
+    autonomyMode: 'NOTIFY_AND_WAIT',
     predictionScenario: 'balanced',
     priorities: ['housing', 'education', 'wealth'],
     routes,

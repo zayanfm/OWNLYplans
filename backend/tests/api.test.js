@@ -93,8 +93,7 @@ async function testApi() {
         split: { housing: 0.4, education: 0.2, wealth: 0.4 },
         priorities: ['wealth', 'housing', 'education'],
         protection: { enabled: true, tier: 'enhanced' },
-        predictionScenario: 'growth',
-        mode: 'FULL_AUTO'
+        predictionScenario: 'growth'
       })
     }).then(r => r.json());
     assert(tailoredPlanRes.success, 'Tailored plan should generate');
@@ -103,6 +102,14 @@ async function testApi() {
     assert.strictEqual(tailoredPlanRes.plan.predictionScenario, 'growth', 'Prediction scenario should be preserved');
     assert.strictEqual(tailoredPlanRes.plan.timelineYears, 10, 'Timeline should be preserved');
     assert.strictEqual(tailoredPlanRes.plan.summary.totalMonthlyCommitted, 1340, 'Routes and protection should fit the available surplus');
+    const autoMode = await fetch(`${baseUrl}/api/finance/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'FULL_AUTO' }) });
+    assert.strictEqual(autoMode.status, 400, 'Automatic execution is not offered');
+    const unconfirmed = await fetch(`${baseUrl}/api/finance/execute-route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routeId: 'r1', amount: 500, fromAccount: '512-441920-002', confirmedBy: 'primary' }) });
+    assert.strictEqual(unconfirmed.status, 400, 'Alex cannot move money out of Lila\u2019s account');
+    const confirmed = await fetch(`${baseUrl}/api/finance/execute-route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routeId: 'r1', amount: 500, fromAccount: '512-773104-003', confirmedBy: 'primary' }) }).then(r => r.json());
+    assert(confirmed.success, 'Either holder can confirm a joint-account transfer');
+    const unagreed = await fetch(`${baseUrl}/api/finance/approve-plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: { optimiserPlanId: 'balanced' } }) });
+    assert.strictEqual(unagreed.status, 409, 'A household plan needs both adults to agree');
     console.log('✓ Editable Plan Configuration OK');
     console.log('✓ Finance Overview OK');
 

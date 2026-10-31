@@ -34,7 +34,8 @@ class OrchestratorAgent {
         urgency: 'HIGH',
         badge: 'Immediate Yield Lift',
         actionPayload: {
-          type: 'AUTO_SWEEP',
+          type: 'CONFIRM_TRANSFER',
+          requiresConfirmationBy: 'account owner',
           source: 'OCBC emergency buffer',
           destination: 'LionGlobal SGD Money Market Fund',
           amount: bufferToMove
@@ -126,13 +127,13 @@ class OrchestratorAgent {
     }
     nextBestActions.push({
       id: 'nba_surplus_allocation',
-      title: `Automate Monthly S$${monthlySurplus.toLocaleString()} Surplus Routing`,
+      title: `Set Up S$${monthlySurplus.toLocaleString()} of Monthly Transfers You Approve`,
       category: 'MILESTONE_EXECUTION',
       confidence: 0.96,
       impact: `Funds ${recommendedPlan.goals.length} family goals from one monthly surplus`,
       reason: `${recommendedPlan.name} plan: S$${recommendedPlan.routes.housing}/month home, S$${recommendedPlan.routes.education}/month education, S$${recommendedPlan.routes.emergency}/month emergency buffer and S$${recommendedPlan.routes.wealth}/month retirement, stepping up as earlier goals finish.`,
       urgency: 'MEDIUM',
-      badge: 'Automated Growth',
+      badge: 'You Approve Each Transfer',
       actionPayload: {
         type: 'ALLOCATION_ROUTE',
         planId: recommendedPlan.id,

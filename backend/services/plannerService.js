@@ -1,6 +1,12 @@
 const householdStore = require('../models/householdStore');
 const optimiserService = require('./optimiserService');
 
+const planError = (status, message) => {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+};
+
 class PlannerService {
   /**
    * Generates a dynamic financial plan & surplus routing proposal for a household.
@@ -15,7 +21,11 @@ class PlannerService {
     const isPendingBto = String(housing?.type || '').includes('BTO') && Number(housing?.mortgageOutstanding || 0) === 0;
     const monthlySurplus = financials.monthlySurplus || 1340;
     const timeline = String(config.timeline || '5'); // '5' or '10' years
-    const mode = config.mode || '24H_WINDOW'; // 'NOTIFY_AND_WAIT', '24H_WINDOW', 'FULL_AUTO'
+    // The AI never acts alone: every transfer waits for the account owner's confirmation.
+    if (config.mode && config.mode !== 'NOTIFY_AND_WAIT') {
+      throw planError(400, 'Automatic execution is not offered; every transfer needs your confirmation');
+    }
+    const mode = 'NOTIFY_AND_WAIT';
 
     const allowedPriorities = ['housing', 'education', 'wealth'];
     const priorities = Array.isArray(config.priorities)
@@ -135,7 +145,7 @@ class PlannerService {
     const guardrails = {
       drawdownCap: 'S$2,500 / single transaction',
       minimumEmergencyFloor: `S$${financials.emergencyFund.toLocaleString()} (preserves ${(financials.emergencyFund / Math.max(1, financials.householdMonthlyExpenses)).toFixed(1)} months of expenses)`,
-      coolingOffPeriod: mode === 'FULL_AUTO' ? '12 Hours' : mode === '24H_WINDOW' ? '24 Hours' : 'Manual confirmation on every sweep',
+      confirmation: 'The account owner confirms every transfer; nothing moves automatically',
       mfaRequirement: 'OCBC OneToken biometric authentication on execution'
     };
 
@@ -172,6 +182,15 @@ class PlannerService {
       throw new Error('Household not found');
     }
 
+    // A household plan is activated only after both adults have agreed to it.
+    if (household.partner && !household.partner.left) {
+      const proposal = householdStore.getProposal(household.id);
+      const agreedPlanId = proposal?.status === 'AGREED' ? (proposal.finalPlanId || proposal.planId) : null;
+      if (!agreedPlanId || (planPayload.optimiserPlanId && planPayload.optimiserPlanId !== agreedPlanId)) {
+        throw planError(409, `${household.partner.name.split(' ')[0]} has not agreed to this plan yet`);
+      }
+    }
+
     const approvedPlan = householdStore.approveSurplusPlan(household.id, planPayload);
     return {
       success: true,
@@ -180,13 +199,25 @@ class PlannerService {
     };
   }
 
-  executeRoute(householdId = null, routeId, amount) {
+  /**
+   * Executes one transfer only when the owner of the source account confirms it. Joint
+   * accounts can be confirmed by either holder.
+   */
+  executeRoute(householdId = null, routeId, amount, { fromAccount, confirmedBy } = {}) {
     const household = householdId ? householdStore.getHousehold(householdId) : householdStore.getHousehold();
     if (!household) {
       throw new Error('Household not found');
     }
+    const account = household.accounts.ocbc.find((item) => item.number === fromAccount);
+    if (!account) {
+      throw planError(400, 'Choose the OCBC account to transfer from');
+    }
+    const owners = account.owner === 'joint' ? ['primary', 'partner'] : [account.owner];
+    if (!owners.includes(confirmedBy)) {
+      throw planError(400, `Only the owner of ${account.type} can confirm this transfer`);
+    }
 
-    householdStore.recordAudit(household.id, 'EXECUTE_ROUTE', { routeId, amount });
+    householdStore.recordAudit(household.id, 'EXECUTE_ROUTE', { routeId, amount, fromAccount, confirmedBy });
     return {
       success: true,
       executionId: `exec-${Date.now()}`,

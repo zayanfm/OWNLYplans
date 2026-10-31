@@ -83,7 +83,7 @@ router.post('/approve-plan', (req, res) => {
     const approved = plannerService.approvePlan(householdId, plan);
     res.json(approved);
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    res.status(error.status || 400).json({ success: false, error: error.message });
   }
 });
 
@@ -93,8 +93,8 @@ router.post('/approve-plan', (req, res) => {
  */
 router.post('/execute-route', (req, res) => {
   try {
-    const { householdId, routeId, amount } = req.body || {};
-    const result = plannerService.executeRoute(householdId, routeId, amount);
+    const { householdId, routeId, amount, fromAccount, confirmedBy } = req.body || {};
+    const result = plannerService.executeRoute(householdId, routeId, amount, { fromAccount, confirmedBy });
     res.json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

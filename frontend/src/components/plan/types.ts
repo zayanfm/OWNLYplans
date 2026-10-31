@@ -7,7 +7,8 @@ export type OwnlyStep =
   | 'cockpit';
 
 export type PlanRouteId = 'housing' | 'education' | 'wealth';
-export type PlanMode = 'NOTIFY_AND_WAIT' | '24H_WINDOW' | 'FULL_AUTO';
+// Every transfer waits for the account owner's confirmation; there is no automatic mode.
+export type PlanMode = 'NOTIFY_AND_WAIT';
 export type PredictionScenario = 'conservative' | 'balanced' | 'growth';
 
 export interface GoalOutlook {

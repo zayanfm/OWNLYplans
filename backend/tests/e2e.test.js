@@ -44,13 +44,10 @@ async function runE2ETests() {
     const plan1 = await fetch(`${baseUrl}/api/finance/approve-plan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: '24H_WINDOW',
-        splits: { housing: 0.5, education: 0.3, wealth: 0.2 }
-      })
-    }).then(r => r.json());
-    assert(plan1.success, 'Plan approval should succeed');
-    console.log('  ✓ Progressive Surplus Plan Approved & Activated');
+      body: JSON.stringify({ plan: { optimiserPlanId: 'balanced' } })
+    });
+    assert.strictEqual(plan1.status, 409, 'Alex alone cannot activate the household plan');
+    console.log('  ✓ Plan activation waits for both adults');
 
     // 1.5 RM Handoff Export
     const rm1 = await fetch(`${baseUrl}/api/rm/household-summary`, {
