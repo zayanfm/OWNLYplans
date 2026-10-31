@@ -1,4 +1,4 @@
-import type { MockPassAuthResponse } from '../../services/api';
+import type { FamilyGoal, FamilyPicture, MockPassAuthResponse } from '../../services/api';
 import type { GoalOutlook, HouseholdSnapshot, OwnlyPlan, PlanRouteId, PredictionScenario } from './types';
 
 const titleCase = (value: string) => value.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -34,12 +34,25 @@ const completionDate = (current: number, target: number, monthly: number, annual
   return 'Beyond 30 years';
 };
 
+const parseMonth = (isoMonth: string) => {
+  const [year, month] = isoMonth.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, 1);
+};
+
+// Combine the backend's goals for one route (e.g. both retirement goals) into a single baseline.
+const routeBaseline = (goals: FamilyGoal[]) => ({
+  current: goals.reduce((sum, goal) => sum + goal.currentAmount, 0),
+  target: goals.reduce((sum, goal) => sum + goal.targetAmount, 0),
+  date: parseMonth([...goals].sort((a, b) => a.deadline.localeCompare(b.deadline))[0].deadline),
+});
+
 const scenarioRate = (scenario: PredictionScenario) => scenario === 'growth' ? 0.065 : scenario === 'conservative' ? 0.025 : 0.045;
 
 export const personalizePlan = (
   plan: OwnlyPlan,
   profile: MockPassAuthResponse | null,
   aggregate: any | null,
+  picture?: FamilyPicture | null,
 ): OwnlyPlan => {
   const now = new Date();
   const rawName = profile?.user?.name || plan.householdSnapshot?.primaryName || 'Alex Lim';
@@ -106,6 +119,21 @@ export const personalizePlan = (
       data: [`S$${snapshot.totalInvestments.toLocaleString()} investments`, `S$${(Number(profile?.user?.cpf?.sa || 0) + Number(profile?.partner?.cpf?.sa || 0)).toLocaleString()} household CPF SA`, `${plan.timelineYears}-year horizon`],
     },
   };
+
+  // Prefer the planning engine's real targets and deadlines (BTO keys, child at 18, age 65).
+  (['housing', 'education', 'wealth'] as PlanRouteId[]).forEach((key) => {
+    const goals = (picture?.goals || []).filter((goal) => goal.routeKey === key);
+    if (!goals.length) return;
+    const real = routeBaseline(goals);
+    baselines[key] = {
+      ...baselines[key],
+      label: goals.length === 1 ? goals[0].name : baselines[key].label,
+      current: real.current,
+      target: real.target,
+      date: real.date,
+      data: goals.map((goal) => goal.basis),
+    };
+  });
 
   const goalOutlooks: GoalOutlook[] = plan.routes.map((route) => {
     const baseline = baselines[route.key];

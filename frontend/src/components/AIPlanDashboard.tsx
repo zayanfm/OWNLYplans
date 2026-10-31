@@ -13,6 +13,7 @@ import {
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { SetupProps } from './chatbotoverlay';
 import api, { AgentAnalysisData, MockPassAuthResponse } from '../services/api';
+import { GrowCards } from './plan/GrowCards';
 import type { GoalOutlook, OwnlyPlan } from './plan/types';
 
 export interface AIPlanDashboardProps {
@@ -116,10 +117,10 @@ const RECOMMENDATION_DETAILS: Record<string, RecommendationDetail> = {
     nextStep: 'Edit contribution',
   },
   gl: {
-    why: 'The Health Agent found cash above your operating reserve earning approximately 0.05% in secondary accounts.',
+    why: 'Your emergency buffer sits in OCBC accounts earning approximately 0.05% base interest.',
     impact: 'Cash above the protected emergency floor may earn more, subject to the fund’s current yield and fees.',
     tradeoff: 'Money-market funds are investments; returns are not guaranteed and are different from bank deposits.',
-    dataUsed: ['Linked low-yield cash', 'Protected emergency floor', 'Current deposit rate', 'Illustrative fund yield'],
+    dataUsed: ['OCBC base-interest balances', 'Protected emergency floor', 'Current deposit rate', 'Illustrative fund yield'],
     nextStep: 'Review fund factsheet',
   },
   cpp: {
@@ -187,6 +188,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
   const [rmModalVisible, setRmModalVisible] = useState(false);
   const [shareJointOnly, setShareJointOnly] = useState(false);
   const [maskNric, setMaskNric] = useState(true);
+  const [includeScenarios, setIncludeScenarios] = useState(true);
   const [exportingRM, setExportingRM] = useState(false);
   const [rmBriefing, setRmBriefing] = useState<any>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<RecommendCard | null>(null);
@@ -266,7 +268,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
   const handleExportRMBrief = async () => {
     setExportingRM(true);
     try {
-      const result = await api.exportRMSummary({ shareJointOnly, maskNric });
+      const result = await api.exportRMSummary({ shareJointOnly, maskNric, includeScenarios });
       if (result.success) setRmBriefing(result.data);
     } catch {
       setRmBriefing({ exportId: 'OFFLINE-PREVIEW', bankBranch: 'OCBC Digital', keyDiscussionTopicsForRM: [] });
@@ -305,6 +307,8 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
             </View>
           </View>
 
+          <GrowCards onTalkToAdviser={() => setRmModalVisible(true)} />
+
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View>
@@ -331,7 +335,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
               ))}
             </View>
             <View style={styles.breakdownRows}>
-              <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Liquid cash across linked banks</Text><Text style={styles.breakdownValue}>S${(snapshot?.totalLiquidCash || 0).toLocaleString()}</Text></View>
+              <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Shared OCBC cash</Text><Text style={styles.breakdownValue}>S${(snapshot?.totalLiquidCash || 0).toLocaleString()}</Text></View>
               <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Investments</Text><Text style={styles.breakdownValue}>S${(snapshot?.totalInvestments || 0).toLocaleString()}</Text></View>
               <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Protected emergency floor</Text><Text style={styles.breakdownValue}>S${(snapshot?.emergencyFund || 0).toLocaleString()}</Text></View>
             </View>
@@ -535,6 +539,10 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
               <Text style={styles.consentLabel}>Mask NRIC details</Text>
               <Switch value={maskNric} onValueChange={setMaskNric} trackColor={{ true: '#D81E05' }} />
             </View>
+            <View style={styles.consentRow}>
+              <Text style={styles.consentLabel}>Include what-ifs we explored</Text>
+              <Switch value={includeScenarios} onValueChange={setIncludeScenarios} trackColor={{ true: '#D81E05' }} />
+            </View>
             <TouchableOpacity style={styles.exportButton} onPress={handleExportRMBrief} disabled={exportingRM}>
               {exportingRM ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.exportButtonText}>Generate briefing</Text>}
             </TouchableOpacity>
@@ -542,6 +550,12 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
               <View style={styles.exportResult}>
                 <Text style={styles.exportResultTitle}>Briefing ready</Text>
                 <Text style={styles.exportResultText}>{rmBriefing.exportId} · {rmBriefing.bankBranch}</Text>
+                <Text style={styles.exportResultText}>
+                  {(rmBriefing.familyGoals || []).length} goals · {(rmBriefing.scenariosExplored || []).length} what-ifs · {rmBriefing.planDecision ? `plan ${rmBriefing.planDecision.status.toLowerCase()}` : 'no plan decision yet'}
+                </Text>
+                {(rmBriefing.decisionsForAdviser || []).map((decision: string) => (
+                  <Text key={decision} style={styles.exportResultText}>• {decision}</Text>
+                ))}
               </View>
             )}
             <TouchableOpacity style={styles.closeButton} onPress={() => { setRmModalVisible(false); setRmBriefing(null); }}>

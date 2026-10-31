@@ -1,0 +1,295 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import api from '../../../services/api';
+import type { PlanGoalOutcome, PlanOption, PlanOptionId, PlanOptions, PlanProposal } from '../../../services/api';
+import { FALLBACK_PLAN_OPTIONS } from '../../../constants/planningFallback';
+import { futureValue } from '../planPersonalization';
+import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
+import { WhatIfSheet } from './WhatIfSheet';
+
+const PROPOSAL_POLL_MS = 1000;
+const OFFLINE_REPLY_MS = 3000;
+const RANGE_RATES = { low: 0.025, mid: 0.045, high: 0.065 };
+
+const monthsUntil = (isoMonth: string) => {
+  const [year, month] = isoMonth.split('-').map(Number);
+  const now = new Date();
+  return Math.max(1, (year - now.getFullYear()) * 12 + (month - 1) - now.getMonth());
+};
+
+// Education & Wealth Projection (#8): the outcome range under three return assumptions.
+const ProjectionRange = ({ goal }: { goal: PlanGoalOutcome }) => {
+  const months = monthsUntil(goal.deadline);
+  const values = {
+    low: futureValue(goal.startingAmount, goal.monthlyNow, RANGE_RATES.low, months),
+    mid: futureValue(goal.startingAmount, goal.monthlyNow, RANGE_RATES.mid, months),
+    high: futureValue(goal.startingAmount, goal.monthlyNow, RANGE_RATES.high, months),
+  };
+  const scale = Math.max(values.high, goal.targetAmount);
+  return (
+    <View style={styles.projection}>
+      <Text style={styles.projectionTitle}>By {monthLabel(goal.deadline)}, {money(goal.monthlyNow)}/month could grow to</Text>
+      {(['low', 'mid', 'high'] as const).map((key) => (
+        <View key={key} style={styles.rangeRow}>
+          <Text style={styles.rangeLabel}>{key === 'low' ? 'Weak markets' : key === 'mid' ? 'Expected' : 'Strong markets'}</Text>
+          <View style={styles.rangeTrack}><View style={[styles.rangeFill, { width: `${values[key] / scale * 100}%` }, values[key] < goal.targetAmount && styles.rangeShort]} /></View>
+          <Text style={styles.rangeValue}>{money(values[key])}</Text>
+        </View>
+      ))}
+      <Text style={stepStyles.note}>
+        Target {money(goal.targetAmount)}. Uses 2.5% / 4.5% / 6.5% a year; returns are not guaranteed. Starts from the CDA balance, which can move to Edusave/PSEA for education fees.
+      </Text>
+    </View>
+  );
+};
+
+const GoalRow = ({ goal, expanded, onPress }: { goal: PlanGoalOutcome; expanded: boolean; onPress?: () => void }) => {
+  const pill = statusPill(goal.status);
+  return (
+    <TouchableOpacity activeOpacity={onPress ? 0.7 : 1} onPress={onPress} style={stepStyles.rowDivider}>
+      <View style={stepStyles.row}>
+        <View style={styles.flex}>
+          <Text style={styles.goalName}>{goal.name}{onPress ? (expanded ? '  ▴' : '  ▾') : ''}</Text>
+          <Text style={stepStyles.cardSub}>Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
+        </View>
+        <Text style={stepStyles.rowValue}>{money(goal.monthlyNow)}/mo</Text>
+        <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
+      </View>
+      {expanded ? <ProjectionRange goal={goal} /> : null}
+    </TouchableOpacity>
+  );
+};
+
+const AlternativeCard = ({ plan, selected, onSelect }: { plan: PlanOption; selected: boolean; onSelect: () => void }) => (
+  <TouchableOpacity style={[stepStyles.card, selected && styles.selectedCard]} onPress={onSelect} activeOpacity={0.8}>
+    <View style={styles.planHead}>
+      <Text style={stepStyles.cardTitle}>{plan.name}</Text>
+      {plan.recommended ? <Text style={styles.recBadge}>Recommended</Text> : null}
+    </View>
+    <Text style={stepStyles.cardSub}>{plan.tagline}</Text>
+    {plan.tradeOffs.map((line) => <Text key={line} style={styles.tradeOff}>• {line}</Text>)}
+  </TouchableOpacity>
+);
+
+/**
+ * Our Plan (Decide): one recommended split from the goal optimiser (#5), the education
+ * projection (#8), the What-if sheet (#6), and agreeing the plan with the partner (#7).
+ */
+export const OurPlanStep: React.FC<{
+  partnerFirstName?: string;
+  saving: boolean;
+  onBack: () => void;
+  onAgreed: (planId: PlanOptionId) => void;
+}> = ({ partnerFirstName = 'Your partner', saving, onBack, onAgreed }) => {
+  const [options, setOptions] = useState<PlanOptions | null>(null);
+  const [selectedId, setSelectedId] = useState<PlanOptionId>('balanced');
+  const [showAlternatives, setShowAlternatives] = useState<boolean>(false);
+  const [expandedGoal, setExpandedGoal] = useState<string | null>(null);
+  const [whatIfOpen, setWhatIfOpen] = useState<boolean>(false);
+  const [proposal, setProposal] = useState<PlanProposal | null>(null);
+  const [proposing, setProposing] = useState<boolean>(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    api.getPlanOptions()
+      .then((result) => {
+        setOptions(result);
+        setSelectedId(result.recommendedPlanId);
+      })
+      .catch(() => {
+        setOptions(FALLBACK_PLAN_OPTIONS);
+        setSelectedId(FALLBACK_PLAN_OPTIONS.recommendedPlanId);
+      });
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  if (!options) {
+    return <View style={styles.loading}><ActivityIndicator color={COLORS.red} /></View>;
+  }
+
+  const plan = options.plans.find((item) => item.id === selectedId) || options.plans[0];
+  const goals = [...plan.goals].sort((a, b) => a.deadline.localeCompare(b.deadline));
+
+  const pollReply = (online: boolean, sent: PlanProposal) => {
+    timer.current = setTimeout(async () => {
+      if (!online) {
+        setProposal({ ...sent, status: 'AGREED', response: { decision: 'AGREED', message: `${partnerFirstName}: Looks good to me.` } });
+        return;
+      }
+      try {
+        const latest = (await api.getLatestProposal()).proposal;
+        if (latest && latest.status !== 'PENDING') {
+          setProposal(latest);
+          return;
+        }
+      } catch {
+        // Keep waiting.
+      }
+      pollReply(online, sent);
+    }, online ? PROPOSAL_POLL_MS : OFFLINE_REPLY_MS);
+  };
+
+  const propose = async () => {
+    setProposing(true);
+    let sent: PlanProposal = {
+      id: 'local', proposedAt: new Date().toISOString(), status: 'PENDING', planId: plan.id, planName: plan.name,
+      proposedBy: 'You', reviewer: partnerFirstName, note: null, response: null,
+    };
+    let online = true;
+    try {
+      sent = (await api.proposePlan(plan.id)).proposal;
+    } catch {
+      online = false;
+    } finally {
+      setProposing(false);
+    }
+    setProposal(sent);
+    pollReply(online, sent);
+  };
+
+  const finish = async (planId: PlanOptionId) => {
+    try {
+      await api.resolveProposal(planId);
+    } catch {
+      // Offline: continue with the agreed plan locally.
+    }
+    onAgreed(planId);
+  };
+
+  const suggested = proposal?.response?.suggestedPlanId
+    ? options.plans.find((item) => item.id === proposal.response?.suggestedPlanId)
+    : null;
+
+  return (
+    <View style={stepStyles.container}>
+      <ScrollView contentContainerStyle={stepStyles.content} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity style={stepStyles.backButton} onPress={onBack} activeOpacity={0.7}>
+          <Text style={stepStyles.backButtonText}>←</Text>
+        </TouchableOpacity>
+
+        <Text style={stepStyles.eyebrow}>Decide together</Text>
+        <Text style={stepStyles.title}>Our plan</Text>
+        <Text style={stepStyles.subtitle}>
+          {money(options.investable)}/month to plan after {money(options.protectionPremium)} protection. We suggest a split; you decide.
+        </Text>
+
+        <View style={[stepStyles.card, styles.planCard]}>
+          <View style={styles.planHead}>
+            <Text style={stepStyles.cardTitle}>{plan.name}</Text>
+            {plan.recommended ? <Text style={styles.recBadge}>Recommended</Text> : null}
+          </View>
+          <Text style={stepStyles.cardSub}>{plan.tagline}</Text>
+          {options.lumpSum ? (
+            <View style={styles.lumpSum}>
+              <Text style={styles.lumpSumText}>Today: move {money(options.lumpSum.amount)} of spare cash into the emergency buffer.</Text>
+            </View>
+          ) : null}
+          {goals.map((goal) => (
+            <GoalRow
+              key={goal.key}
+              goal={goal}
+              expanded={expandedGoal === goal.key}
+              onPress={goal.routeKey === 'education' ? () => setExpandedGoal(expandedGoal === goal.key ? null : goal.key) : undefined}
+            />
+          ))}
+          {plan.stepUps.length ? (
+            <View style={styles.stepUps}>
+              <Text style={stepStyles.sectionLabel}>As goals finish</Text>
+              {plan.stepUps.slice(0, 2).map((step) => (
+                <Text key={step.month + step.fromGoal} style={styles.stepUpText}>{monthLabel(step.month)}: {step.text}</Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        <TouchableOpacity onPress={() => setShowAlternatives(!showAlternatives)} activeOpacity={0.7}>
+          <Text style={[stepStyles.linkText, styles.gap]}>{showAlternatives ? 'Hide alternatives' : `Compare ${options.plans.length - 1} alternatives`}</Text>
+        </TouchableOpacity>
+        {showAlternatives ? options.plans.map((item) => (
+          <AlternativeCard key={item.id} plan={item} selected={item.id === selectedId} onSelect={() => { setSelectedId(item.id); setProposal(null); }} />
+        )) : null}
+
+        <TouchableOpacity style={[stepStyles.secondaryButton, styles.gap]} onPress={() => setWhatIfOpen(true)} activeOpacity={0.8}>
+          <Text style={stepStyles.secondaryButtonText}>What if…</Text>
+        </TouchableOpacity>
+
+        {proposal ? (
+          <View style={[stepStyles.card, styles.proposalCard]}>
+            {proposal.status === 'PENDING' ? (
+              <View style={styles.pendingRow}>
+                <ActivityIndicator color={COLORS.red} />
+                <Text style={styles.proposalText}>Waiting for {partnerFirstName} to review {proposal.planName}…</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.proposalText}>💬 {proposal.response?.message}</Text>
+                <Text style={[stepStyles.note, styles.gap]}>
+                  {partnerFirstName} saw the plan and goal totals only. Accounts you marked private stayed private.
+                </Text>
+              </>
+            )}
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <WhatIfSheet visible={whatIfOpen} planId={plan.id} onClose={() => setWhatIfOpen(false)} />
+
+      <View style={stepStyles.footer}>
+        {!proposal ? (
+          <TouchableOpacity style={[stepStyles.primaryButton, proposing && stepStyles.primaryButtonDisabled]} onPress={propose} disabled={proposing} activeOpacity={0.85}>
+            <Text style={stepStyles.primaryButtonText}>Send to {partnerFirstName} to agree</Text>
+          </TouchableOpacity>
+        ) : proposal.status === 'PENDING' ? (
+          <View style={[stepStyles.primaryButton, stepStyles.primaryButtonDisabled]}>
+            <Text style={stepStyles.primaryButtonText}>Waiting for {partnerFirstName}…</Text>
+          </View>
+        ) : proposal.status === 'SUGGESTED_CHANGE' && suggested ? (
+          <View style={styles.choiceRow}>
+            <TouchableOpacity style={[stepStyles.secondaryButton, styles.flex]} onPress={() => finish(plan.id)} disabled={saving}>
+              <Text style={stepStyles.secondaryButtonText}>Keep {plan.name}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[stepStyles.primaryButton, styles.flex]} onPress={() => finish(suggested.id)} disabled={saving}>
+              <Text style={stepStyles.primaryButtonText}>Use {suggested.name}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={[stepStyles.primaryButton, saving && stepStyles.primaryButtonDisabled]} onPress={() => finish(proposal.planId)} disabled={saving} activeOpacity={0.85}>
+            {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={stepStyles.primaryButtonText}>Activate our plan</Text>}
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  gap: { marginTop: 10, marginBottom: 6 },
+  planCard: { borderColor: '#F3C9C1', borderWidth: 1.5 },
+  selectedCard: { borderColor: COLORS.red, borderWidth: 1.5 },
+  planHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  recBadge: { fontSize: 10, fontWeight: '900', color: '#FFFFFF', backgroundColor: COLORS.red, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  lumpSum: { backgroundColor: COLORS.greenBg, borderRadius: 10, padding: 8, marginTop: 10 },
+  lumpSumText: { fontSize: 12, fontWeight: '700', color: COLORS.green },
+  goalName: { fontSize: 13, fontWeight: '800', color: COLORS.ink },
+  stepUps: { marginTop: 12 },
+  stepUpText: { fontSize: 11, lineHeight: 16, color: COLORS.muted },
+  tradeOff: { fontSize: 12, lineHeight: 17, color: COLORS.ink, marginTop: 4 },
+  projection: { backgroundColor: '#F7FAFF', borderRadius: 12, padding: 10, marginBottom: 8 },
+  projectionTitle: { fontSize: 12, fontWeight: '800', color: COLORS.ink, marginBottom: 6 },
+  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  rangeLabel: { width: 92, fontSize: 11, color: COLORS.muted },
+  rangeTrack: { flex: 1, height: 8, borderRadius: 4, backgroundColor: '#E3ECF7', overflow: 'hidden' },
+  rangeFill: { height: 8, borderRadius: 4, backgroundColor: '#1F5FA8' },
+  rangeShort: { backgroundColor: COLORS.amber },
+  rangeValue: { width: 72, textAlign: 'right', fontSize: 11, fontWeight: '800', color: COLORS.ink },
+  proposalCard: { marginTop: 8 },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  proposalText: { fontSize: 13, lineHeight: 19, fontWeight: '700', color: COLORS.ink, flex: 1 },
+  choiceRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+});
+
+export default OurPlanStep;

@@ -110,6 +110,188 @@ export interface HouseholdWorkspace {
   manualAssets: ManualAsset[];
 }
 
+export type GoalStatus = 'ON_TRACK' | 'AT_RISK' | 'REACHED';
+
+export interface SupportItem {
+  id: string;
+  name: string;
+  agency: string;
+  goalKey: 'housing' | 'education' | null;
+  fundType: 'CASH' | 'RESTRICTED_CDA' | 'CPF' | 'VOUCHER';
+  restricted: boolean;
+  status: 'AVAILABLE' | 'RECEIVING' | 'RECEIVED' | 'UPCOMING' | 'NOT_ELIGIBLE';
+  amount: number;
+  reason: string;
+  action: string;
+  nextDate: string | null;
+}
+
+export interface FamilyGoal {
+  id: string;
+  key: string;
+  routeKey: 'emergency' | 'housing' | 'education' | 'wealth';
+  name: string;
+  category: 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT';
+  priority: number;
+  targetAmount: number;
+  currentAmount: number;
+  shortfall: number;
+  deadline: string;
+  monthsRemaining: number;
+  requiredMonthlyAllocation: number;
+  annualRate: number;
+  dependsOn: string[];
+  basis: string;
+  icon: string;
+  suggestedMonthlyAllocation: number;
+  projectedCompletion: string | null;
+  status: GoalStatus;
+  support: SupportItem[];
+}
+
+export interface Commitment {
+  id: string;
+  label: string;
+  category: string;
+  monthlyAmount: number;
+  essential: boolean;
+  owner?: string;
+}
+
+export interface FamilyPicture {
+  success: boolean;
+  householdId: string;
+  cashflow: {
+    income: Array<{ owner: string; name: string; monthlyTakeHome: number }>;
+    totalTakeHome: number;
+    commitments: Commitment[];
+    groups: Array<{ category: string; label: string; monthlyAmount: number; items: Commitment[] }>;
+    totalCommitments: number;
+    essentialMonthly: number;
+    flexibleMonthly: number;
+    freeToPlan: number;
+    method: string;
+  };
+  goals: FamilyGoal[];
+  fundingGap: number;
+  totalRequiredMonthly: number;
+  support: {
+    totalGrantValue: number;
+    restrictedValue: number;
+    flexibleValue: number;
+    upcomingDates: Array<{ grantId: string; name: string; date: string }>;
+    notEligible: SupportItem[];
+    disclaimer: string;
+  };
+  findings: string[];
+}
+
+export type PlanOptionId = 'balanced' | 'home_first' | 'education_first';
+
+export interface PlanGoalOutcome {
+  key: string;
+  routeKey: FamilyGoal['routeKey'];
+  name: string;
+  targetAmount: number;
+  startingAmount: number;
+  deadline: string;
+  requiredMonthly: number;
+  monthlyNow: number;
+  completesBy: string | null;
+  projectedAtDeadline: number;
+  status: 'ON_TRACK' | 'AT_RISK';
+}
+
+export interface PlanOption {
+  id: PlanOptionId;
+  name: string;
+  tagline: string;
+  routes: { emergency: number; housing: number; education: number; wealth: number };
+  unallocated: number;
+  goals: PlanGoalOutcome[];
+  stepUps: Array<{ month: string; fromGoal: string; amount: number; text: string }>;
+  allOnTrack: boolean;
+  atRisk: string[];
+  recommended: boolean;
+  tradeOffs: string[];
+}
+
+export interface PlanOptions {
+  success: boolean;
+  monthlySurplus: number;
+  protectionPremium: number;
+  investable: number;
+  lumpSum: { amount: number; toGoal: string; reason: string } | null;
+  recommendedPlanId: PlanOptionId;
+  plans: PlanOption[];
+}
+
+export interface ScenarioLevers {
+  extraChild: boolean;
+  incomeChangePct: number;
+  schoolFeesMonthly: number;
+  extraSavingsMonthly: number;
+}
+
+export interface ScenarioResult {
+  success: boolean;
+  levers: ScenarioLevers;
+  planId: PlanOptionId;
+  surplusBefore: number;
+  surplusAfter: number;
+  monthlyGapToClose: number;
+  goals: Array<{
+    key: string;
+    name: string;
+    isNew: boolean;
+    before: { monthlyNow: number; completesBy: string | null; status: string; targetAmount: number } | null;
+    after: { monthlyNow: number; completesBy: string | null; status: string; targetAmount: number };
+  }>;
+  summary: string[];
+  recommendedPlanIdAfter: PlanOptionId;
+}
+
+export interface PlanProposal {
+  id: string;
+  proposedAt: string;
+  status: 'PENDING' | 'AGREED' | 'SUGGESTED_CHANGE';
+  planId: PlanOptionId;
+  planName: string;
+  proposedBy: string;
+  reviewer: string;
+  note: string | null;
+  finalPlanId?: PlanOptionId;
+  response: { decision: string; message: string; suggestedPlanId?: PlanOptionId } | null;
+}
+
+export interface GrowOverview {
+  success: boolean;
+  readiness: {
+    ready: boolean;
+    checks: Array<{ id: string; label: string; detail: string; passed: boolean }>;
+    suggestions: Array<{ goalKey: string; goalName: string; monthlyAmount: number; product: string; horizon: string }>;
+    totalMonthly: number;
+    handoff: { label: string; destination: string; note: string } | null;
+    blockedReason: string | null;
+  };
+  advisory: {
+    recommended: boolean;
+    flags: Array<{ id: string; label: string }>;
+    title: string;
+    reason: string;
+  };
+}
+
+export interface PlanReview {
+  id: string;
+  detectedFor: string;
+  trigger: { type: string; description: string };
+  surplusBefore: number;
+  surplusAfter: number;
+  changes: ScenarioResult['goals'];
+  suggestions: Array<{ id: 'accept' | 'revise' | 'reject'; label: string; detail: string }>;
+}
+
 export interface NextBestAction {
   id: string;
   title: string;
@@ -256,6 +438,59 @@ class ApiService {
     });
   }
 
+  // Our Family Picture: cash flow, goals with dependencies, support per goal
+  async getPicture(householdId?: string): Promise<FamilyPicture> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<FamilyPicture>(`/api/household/picture${q}`);
+  }
+
+  // Decision engine: plan options, what-if scenarios and partner proposals
+  async getPlanOptions(householdId?: string): Promise<PlanOptions> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<PlanOptions>(`/api/scenarios/plans${q}`);
+  }
+
+  async simulateScenario(levers: Partial<ScenarioLevers>, planId?: PlanOptionId): Promise<ScenarioResult> {
+    return this.request<ScenarioResult>('/api/scenarios/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ levers, planId })
+    });
+  }
+
+  async proposePlan(planId: PlanOptionId, note?: string): Promise<{ success: boolean; proposal: PlanProposal }> {
+    return this.request('/api/scenarios/proposals', {
+      method: 'POST',
+      body: JSON.stringify({ planId, note })
+    });
+  }
+
+  async getLatestProposal(): Promise<{ success: boolean; proposal: PlanProposal | null }> {
+    return this.request('/api/scenarios/proposals/latest');
+  }
+
+  async resolveProposal(planId: PlanOptionId): Promise<{ success: boolean; proposal: PlanProposal }> {
+    return this.request('/api/scenarios/proposals/resolve', {
+      method: 'POST',
+      body: JSON.stringify({ planId })
+    });
+  }
+
+  // Grow: investment readiness, advisory trigger and plan check-ins
+  async getGrowOverview(): Promise<GrowOverview> {
+    return this.request<GrowOverview>('/api/grow/overview');
+  }
+
+  async simulateReview(): Promise<{ success: boolean; review: PlanReview }> {
+    return this.request('/api/grow/reviews/simulate', { method: 'POST', body: '{}' });
+  }
+
+  async respondToReview(reviewId: string, decision: 'accept' | 'revise' | 'reject'): Promise<{ success: boolean }> {
+    return this.request('/api/grow/reviews/respond', {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, decision })
+    });
+  }
+
   // Multi-Agent Engine
   async analyzeAgents(householdId?: string): Promise<{ success: boolean; data: AgentAnalysisData }> {
     return this.request<{ success: boolean; data: AgentAnalysisData }>('/api/agents/analyze', {
@@ -288,6 +523,7 @@ class ApiService {
     priorities?: PlanRouteId[];
     protection?: { enabled: boolean; tier: 'essential' | 'enhanced' };
     predictionScenario?: PredictionScenario;
+    planId?: PlanOptionId;
     householdId?: string;
   }): Promise<{ success: boolean; plan: OwnlyPlan }> {
     return this.request('/api/finance/plan', {
