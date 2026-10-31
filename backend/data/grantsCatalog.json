@@ -1,0 +1,89 @@
+{
+  "grants": [
+    {
+      "id": "ehg_housing_grant",
+      "name": "Enhanced CPF Housing Grant (EHG)",
+      "agency": "HDB / CPF Board",
+      "category": "HOUSING",
+      "maxAmount": 80000,
+      "eligibilityCriteria": {
+        "maxMonthlyIncome": 9000,
+        "firstTimer": true,
+        "employmentMonthsContinuous": 12
+      },
+      "calculator": {
+        "type": "income_tier",
+        "tiers": [
+          { "maxIncome": 1500, "amount": 80000 },
+          { "maxIncome": 2000, "amount": 75000 },
+          { "maxIncome": 3000, "amount": 65000 },
+          { "maxIncome": 4000, "amount": 55000 },
+          { "maxIncome": 5000, "amount": 45000 },
+          { "maxIncome": 6000, "amount": 35000 },
+          { "maxIncome": 7000, "amount": 25000 },
+          { "maxIncome": 8000, "amount": 15000 },
+          { "maxIncome": 9000, "amount": 10000 }
+        ]
+      },
+      "description": "Government grant to help lower- and middle-income first-timer families buy their first home.",
+      "actionRecommendation": "Auto-apply via HDB Flat Portal during flat booking"
+    },
+    {
+      "id": "baby_bonus_cda",
+      "name": "Baby Bonus & Child Development Account (CDA)",
+      "agency": "Ministry of Social and Family Development (MSF)",
+      "category": "FAMILY",
+      "maxAmount": 16000,
+      "eligibilityCriteria": {
+        "citizenChild": true,
+        "childAgeMax": 12
+      },
+      "benefits": {
+        "firstStepGrant": 5000,
+        "dollarForDollarMatchLimit": 4000,
+        "cashGift": 11000
+      },
+      "description": "Government matching savings and upfront grants into your child's CDA with OCBC.",
+      "actionRecommendation": "Pre-open OCBC Child Development Account to receive S$5,000 First Step Grant immediately"
+    },
+    {
+      "id": "climate_vouchers",
+      "name": "Climate Friendly Households Programme",
+      "agency": "National Environment Agency (NEA)",
+      "category": "LIFESTYLE",
+      "amount": 300,
+      "eligibilityCriteria": {
+        "hdbHousehold": true
+      },
+      "description": "S$300 in Climate Vouchers for all HDB households to switch to energy/water efficient appliances.",
+      "actionRecommendation": "Claim at RedeemSG via Singpass"
+    },
+    {
+      "id": "silver_support",
+      "name": "Silver Support Scheme",
+      "agency": "CPF Board",
+      "category": "ELDERLY",
+      "maxQuarterlyPayout": 1080,
+      "eligibilityCriteria": {
+        "ageMin": 65,
+        "totalCpfContributionsMax": 140000,
+        "hdbFlatMax": "5-room"
+      },
+      "description": "Quarterly cash supplement for elderly Singaporeans who had low incomes during working years.",
+      "actionRecommendation": "Automatic CPF payout assessment for elderly parents"
+    },
+    {
+      "id": "gst_voucher_cash_medisave",
+      "name": "GST Voucher Scheme (Cash & MediSave)",
+      "agency": "Ministry of Finance (MOF)",
+      "category": "HOUSEHOLD",
+      "annualAmount": 850,
+      "eligibilityCriteria": {
+        "assessableIncomeMax": 34000,
+        "homeAnnualValueMax": 25000
+      },
+      "description": "Annual direct cash and MediSave top-up to offset cost of living for Singaporeans.",
+      "actionRecommendation": "Check PayNow-NRIC linking for instant disbursement"
+    }
+  ]
+}

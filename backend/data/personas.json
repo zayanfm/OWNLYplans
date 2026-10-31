@@ -1,0 +1,90 @@
+{
+  "alex_family": {
+    "id": "alex_family",
+    "name": "Alex Lim Family",
+    "segment": "Young Family with One Child",
+    "primaryUser": {
+      "nric": "S****23A",
+      "name": "Alex Lim",
+      "age": 31,
+      "citizenship": "Singapore Citizen",
+      "maritalStatus": "Married",
+      "employment": "Product Lead (Technology)",
+      "monthlyGrossIncome": 5500,
+      "monthlyTakeHome": 4400,
+      "cpf": { "oa": 42000, "sa": 28000, "ma": 18000 }
+    },
+    "partner": {
+      "nric": "S****56B",
+      "name": "Lila Tan",
+      "age": 29,
+      "citizenship": "Singapore Citizen",
+      "employment": "Marketing Manager",
+      "monthlyGrossIncome": 4800,
+      "monthlyTakeHome": 3840,
+      "linked": true,
+      "cpf": { "oa": 38000, "sa": 22000, "ma": 16000 }
+    },
+    "dependents": [
+      {
+        "name": "Percy Lim",
+        "relation": "Child",
+        "age": 3,
+        "birthDate": "2023-04-18",
+        "nric": "T****91Z",
+        "citizenship": "Singapore Citizen"
+      }
+    ],
+    "housing": {
+      "type": "4-Room BTO (Pending)",
+      "town": "Tengah Garden District",
+      "estimatedPrice": 480000,
+      "downpaymentRequired": 96000,
+      "downpaymentAccumulated": 80000,
+      "keyCollectionDate": "2028-09",
+      "mortgageOutstanding": 0,
+      "monthlyLoanInstalment": 0,
+      "owners": 2,
+      "firstTimer": true
+    },
+    "financials": {
+      "householdMonthlyIncome": 10300,
+      "householdTakeHome": 8240,
+      "householdMonthlyExpenses": 6900,
+      "monthlySurplus": 1340,
+      "emergencyFund": 28000,
+      "totalLiabilities": 0,
+      "insuranceCoverage": {
+        "existingLifeCoverage": 250000,
+        "recommendedLifeCoverage": 410000,
+        "protectionGap": 160000,
+        "hospitalPlan": "Great Eastern GREAT SupremeHealth Standard"
+      }
+    },
+    "spendingInsights": {
+      "analysisWindowDays": 90,
+      "recurringSubscriptions": [
+        { "merchant": "Streaming bundle", "monthlyAmount": 31.98, "usage": "LOW", "recommendation": "REVIEW" },
+        { "merchant": "Fitness app", "monthlyAmount": 22.02, "usage": "LOW", "recommendation": "REVIEW" },
+        { "merchant": "Cloud storage", "monthlyAmount": 9.99, "usage": "HIGH", "recommendation": "KEEP" },
+        { "merchant": "Family music", "monthlyAmount": 16.98, "usage": "HIGH", "recommendation": "KEEP" }
+      ],
+      "reviewableMonthlySavings": 54,
+      "method": "Recurring merchant detection across linked-account transaction categories"
+    },
+    "accounts": {
+      "ocbc": [
+        { "type": "OCBC 360 Account", "number": "512-882910-001", "holder": "Alex Lim", "balance": 18450, "interestRate": 0.05, "role": "Emergency / Salary credit" },
+        { "type": "OCBC Frank Account", "number": "512-441920-002", "holder": "Lila Tan", "balance": 4550, "interestRate": 0.05, "role": "Daily Expenses" }
+      ],
+      "otherBanks": [
+        { "bank": "DBS", "type": "Multiplier Account", "number": "012-99381-2", "holder": "Alex Lim", "balance": 9200, "interestRate": 0.05 },
+        { "bank": "UOB", "type": "One Account", "number": "311-22819-5", "holder": "Lila Tan", "balance": 3800, "interestRate": 0.05 }
+      ],
+      "investments": [
+        { "platform": "OCBC RoboInvest", "name": "Global Balanced Growth Portfolio", "value": 14200, "unrealizedGain": "+6.4%" },
+        { "platform": "LionGlobal", "name": "LionGlobal SGD Money Market Fund", "value": 0, "yieldRate": 0.0385 }
+      ]
+    }
+  }
+}

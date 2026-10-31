@@ -16,12 +16,12 @@ interface PlanningForProps {
 
 const GOAL_OPTIONS = [
   {
-    val: 'personal',
+    val: 'personal' as const,
     label: 'Myself',
     sub: 'Plan for yourself — savings, investments, protection',
   },
   {
-    val: 'shared',
+    val: 'shared' as const,
     label: 'With Partner / Couple',
     sub: 'Plan together with a partner toward joint milestones',
   },

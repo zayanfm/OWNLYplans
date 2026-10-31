@@ -19,14 +19,16 @@ export interface AgentRecommendation extends AgentStatus {
 
 export interface FinancialAccount {
   id: string;
-  avatar: string;
-  avatarBg: string;
+  avatar?: string;
+  avatarBg?: string;
   label: string;
-  sub: string;
-  bal: string;
-  field: string;
-  field2: string;
-  field2val: string;
+  sub?: string;
+  bal?: string;
+  balance?: string;
+  accountNumber?: string;
+  field?: string;
+  field2?: string;
+  field2val?: string;
 }
 
 export interface PromoCard {
@@ -48,10 +50,10 @@ export interface Milestone {
   detail: string;
 }
 
-export const USER = { 
-  first: 'Mary', 
-  partner: 'Zayan', 
-  segment: '25–44 Dual Income' 
+export const USER = {
+  first: 'Alex',
+  partner: 'Lila',
+  segment: 'Young family with one child'
 };
 
 export const COPY = {
@@ -117,7 +119,7 @@ export const AUTONOMY_MODES = {
 
 export const ALLOC_ROUTES = [
   { to: 'LionGlobal SGD MMF', amt: 'S$1,000', yield: '3.85% p.a.', icon: '💰', color: '#2563EB' },
-  { to: 'BTO Goal Pot', amt: 'S$200', yield: 'Dec 2027 target', icon: '🏠', color: '#16A34A' },
+  { to: 'Home Loan Reserve', amt: 'S$200', yield: 'Selected goal horizon', icon: '🏠', color: '#16A34A' },
   { to: 'FRANK Auto-pay', amt: 'S$1,240', yield: 'Clears balance', icon: '💳', color: '#9333EA' },
 ];
 
@@ -131,7 +133,7 @@ export const AGENT_STATUSES: AgentStatus[] = [
 export const AGENT_RECOMMENDATIONS: AgentRecommendation[] = [
   { id: 'cashflow', icon: '💸', label: 'Cashflow Agent', color: 'bg-blue-50 border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-800', name: 'Cashflow Forecast', status: 'Surplus Verified', conf: 94, finding: 'S$1,340 monthly surplus confirmed.', action: 'Route S$1,000 → LionGlobal MMF at 3.85% p.a.' },
   { id: 'spending', icon: '🛒', label: 'Spending Agent', color: 'bg-amber-50 border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-800', name: 'Spending Pattern', status: 'Outliers Filtered', conf: 87, finding: 'F&B +18% vs last month · Dining Out.', action: 'Soft cap S$420/mo · Alert at 80%.' },
-  { id: 'goal', icon: '🎯', label: 'Goal Agent', color: 'bg-green-50 border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-800', name: 'Goal Optimiser', status: 'MMF Yield Maxed', conf: 91, finding: 'BTO goal S$60K · Dec 2027 · On track ✓', action: '+S$200/mo allocation · hit target 2 months early.' },
+  { id: 'goal', icon: '🎯', label: 'Goal Agent', color: 'bg-green-50 border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-800', name: 'Goal Optimiser', status: 'Goals Tested', conf: 91, finding: 'Home, education and retirement tested against the selected horizon.', action: 'Adjust monthly contributions before activating.' },
   { id: 'protection', icon: '🛡️', label: 'Protection Agent', color: 'bg-purple-50 border-purple-200', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-800', name: 'Protection & Opps', status: 'GE Gap Identified', conf: 89, finding: 'Life cover gap: S$160K vs recommended.', action: 'GE FlexiLife Health plan · est. S$28/mo.' },
 ];
 
@@ -197,19 +199,100 @@ export const FINANCE_METRICS = {
   timelineDefault: '5',
 };
 
+// Offline fixtures mirror the Alex MockPass sandbox household.
+export const FALLBACK_MYINFO = {
+  success: true,
+  authenticatedAt: '',
+  authMethod: 'OWNLY_MOCKPASS_OAUTH2',
+  authProvider: 'OWNLYplans MockPass Sandbox',
+  personaId: 'alex_family',
+  personaName: 'Alex Lim Family',
+  segment: 'Young Family with One Child',
+  user: {
+    nric: 'S****23A',
+    name: 'Alex Lim',
+    age: 31,
+    citizenship: 'Singapore Citizen',
+    maritalStatus: 'Married',
+    employment: 'Product Lead (Technology)',
+    monthlyGrossIncome: 5500,
+    monthlyTakeHome: 4400,
+    cpf: { oa: 42000, sa: 28000, ma: 18000 },
+    verified: true,
+  },
+  partner: {
+    nric: 'S****56B', name: 'Lila Tan', age: 29, citizenship: 'Singapore Citizen',
+    employment: 'Marketing Manager', monthlyGrossIncome: 4800, monthlyTakeHome: 3840,
+    cpf: { oa: 38000, sa: 22000, ma: 16000 }, linked: true,
+  },
+  household: {
+    segment: 'Young Family with One Child',
+    dependentsCount: 1,
+    dependents: [
+      { name: 'Percy Lim', relation: 'Child', age: 3, birthDate: '2023-04-18', nric: 'T****91Z' },
+    ],
+    housing: { type: '4-Room BTO (Pending)', town: 'Tengah Garden District', downpaymentRequired: 96000, downpaymentAccumulated: 80000, keyCollectionDate: '2028-09', monthlyLoanInstalment: 0, outstandingLoanBalance: 0 },
+  },
+};
+
+export const FALLBACK_FAMILY_MEMBERS = [
+  { id: 'spouse', name: 'Lila Tan', relation: 'Spouse', maskedNric: 'S****56B' },
+  { id: 'child-1', name: 'Percy Lim', relation: 'Child', maskedNric: 'T****91Z' },
+];
+
+export const FALLBACK_SGFINDEX_INSTITUTIONS = [
+  { id: 'ocbc', name: 'OCBC Bank', detail: 'Deposits, cards & investments' },
+  { id: 'dbs', name: 'DBS Bank', detail: 'Multiplier Account' },
+  { id: 'uob', name: 'UOB Bank', detail: 'One Account' },
+  { id: 'cpf', name: 'CPF Board', detail: 'OA · SA · MediSave' },
+  { id: 'iras', name: 'IRAS', detail: 'Notice of Assessment' },
+];
+
+export const FALLBACK_SGFINDEX_AGGREGATE = {
+  success: true,
+  summary: {
+    totalLiquidCash: 36000,
+    totalInvestments: 14200,
+    householdCpfTotal: 164000,
+    totalAssets: 214200,
+    totalLiabilities: 0,
+    netWorth: 214200,
+    monthlyHouseholdIncome: 10300,
+    monthlyHouseholdTakeHome: 8240,
+    monthlyHouseholdExpenses: 6900,
+    monthlySurplus: 1340,
+    emergencyFund: 28000,
+    emergencyBufferMonths: 4.1,
+  },
+};
+
 export const PLAN_MILESTONES: Record<string, Milestone[]> = {
   '5': [
     { year: 'Year 1', icon: '💰', title: 'Emergency Fund Complete', detail: 'S$24,000 fully funded · 3-month buffer secured' },
-    { year: 'Year 2', icon: '🏠', title: 'BTO Key Collection', detail: 'S$60,000 goal hit · Down payment & stamp duty ready' },
+    { year: 'Year 5', icon: '🏠', title: 'Home Loan Reserve', detail: '12 months of mortgage payments targeted outside the emergency fund' },
     { year: 'Year 3', icon: '🛡️', title: 'Protection Optimised', detail: 'Life + health coverage gap closed · GE FlexiLife active' },
     { year: 'Year 4', icon: '📈', title: 'Portfolio Growth', detail: 'Investment target S$50,000 · MMF + equities diversified' },
     { year: 'Year 5', icon: '✨', title: 'Financial Freedom', detail: 'Net worth S$200,000+ · Passive income S$800/mo' },
   ],
   '10': [
-    { year: 'Year 2', icon: '🏠', title: 'BTO Key Collection', detail: 'S$60,000 goal hit · Down payment ready' },
+    { year: 'Year 10', icon: '🏠', title: 'Home Loan Reserve', detail: 'Lower monthly contribution across the longer goal horizon' },
     { year: 'Year 4', icon: '👶', title: 'Education Fund Starts', detail: 'Child education pot · S$300/mo allocation begins' },
     { year: 'Year 6', icon: '📈', title: 'Investment Milestone', detail: 'Equity portfolio S$120,000 · Diversified across asset class' },
     { year: 'Year 8', icon: '🏢', title: 'Property Planning', detail: 'Investment property capital target S$200K · Planning begins' },
     { year: 'Year 10', icon: '🌅', title: 'Early Retirement Prep', detail: 'Retirement corpus S$500,000 · FIRE pathway at age 55' },
   ],
+};
+
+// Canonical OCBC-only balances, mirrored from backend/data/personas.json.
+// SGFinDex totals also include S$13,000 held at DBS/UOB and S$164,000 in CPF.
+export const MOCK_OCBC_ACCOUNTS = [
+  { id: 'frank', label: 'OCBC FRANK Account', maskedNumber: '•••• 0002', balance: 4550, debitCardNumber: '4532-7814-9206-1148', avatarLabel: 'FRA', avatarBg: '#EE6C4D' },
+  { id: '360', label: 'OCBC 360 Account', maskedNumber: '•••• 0001', balance: 18450, debitCardNumber: '5241-6830-1759-4027', avatarLabel: '360', avatarBg: '#60A5FA' },
+];
+
+export const MOCK_OCBC_POSITION = {
+  deposits: 23000,
+  investments: 14200,
+  cardBalance: 0,
+  total: 37200,
 };
