@@ -113,6 +113,16 @@ async function runE2ETests() {
     }).then(r => r.json())).goal;
     const btoInPicture = (await fetch(`${baseUrl}/api/household/picture`).then(r => r.json())).goals.find(g => g.key === bto.key);
     assert(btoInPicture.support.some(s => s.id === 'climate_vouchers'), 'Climate Friendly Households Programme shows under the housing goal');
+    const workshop = (await fetch(`${baseUrl}/api/household/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Coding workshop', category: 'EDUCATION', amount: 2000, dueDate: '2027-06' })
+    }).then(r => r.json())).goal;
+    const pictureGoals = (await fetch(`${baseUrl}/api/household/picture`).then(r => r.json())).goals;
+    assert.strictEqual(pictureGoals.find(g => g.key === workshop.key).support.length, 0, 'Percy CDA support does not appear under an unrelated education goal');
+    assert(pictureGoals.find(g => g.key === 'education').support.some(s => s.id === 'cda_matching_percy'), 'It stays with the education goal for Percy');
+    assert.strictEqual(pictureGoals.find(g => g.key === workshop.key).group, 'EDUCATION');
+    await fetch(`${baseUrl}/api/household/goals/${workshop.key}`, { method: 'DELETE' });
     const unplanned = (await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json())).needsDecision;
     assert.strictEqual(unplanned.length, 0, 'Every goal is decided before planning');
     console.log('  ✓ Family confirmed every goal; Lila confirmed her own');

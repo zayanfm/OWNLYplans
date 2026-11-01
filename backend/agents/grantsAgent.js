@@ -60,7 +60,7 @@ class GrantsAgent {
       const cashGiftEnds = addYearsAndMonths(child.birthDate, 6, 6);
 
       grants.push({
-        id: `cash_gift_${firstName.toLowerCase()}`, name: `Baby Bonus Cash Gift (${firstName})`, agency: babyBonus.agency, goalKey: 'education',
+        id: `cash_gift_${firstName.toLowerCase()}`, childName: child.name, name: `Baby Bonus Cash Gift (${firstName})`, agency: babyBonus.agency, goalKey: 'education',
         fundType: 'CASH', restricted: false,
         status: monthsUntil(cashGiftEnds, now) > 0 ? 'RECEIVING' : 'RECEIVED',
         amount: babyBonus.benefits.cashGift,
@@ -70,7 +70,7 @@ class GrantsAgent {
       });
 
       grants.push({
-        id: `cda_first_step_${firstName.toLowerCase()}`, name: `CDA First Step Grant (${firstName})`, agency: babyBonus.agency, goalKey: 'education',
+        id: `cda_first_step_${firstName.toLowerCase()}`, childName: child.name, name: `CDA First Step Grant (${firstName})`, agency: babyBonus.agency, goalKey: 'education',
         fundType: 'RESTRICTED_CDA', restricted: true,
         status: cda.firstStepGrantReceived ? 'RECEIVED' : 'AVAILABLE',
         amount: babyBonus.benefits.firstStepGrant,
@@ -82,7 +82,7 @@ class GrantsAgent {
       const matchingLeft = Math.max(0, babyBonus.benefits.dollarForDollarMatchLimit - Number(cda.governmentMatched || 0));
       if (matchingLeft > 0) {
         grants.push({
-          id: `cda_matching_${firstName.toLowerCase()}`, name: `CDA dollar-for-dollar matching (${firstName})`, agency: babyBonus.agency, goalKey: 'education',
+          id: `cda_matching_${firstName.toLowerCase()}`, childName: child.name, name: `CDA dollar-for-dollar matching (${firstName})`, agency: babyBonus.agency, goalKey: 'education',
           fundType: 'RESTRICTED_CDA', restricted: true,
           status: 'AVAILABLE',
           amount: matchingLeft,

@@ -22,7 +22,9 @@ class PictureService {
 
     const goals = goalsRes.goals.map((goal) => ({
       ...goal,
-      support: relevantSupport.filter((grant) => GRANT_GOAL_CATEGORY[grant.goalKey] === goal.category)
+      support: relevantSupport.filter((grant) => (grant.childName
+        ? grant.childName === goal.childName
+        : GRANT_GOAL_CATEGORY[grant.goalKey] === goal.category))
     }));
 
     return {

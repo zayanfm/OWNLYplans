@@ -107,6 +107,8 @@ export interface SupportItem {
   name: string;
   agency: string;
   goalKey: 'housing' | 'education' | null;
+  // Set for child-specific schemes (Baby Bonus, CDA): shown only with that child's goal.
+  childName?: string;
   fundType: 'CASH' | 'RESTRICTED_CDA' | 'CPF' | 'VOUCHER';
   restricted: boolean;
   status: 'AVAILABLE' | 'RECEIVING' | 'RECEIVED' | 'UPCOMING' | 'NOT_ELIGIBLE';
@@ -118,6 +120,8 @@ export interface SupportItem {
 
 // Categories for goals the family adds; housing goals show housing support with them.
 export type GoalCategory = 'HOUSING' | 'EDUCATION' | 'FAMILY' | 'OTHER';
+// The category a goal is shown under, with its icon.
+export type GoalGroup = 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT' | 'FAMILY' | 'OTHER';
 export type GoalInputStatus = 'CONFIRMED' | 'NEEDS_DECISION' | 'AWAITING_PARTNER' | 'OFF';
 export type EducationPath = 'UNIVERSITY' | 'POLYTECHNIC' | 'UNDECIDED';
 
@@ -169,7 +173,9 @@ export interface FamilyGoal {
   annualRate: number;
   dependsOn: string[];
   basis: string;
-  categoryLabel?: string;
+  group: GoalGroup;
+  groupLabel: string;
+  childName: string | null;
   icon: string;
   suggestedMonthlyAllocation: number;
   projectedCompletion: string | null;
@@ -219,6 +225,9 @@ export type PlanOptionId = 'balanced' | 'home_first' | 'education_first' | 'cust
 export interface PlanGoalOutcome {
   key: string;
   routeKey: FamilyGoal['routeKey'];
+  group: GoalGroup;
+  groupLabel: string;
+  childName: string | null;
   name: string;
   targetAmount: number;
   startingAmount: number;

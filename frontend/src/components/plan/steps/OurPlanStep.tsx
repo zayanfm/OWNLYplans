@@ -6,6 +6,7 @@ import { FALLBACK_PLAN_OPTIONS } from '../../../constants/planningFallback';
 import { futureValue } from '../planPersonalization';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
 import { Stepper } from '../Stepper';
+import { GoalIcon } from '../GoalIcon';
 
 const ROUTE_ORDER = ['housing', 'education', 'custom', 'emergency'];
 const EDIT_DEBOUNCE_MS = 400;
@@ -40,7 +41,7 @@ const ProjectionRange = ({ goal }: { goal: PlanGoalOutcome }) => {
         </View>
       ))}
       <Text style={stepStyles.note}>
-        Target {money(goal.targetAmount)}. Uses 2.5% / 4.5% / 6.5% a year; returns are not guaranteed. Starts from the CDA balance, which can move to Edusave/PSEA for education fees.
+        Target {money(goal.targetAmount)}. Uses 2.5% / 4.5% / 6.5% a year; returns are not guaranteed.{goal.childName ? ' Starts from the CDA balance, which can move to Edusave/PSEA for education fees.' : ''}
       </Text>
     </View>
   );
@@ -51,6 +52,7 @@ const GoalRow = ({ goal, expanded, onPress, rank }: { goal: PlanGoalOutcome; exp
   return (
     <TouchableOpacity activeOpacity={onPress ? 0.7 : 1} onPress={onPress} style={stepStyles.rowDivider}>
       <View style={stepStyles.row}>
+        <GoalIcon group={goal.group} size={30} />
         <View style={styles.flex}>
           <Text style={styles.goalName}>{rank ? `${rank}. ` : ''}{goal.name}{onPress ? (expanded ? '  ▴' : '  ▾') : ''}</Text>
           <Text style={stepStyles.cardSub}>Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
@@ -322,6 +324,7 @@ export const OurPlanStep: React.FC<{
                 <View key={key} style={styles.editRow}>
                   <View style={styles.editHead}>
                     <Text style={styles.editRank}>{index + 1}</Text>
+                    <GoalIcon group={(ownPlan?.goals.find((goal) => goal.key === key) || plan.goals.find((goal) => goal.key === key))?.group} size={26} />
                     <Text style={[styles.goalName, styles.flex]}>{goalName(key)}</Text>
                     {pill ? <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View> : null}
                     <TouchableOpacity style={styles.moveButton} onPress={() => move(key, -1)} accessibilityLabel={`Move ${goalName(key)} up`}><Text style={styles.moveText}>↑</Text></TouchableOpacity>

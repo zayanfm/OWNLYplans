@@ -39,7 +39,7 @@ const buildGoals = (household, options = {}) => {
     if (input.type === 'EMERGENCY') {
       const essentials = essentialMonthly(financials);
       return {
-        ...base, name: 'Emergency buffer', category: 'EMERGENCY', routeKey: 'emergency', priority: 1,
+        ...base, name: 'Emergency buffer', category: 'EMERGENCY', group: 'EMERGENCY', groupLabel: 'Emergency', routeKey: 'emergency', priority: 1,
         targetAmount: essentials * input.months,
         currentAmount: Number(financials.emergencyFund || 0),
         deadline: addMonthsIso(input.withinMonths, now),
@@ -53,7 +53,7 @@ const buildGoals = (household, options = {}) => {
       const firstName = String(input.childName || 'Child').split(' ')[0];
       const undecided = input.path === 'UNDECIDED';
       return {
-        ...base, name: `${firstName}'s education`, category: 'EDUCATION', routeKey: 'education', priority: 3,
+        ...base, name: `${firstName}'s education`, category: 'EDUCATION', group: 'EDUCATION', groupLabel: 'Education', routeKey: 'education', priority: 3,
         targetAmount: undecided ? 0 : input.annualCost * input.years,
         currentAmount: Number(child.cda?.balance || 0),
         deadline: undecided ? addMonthsIso(12, now) : `${input.startYear}-08`,
@@ -72,7 +72,7 @@ const buildGoals = (household, options = {}) => {
         .reduce((sum, item) => sum + Number(item.value || 0), 0);
       const months = Math.max(12, (input.retireAge - Number(adult.age || 30)) * 12);
       return {
-        ...base, name: `${firstName}'s retirement`, category: 'RETIREMENT', routeKey: 'wealth', priority: 4,
+        ...base, name: `${firstName}'s retirement`, category: 'RETIREMENT', group: 'RETIREMENT', groupLabel: 'Retirement', routeKey: 'wealth', priority: 4,
         targetAmount: input.amount,
         currentAmount: owned,
         deadline: addMonthsIso(months, now),
@@ -89,7 +89,8 @@ const buildGoals = (household, options = {}) => {
     return {
       ...base, name: input.name,
       category: isHousing ? 'HOUSING' : category.routeKey === 'education' ? 'EDUCATION' : 'CUSTOM',
-      categoryLabel: category.label,
+      group: GOAL_CATEGORIES[input.category] ? input.category : 'OTHER',
+      groupLabel: category.label,
       routeKey: category.routeKey,
       priority: isHousing ? 2 : 3,
       targetAmount: input.amount,

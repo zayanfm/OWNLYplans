@@ -169,6 +169,9 @@ class OptimiserService {
       return {
         key: goal.key,
         routeKey: goal.routeKey,
+        group: goal.group,
+        groupLabel: goal.groupLabel,
+        childName: goal.childName || null,
         name: goal.name,
         targetAmount: goal.targetAmount,
         startingAmount: goal.currentAmount,

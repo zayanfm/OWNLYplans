@@ -5,6 +5,7 @@ import type { FamilyGoal, FamilyPicture, GoalInput, GoalInputStatus, SupportItem
 import { FALLBACK_PICTURE } from '../../../constants/planningFallback';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
 import { GoalEditSheet, GoalSheetResult } from './GoalEditSheet';
+import { GoalIcon } from '../GoalIcon';
 
 const GROUP_COLORS = ['#D81E05', '#E86A55', '#F2A08F', '#7AB5E8', '#A8CDEE', '#22A06B', '#8FD3B0'];
 const SUPPORT_STATUS: Record<SupportItem['status'], string> = {
@@ -46,9 +47,10 @@ const GoalCard = ({ goal, goalsByKey, onPress }: { goal: FamilyGoal; goalsByKey:
   return (
     <TouchableOpacity style={[stepStyles.card, goal.inputStatus === 'NEEDS_DECISION' && styles.reviewCard, goal.inputStatus === 'OFF' && styles.offCard]} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.goalHead}>
+        <GoalIcon group={goal.group} />
         <View style={styles.flex}>
           <Text style={stepStyles.cardTitle}>{goal.name}</Text>
-          <Text style={stepStyles.cardSub}>{goal.categoryLabel ? `${goal.categoryLabel} · ` : ''}Due {monthLabel(goal.deadline)} · {goal.basis}</Text>
+          <Text style={stepStyles.cardSub}>{goal.groupLabel} · Due {monthLabel(goal.deadline)} · {goal.basis}</Text>
         </View>
         <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
       </View>
