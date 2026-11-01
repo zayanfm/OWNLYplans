@@ -31,11 +31,11 @@ class GrowService {
     const planId = household.activePlan?.optimiserPlanId || optimised.recommendedPlanId;
     const plan = optimised.plans.find((item) => item.id === planId) || optimised.plans[0];
     const floorMonths = Number((household.financials.emergencyFund / Math.max(1, essentialMonthly(household.financials))).toFixed(1));
-    const housing = plan.goals.find((goal) => goal.key === 'housing');
+    const homeGoals = plan.goals.filter((goal) => goal.routeKey === 'housing');
 
     const checks = [
       { id: 'floor', label: `Emergency floor covers at least ${MIN_FLOOR_MONTHS} months of essentials`, detail: `${floorMonths} months today`, passed: floorMonths >= MIN_FLOOR_MONTHS },
-      { id: 'short_term', label: 'Short-term home goal stays in cash and on track', detail: housing ? `${housing.name} due ${housing.deadline}` : 'No home goal', passed: !housing || housing.status === 'ON_TRACK' },
+      { id: 'short_term', label: 'Short-term home goals stay in cash and on track', detail: homeGoals.length ? homeGoals.map((goal) => `${goal.name} due ${goal.deadline}`).join('; ') : 'No home goal', passed: homeGoals.every((goal) => goal.status === 'ON_TRACK') },
       { id: 'risk_profile', label: 'Risk profile on file', detail: household.riskProfile ? `${household.riskProfile.level}, reviewed ${household.riskProfile.lastReviewed}` : 'Complete a risk profile with OCBC', passed: Boolean(household.riskProfile) }
     ];
     const ready = checks.every((check) => check.passed);

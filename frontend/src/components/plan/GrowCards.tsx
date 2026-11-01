@@ -1,53 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import api from '../../services/api';
-import type { GrowOverview, PlanReview } from '../../services/api';
+import type { GrowOverview } from '../../services/api';
 import { FALLBACK_GROW } from '../../constants/planningFallback';
-import { COLORS, money, monthLabel, statusPill, stepStyles } from './stepStyles';
-
-const DECISION_TEXT: Record<'accept' | 'revise' | 'reject', string> = {
-  accept: 'Plan updated. We will keep watching for changes.',
-  revise: 'Noted. Pick what to trim from lifestyle spending in the What-if sheet.',
-  reject: 'Kept as is. We will check again next month.',
-};
+import { COLORS, money, stepStyles } from './stepStyles';
 
 /**
- * Cockpit (Grow): the family's ongoing cards — a plan check-in (#10), the savings-to-investment
- * handoff (#9), and the advisory pathway that leads into the RM briefing (#11, #12).
+ * Cockpit (Grow): the savings-to-investment handoff (#9) and the advisory pathway that leads
+ * into the RM briefing (#11, #12).
  */
 export const GrowCards: React.FC<{ onTalkToAdviser: () => void }> = ({ onTalkToAdviser }) => {
   const [overview, setOverview] = useState<GrowOverview | null>(null);
-  const [review, setReview] = useState<PlanReview | null>(null);
-  const [checking, setChecking] = useState<boolean>(false);
-  const [reviewDecision, setReviewDecision] = useState<'accept' | 'revise' | 'reject' | null>(null);
   const [investConfirming, setInvestConfirming] = useState<boolean>(false);
   const [handedOff, setHandedOff] = useState<boolean>(false);
 
   useEffect(() => {
     api.getGrowOverview().then(setOverview).catch(() => setOverview(FALLBACK_GROW));
   }, []);
-
-  const runCheckIn = async () => {
-    setChecking(true);
-    setReviewDecision(null);
-    try {
-      setReview((await api.simulateReview()).review);
-    } catch {
-      setReview(null);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const decide = async (decision: 'accept' | 'revise' | 'reject') => {
-    setReviewDecision(decision);
-    if (!review) return;
-    try {
-      await api.respondToReview(review.id, decision);
-    } catch {
-      // Offline: the decision is shown locally.
-    }
-  };
 
   if (!overview) {
     return <ActivityIndicator color={COLORS.red} style={styles.loader} />;
@@ -57,47 +26,6 @@ export const GrowCards: React.FC<{ onTalkToAdviser: () => void }> = ({ onTalkToA
 
   return (
     <View>
-      <View style={[stepStyles.card, styles.checkInCard]}>
-        <Text style={stepStyles.sectionLabel}>Check-in</Text>
-        {!review ? (
-          <>
-            <Text style={stepStyles.cardTitle}>Your plan is up to date</Text>
-            <Text style={stepStyles.cardSub}>OWNLYplan re-checks the plan when spending, income or goals change.</Text>
-            <TouchableOpacity style={[stepStyles.secondaryButton, styles.topGap]} onPress={runCheckIn} disabled={checking}>
-              {checking ? <ActivityIndicator color={COLORS.red} /> : <Text style={stepStyles.secondaryButtonText}>Demo: simulate 3 months later</Text>}
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={stepStyles.cardTitle}>Something changed: review?</Text>
-            <Text style={stepStyles.cardSub}>{monthLabel(review.detectedFor)} · {review.trigger.description}</Text>
-            <View style={[stepStyles.row, styles.topGap]}>
-              <Text style={stepStyles.rowLabel}>Monthly surplus</Text>
-              <Text style={stepStyles.rowValue}>{money(review.surplusBefore)} → {money(review.surplusAfter)}</Text>
-            </View>
-            {review.changes.map((goal) => {
-              const pill = statusPill(goal.after.status);
-              return (
-                <View key={goal.key} style={stepStyles.row}>
-                  <Text style={stepStyles.rowLabel}>{goal.name}: {money(goal.before?.monthlyNow)} → {money(goal.after.monthlyNow)}/mo</Text>
-                  <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
-                </View>
-              );
-            })}
-            {reviewDecision ? (
-              <Text style={[styles.decisionText, styles.topGap]}>✓ {DECISION_TEXT[reviewDecision]}</Text>
-            ) : (
-              review.suggestions.map((suggestion) => (
-                <TouchableOpacity key={suggestion.id} style={styles.option} onPress={() => decide(suggestion.id)} activeOpacity={0.8}>
-                  <Text style={styles.optionTitle}>{suggestion.label}</Text>
-                  <Text style={stepStyles.note}>{suggestion.detail}</Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
-        )}
-      </View>
-
       <View style={stepStyles.card}>
         <Text style={stepStyles.sectionLabel}>Ready to grow</Text>
         <Text style={stepStyles.cardTitle}>
@@ -150,9 +78,6 @@ export const GrowCards: React.FC<{ onTalkToAdviser: () => void }> = ({ onTalkToA
 const styles = StyleSheet.create({
   loader: { marginVertical: 16 },
   topGap: { marginTop: 10 },
-  checkInCard: { borderColor: '#F3C9C1' },
-  option: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 10, marginTop: 8 },
-  optionTitle: { fontSize: 13, fontWeight: '800', color: COLORS.ink, marginBottom: 2 },
   decisionText: { fontSize: 12, lineHeight: 18, fontWeight: '700', color: COLORS.green },
   check: { fontSize: 12, lineHeight: 18, color: COLORS.ink, marginTop: 4 },
 });

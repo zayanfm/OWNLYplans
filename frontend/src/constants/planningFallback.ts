@@ -1,6 +1,6 @@
 // Generated from the backend alex_family fixture so the prototype works offline.
 // Captured after Alex shares his account and Lila accepts. The picture is captured before goals
-// are confirmed; plan options and grow after confirming the suggestions.
+// are confirmed; plan options and grow after confirming the suggestions (no goals added).
 // Regenerate after changing backend/data/personas.json or the goal suggestions.
 import type { FamilyPicture, PlanOptions, GrowOverview } from '../services/api';
 
@@ -295,66 +295,6 @@ export const FALLBACK_PICTURE: FamilyPicture = {
     {
       "inputStatus": "NEEDS_DECISION",
       "planned": false,
-      "source": "From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs.",
-      "input": {
-        "key": "housing",
-        "type": "HOUSING",
-        "owner": "household",
-        "enabled": true,
-        "amount": 96000,
-        "dueDate": "2028-09",
-        "source": "From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs.",
-        "suggested": {
-          "key": "housing",
-          "type": "HOUSING",
-          "owner": "household",
-          "enabled": true,
-          "amount": 96000,
-          "dueDate": "2028-09",
-          "source": "From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs."
-        },
-        "status": "NEEDS_DECISION"
-      },
-      "id": "goal_housing",
-      "key": "housing",
-      "routeKey": "housing",
-      "name": "BTO home purchase fund",
-      "category": "HOUSING",
-      "priority": 2,
-      "targetAmount": 96000,
-      "currentAmount": 80000,
-      "shortfall": 16000,
-      "deadline": "2028-09",
-      "monthsRemaining": 22,
-      "requiredMonthlyAllocation": 618,
-      "annualRate": 0.015,
-      "dependsOn": [
-        "emergency"
-      ],
-      "basis": "Downpayment due 2028-09",
-      "icon": "home",
-      "suggestedMonthlyAllocation": 0,
-      "projectedCompletion": null,
-      "status": "NEEDS_DECISION",
-      "support": [
-        {
-          "id": "climate_vouchers",
-          "name": "Climate Friendly Households Programme",
-          "agency": "National Environment Agency (NEA)",
-          "goalKey": "housing",
-          "fundType": "VOUCHER",
-          "restricted": true,
-          "status": "UPCOMING",
-          "amount": 300,
-          "reason": "Available to HDB households, so it applies after key collection (2028-09).",
-          "action": "Claim at RedeemSG via Singpass",
-          "nextDate": "2028-09"
-        }
-      ]
-    },
-    {
-      "inputStatus": "NEEDS_DECISION",
-      "planned": false,
       "source": "Suggested: local university tuition S$10,000–12,000 a year (CNA, 2024). Start year is your choice.",
       "input": {
         "key": "education",
@@ -482,9 +422,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "monthsRemaining": 408,
       "requiredMonthlyAllocation": 141,
       "annualRate": 0.045,
-      "dependsOn": [
-        "housing"
-      ],
+      "dependsOn": [],
       "basis": "Savings on top of CPF LIFE by age 65",
       "icon": "trending-up",
       "suggestedMonthlyAllocation": 0,
@@ -532,9 +470,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "monthsRemaining": 432,
       "requiredMonthlyAllocation": 186,
       "annualRate": 0.045,
-      "dependsOn": [
-        "housing"
-      ],
+      "dependsOn": [],
       "basis": "Savings on top of CPF LIFE by age 65",
       "icon": "trending-up",
       "suggestedMonthlyAllocation": 1312,
@@ -598,8 +534,8 @@ export const FALLBACK_PICTURE: FamilyPicture = {
   },
   "findings": [
     "All goals can be funded on time from the S$1,340 monthly surplus.",
-    "BTO home purchase fund: S$16,000 still needed by 2028-09.",
-    "4 goal(s) need your decision before they are planned.",
+    "No home goal is set.",
+    "3 goal(s) need your decision before they are planned.",
     "Projected returns are assumptions, not guarantees."
   ]
 };
@@ -619,10 +555,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "tagline": "Every goal on time, retirement steps up as earlier goals finish",
       "routes": {
         "emergency": 372,
-        "housing": 618,
+        "housing": 0,
         "education": 102,
         "custom": 0,
-        "wealth": 220
+        "wealth": 838
       },
       "unallocated": 0,
       "goals": [
@@ -640,19 +576,6 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "status": "ON_TRACK"
         },
         {
-          "key": "housing",
-          "routeKey": "housing",
-          "name": "BTO home purchase fund",
-          "targetAmount": 96000,
-          "startingAmount": 80000,
-          "deadline": "2028-09",
-          "requiredMonthly": 618,
-          "monthlyNow": 618,
-          "completesBy": "2028-09",
-          "projectedAtDeadline": 96005,
-          "status": "ON_TRACK"
-        },
-        {
           "key": "education",
           "routeKey": "education",
           "name": "Percy's education",
@@ -673,9 +596,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 95,
-          "completesBy": "2045-05",
-          "projectedAtDeadline": 405220,
+          "monthlyNow": 362,
+          "completesBy": "2044-06",
+          "projectedAtDeadline": 418968,
           "status": "ON_TRACK"
         },
         {
@@ -686,9 +609,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 125,
-          "completesBy": "2044-08",
-          "projectedAtDeadline": 455278,
+          "monthlyNow": 476,
+          "completesBy": "2043-09",
+          "projectedAtDeadline": 473591,
           "status": "ON_TRACK"
         }
       ],
@@ -698,12 +621,6 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "fromGoal": "emergency",
           "amount": 372,
           "text": "Emergency buffer complete: S$372/month moves to retirement"
-        },
-        {
-          "month": "2028-09",
-          "fromGoal": "housing",
-          "amount": 618,
-          "text": "BTO home purchase fund complete: S$618/month moves to retirement"
         },
         {
           "month": "2042-08",
@@ -716,7 +633,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "atRisk": [],
       "recommended": true,
       "tradeOffs": [
-        "Retirement steps up as earlier goals finish: 2028-05, 2028-09, 2042-08."
+        "Retirement steps up as earlier goals finish: 2028-05, 2042-08."
       ]
     },
     {
@@ -725,10 +642,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "tagline": "BTO fund finishes early with a cushion for renovation",
       "routes": {
         "emergency": 269,
-        "housing": 711,
+        "housing": 0,
         "education": 102,
         "custom": 0,
-        "wealth": 230
+        "wealth": 941
       },
       "unallocated": 0,
       "goals": [
@@ -746,19 +663,6 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "status": "ON_TRACK"
         },
         {
-          "key": "housing",
-          "routeKey": "housing",
-          "name": "BTO home purchase fund",
-          "targetAmount": 96000,
-          "startingAmount": 80000,
-          "deadline": "2028-09",
-          "requiredMonthly": 618,
-          "monthlyNow": 711,
-          "completesBy": "2028-07",
-          "projectedAtDeadline": 96655,
-          "status": "ON_TRACK"
-        },
-        {
           "key": "education",
           "routeKey": "education",
           "name": "Percy's education",
@@ -779,9 +683,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 100,
-          "completesBy": "2045-05",
-          "projectedAtDeadline": 404580,
+          "monthlyNow": 406,
+          "completesBy": "2044-06",
+          "projectedAtDeadline": 419531,
           "status": "ON_TRACK"
         },
         {
@@ -792,19 +696,13 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 130,
-          "completesBy": "2044-08",
-          "projectedAtDeadline": 454225,
+          "monthlyNow": 535,
+          "completesBy": "2043-09",
+          "projectedAtDeadline": 474488,
           "status": "ON_TRACK"
         }
       ],
       "stepUps": [
-        {
-          "month": "2028-07",
-          "fromGoal": "housing",
-          "amount": 711,
-          "text": "BTO home purchase fund complete: S$711/month moves to retirement"
-        },
         {
           "month": "2028-11",
           "fromGoal": "emergency",
@@ -823,8 +721,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "recommended": false,
       "tradeOffs": [
         "Emergency buffer completes later (2028-11 vs 2028-05).",
-        "BTO home purchase fund completes earlier (2028-07 vs 2028-09).",
-        "Retirement starts with S$10/month more."
+        "Retirement starts with S$103/month more."
       ]
     },
     {
@@ -833,10 +730,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "tagline": "Front-loads education savings while time in the market is longest",
       "routes": {
         "emergency": 269,
-        "housing": 618,
+        "housing": 0,
         "education": 153,
         "custom": 0,
-        "wealth": 272
+        "wealth": 890
       },
       "unallocated": 0,
       "goals": [
@@ -851,19 +748,6 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "monthlyNow": 269,
           "completesBy": "2028-11",
           "projectedAtDeadline": 35402,
-          "status": "ON_TRACK"
-        },
-        {
-          "key": "housing",
-          "routeKey": "housing",
-          "name": "BTO home purchase fund",
-          "targetAmount": 96000,
-          "startingAmount": 80000,
-          "deadline": "2028-09",
-          "requiredMonthly": 618,
-          "monthlyNow": 618,
-          "completesBy": "2028-09",
-          "projectedAtDeadline": 96005,
           "status": "ON_TRACK"
         },
         {
@@ -887,9 +771,9 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 118,
-          "completesBy": "2045-07",
-          "projectedAtDeadline": 399415,
+          "monthlyNow": 384,
+          "completesBy": "2044-09",
+          "projectedAtDeadline": 415822,
           "status": "ON_TRACK"
         },
         {
@@ -900,19 +784,13 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 154,
-          "completesBy": "2044-11",
-          "projectedAtDeadline": 450930,
+          "monthlyNow": 506,
+          "completesBy": "2043-12",
+          "projectedAtDeadline": 469542,
           "status": "ON_TRACK"
         }
       ],
       "stepUps": [
-        {
-          "month": "2028-09",
-          "fromGoal": "housing",
-          "amount": 618,
-          "text": "BTO home purchase fund complete: S$618/month moves to retirement"
-        },
         {
           "month": "2028-11",
           "fromGoal": "emergency",
@@ -951,8 +829,8 @@ export const FALLBACK_GROW: GrowOverview = {
       },
       {
         "id": "short_term",
-        "label": "Short-term home goal stays in cash and on track",
-        "detail": "BTO home purchase fund due 2028-09",
+        "label": "Short-term home goals stay in cash and on track",
+        "detail": "No home goal",
         "passed": true
       },
       {
@@ -973,19 +851,19 @@ export const FALLBACK_GROW: GrowOverview = {
       {
         "goalKey": "retirement_primary",
         "goalName": "Alex's retirement",
-        "monthlyAmount": 95,
+        "monthlyAmount": 362,
         "product": "OCBC RoboInvest",
         "horizon": "2060-11"
       },
       {
         "goalKey": "retirement_partner",
         "goalName": "Lila's retirement",
-        "monthlyAmount": 125,
+        "monthlyAmount": 476,
         "product": "OCBC RoboInvest",
         "horizon": "2062-11"
       }
     ],
-    "totalMonthly": 322,
+    "totalMonthly": 940,
     "handoff": {
       "label": "Continue in OCBC",
       "destination": "OCBC investment set-up",

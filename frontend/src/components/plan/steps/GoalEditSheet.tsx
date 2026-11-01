@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, TextInput, ActivityIndicator } from 'react-native';
 import api from '../../../services/api';
-import type { EducationPath, GoalInput } from '../../../services/api';
+import type { EducationPath, GoalCategory, GoalInput } from '../../../services/api';
 import { COLORS, money, monthLabel, stepStyles } from '../stepStyles';
 import { Stepper } from '../Stepper';
 
@@ -9,6 +9,13 @@ const PATHS: Array<{ id: EducationPath; label: string; years: number; annualCost
   { id: 'UNIVERSITY', label: 'University', years: 4, annualCost: 11000, startAge: 19 },
   { id: 'POLYTECHNIC', label: 'Polytechnic', years: 3, annualCost: 3100, startAge: 17 },
   { id: 'UNDECIDED', label: 'Not decided', years: 0, annualCost: 0, startAge: 0 },
+];
+
+const CATEGORIES: Array<{ id: GoalCategory; label: string; hint: string }> = [
+  { id: 'HOUSING', label: 'Housing', hint: 'e.g. BTO downpayment, renovation. Housing support such as the Climate Friendly Households Programme shows with this goal.' },
+  { id: 'EDUCATION', label: 'Education', hint: 'e.g. enrichment classes, a course for yourself.' },
+  { id: 'FAMILY', label: 'Family', hint: 'e.g. wedding, a new baby, caring for parents.' },
+  { id: 'OTHER', label: 'Other', hint: 'e.g. a car or a family holiday.' },
 ];
 
 const shiftMonth = (isoMonth: string, delta: number) => {
@@ -35,6 +42,7 @@ export const GoalEditSheet: React.FC<{
   const [draft, setDraft] = useState<Partial<GoalInput>>({});
   const [amountText, setAmountText] = useState<string>('');
   const [costText, setCostText] = useState<string>('');
+  const [savedText, setSavedText] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,9 +50,10 @@ export const GoalEditSheet: React.FC<{
     if (!visible) return;
     const initial: Partial<GoalInput> = goal
       ? { ...goal }
-      : { type: 'CUSTOM', name: '', amount: 10000, dueDate: nextYearMonth() };
+      : { type: 'CUSTOM', name: '', category: 'HOUSING', amount: 10000, saved: 0, dueDate: nextYearMonth() };
     setDraft(initial);
     setAmountText(String(initial.amount ?? ''));
+    setSavedText(String(initial.saved ?? 0));
     setCostText(String(initial.annualCost ?? ''));
     setError(null);
   }, [visible, goal]);
@@ -56,14 +65,13 @@ export const GoalEditSheet: React.FC<{
 
   const payload = (): Partial<GoalInput> => {
     if (type === 'EMERGENCY') return { months: draft.months, withinMonths: draft.withinMonths, enabled: true };
-    if (type === 'HOUSING') return { amount: toNumber(amountText), dueDate: draft.dueDate, enabled: true };
     if (type === 'EDUCATION') {
       return draft.path === 'UNDECIDED'
         ? { path: 'UNDECIDED', enabled: true }
         : { path: draft.path, startYear: draft.startYear, years: draft.years, annualCost: toNumber(costText), enabled: true };
     }
     if (type === 'RETIREMENT') return { retireAge: draft.retireAge, amount: toNumber(amountText), enabled: true };
-    return { name: draft.name, amount: toNumber(amountText), dueDate: draft.dueDate, enabled: true };
+    return { name: draft.name, category: draft.category, amount: toNumber(amountText), saved: toNumber(savedText), dueDate: draft.dueDate, enabled: true };
   };
 
   const save = async () => {
@@ -72,7 +80,7 @@ export const GoalEditSheet: React.FC<{
     try {
       if (creating) {
         const body = payload();
-        const result = await api.addGoal({ name: String(body.name || ''), amount: Number(body.amount), dueDate: String(body.dueDate) });
+        const result = await api.addGoal({ name: String(body.name || ''), category: body.category || 'OTHER', amount: Number(body.amount), saved: Number(body.saved || 0), dueDate: String(body.dueDate) });
         onSaved({ key: result.goal.key, input: result.goal });
       } else {
         const result = await api.updateGoal(goal.key, payload());
@@ -110,11 +118,11 @@ export const GoalEditSheet: React.FC<{
     setCostText(String(path.annualCost));
   };
 
-  const title = creating ? 'Add our own goal'
+  const title = creating ? 'Add a goal'
     : type === 'EMERGENCY' ? 'Emergency buffer'
-      : type === 'HOUSING' ? 'Home purchase'
-        : type === 'EDUCATION' ? `${String(goal?.childName || '').split(' ')[0]}'s education`
-          : type === 'RETIREMENT' ? `${ownerFirst}'s retirement` : goal?.name || 'Our goal';
+      : type === 'EDUCATION' ? `${String(goal?.childName || '').split(' ')[0]}'s education`
+        : type === 'RETIREMENT' ? `${ownerFirst}'s retirement` : goal?.name || 'Our goal';
+  const categoryHint = CATEGORIES.find((item) => item.id === draft.category)?.hint;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -122,7 +130,7 @@ export const GoalEditSheet: React.FC<{
         <View style={styles.sheet}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={stepStyles.title}>{title}</Text>
-            <Text style={styles.source}>{creating ? 'Your own goal, such as a car or renovation.' : goal?.source}</Text>
+            <Text style={styles.source}>{creating ? 'Pick a category, then tell us the amount and when you need it.' : goal?.source}</Text>
 
             {partnerOwned ? (
               <View style={stepStyles.card}>
@@ -144,18 +152,26 @@ export const GoalEditSheet: React.FC<{
               </>
             ) : null}
 
-            {!partnerOwned && (type === 'HOUSING' || type === 'CUSTOM') ? (
+            {!partnerOwned && type === 'CUSTOM' ? (
               <>
-                {type === 'CUSTOM' ? (
-                  <TextInput style={styles.input} placeholder="Goal name, e.g. Family car" value={draft.name || ''} onChangeText={(name) => update({ name })} />
-                ) : null}
+                <Text style={styles.fieldLabel}>Category</Text>
+                <View style={styles.segment}>
+                  {CATEGORIES.map((item) => (
+                    <TouchableOpacity key={item.id} style={[styles.segmentItem, draft.category === item.id && styles.segmentActive]} onPress={() => update({ category: item.id })}>
+                      <Text style={[styles.segmentText, draft.category === item.id && styles.segmentTextActive]}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {categoryHint ? <Text style={[stepStyles.note, styles.hint]}>{categoryHint}</Text> : null}
+                <TextInput style={styles.input} placeholder="Goal name, e.g. BTO downpayment" value={draft.name || ''} onChangeText={(name) => update({ name })} />
                 <Text style={styles.fieldLabel}>Amount needed (S$)</Text>
                 <TextInput style={styles.input} keyboardType="numeric" value={amountText} onChangeText={setAmountText} />
+                <Text style={styles.fieldLabel}>Already set aside (S$)</Text>
+                <TextInput style={styles.input} keyboardType="numeric" value={savedText} onChangeText={setSavedText} />
+                {/* The stepper reports a ±1 change; the month itself is kept in the draft. */}
                 <Stepper label="Needed by" value={0} step={1} min={-600} max={600}
                   display={monthLabel(draft.dueDate)} onChange={(delta) => update({ dueDate: shiftMonth(String(draft.dueDate), delta) })} />
-                {type === 'CUSTOM' ? (
-                  <Text style={stepStyles.note}>You&apos;ll put all your goals in order of priority together when you build the plan.</Text>
-                ) : null}
+                <Text style={stepStyles.note}>You&apos;ll put all your goals in order of priority together when you build the plan.</Text>
               </>
             ) : null}
 
@@ -229,6 +245,7 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: '#FFFFFF' },
   error: { fontSize: 12, fontWeight: '700', color: COLORS.red, marginTop: 6 },
   cancel: { alignItems: 'center', paddingVertical: 12 },
+  hint: { marginBottom: 8 },
 });
 
 export default GoalEditSheet;

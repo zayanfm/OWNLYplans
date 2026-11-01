@@ -9,7 +9,7 @@ const cashflowService = require('../services/cashflowService');
 const optimiserService = require('../services/optimiserService');
 const scenarioService = require('../services/scenarioService');
 const goalInputService = require('../services/goalInputService');
-const { confirmSuggestedGoals, shareAndConsent } = require('./helpers');
+const { confirmSuggestedGoals, shareAndConsent, addBtoGoal } = require('./helpers');
 const workspaceService = require('../services/workspaceService');
 
 async function runTests() {
@@ -39,7 +39,7 @@ async function runTests() {
 
   // 2. Goals Agent: nothing is planned until the family confirms it
   const unconfirmed = await goalsAgent.analyze(alexHousehold);
-  assert.deepStrictEqual(unconfirmed.goals.map(g => g.key), ['emergency', 'housing', 'education', 'retirement_primary', 'retirement_partner']);
+  assert.deepStrictEqual(unconfirmed.goals.map(g => g.key), ['emergency', 'education', 'retirement_primary', 'retirement_partner'], 'No home goal is assumed');
   assert(unconfirmed.goals.filter(g => g.input.owner !== 'partner').every(g => !g.planned), 'Suggestions are not planned until confirmed');
   assert.strictEqual(unconfirmed.goals.find(g => g.key === 'retirement_partner').input.confirmedBy, 'partner', 'Lila confirmed her own goal when she accepted');
   assert.throws(() => goalInputService.update('alex_family', 'retirement_partner', { amount: 300000 }), /Only Lila/, 'Alex cannot set the partner goal');
@@ -48,10 +48,15 @@ async function runTests() {
   assert.deepStrictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.map(g => g.key), ['retirement_partner'], 'The optimiser plans only confirmed goals');
 
   confirmSuggestedGoals('alex_family');
+  const bto = addBtoGoal('alex_family');
+  assert.throws(() => goalInputService.addCustom('alex_family', { name: 'X', category: 'BOAT', amount: 5000, dueDate: '2030-01' }), /category must be one of/);
+  assert.throws(() => goalInputService.addCustom('alex_family', { name: 'X', category: 'OTHER', amount: 5000, saved: 9000, dueDate: '2030-01' }), /saved must be between/);
   const goalsRes = await goalsAgent.analyze(alexHousehold);
   console.log('✓ GoalsAgent Count:', goalsRes.goals.length);
-  const homeGoal = goalsRes.goals.find(g => g.key === 'housing');
-  assert.strictEqual(homeGoal.deadline, '2028-09', 'BTO goal comes from the HDB key collection date');
+  const homeGoal = goalsRes.goals.find(g => g.key === bto.key);
+  assert.strictEqual(homeGoal.category, 'HOUSING', 'The family filed their BTO under Housing');
+  assert.strictEqual(homeGoal.currentAmount, 80000, 'Money already set aside counts');
+  assert.deepStrictEqual(goalsRes.goals.find(g => g.key === 'retirement_primary').dependsOn, [bto.key], 'Retirement steps up after the home goal');
   assert.deepStrictEqual(homeGoal.dependsOn, ['emergency'], 'Home savings depend on the emergency buffer');
   const educationGoal = goalsRes.goals.find(g => g.key === 'education');
   assert.strictEqual(educationGoal.deadline, '2042-08', 'Suggested university start at 19, which the family confirmed');
@@ -60,7 +65,8 @@ async function runTests() {
   assert(goalsRes.fundingGap > 0, 'Goals compete for the surplus');
   assert(goalsRes.goals.every(g => g.status === 'ON_TRACK'), 'The recommended plan sequences goals so each meets its deadline');
   const growthGoals = await goalsAgent.analyze(alexHousehold, { predictionScenario: 'growth' });
-  assert(growthGoals.goals[2].requiredMonthlyAllocation < goalsRes.goals[2].requiredMonthlyAllocation, 'Higher assumed returns lower required education funding');
+  const educationRequired = (result) => result.goals.find(g => g.key === 'education').requiredMonthlyAllocation;
+  assert(educationRequired(growthGoals) < educationRequired(goalsRes), 'Higher assumed returns lower required education funding');
 
   // 2a. The family's own choices drive the plan
   goalInputService.update('alex_family', 'education', { path: 'POLYTECHNIC', startYear: 2040 });
@@ -72,9 +78,10 @@ async function runTests() {
   goalInputService.remove('alex_family', custom.key);
   goalInputService.remove('alex_family', 'emergency');
   assert(!optimiserService.optimise(alexHousehold).plans[0].goals.some(g => g.key === 'emergency'), 'Switched-off goals are not planned');
-  householdStore.goalInputs = {};
-  confirmSuggestedGoals('alex_family');
-  console.log('✓ Goal Inputs: confirm, edit, switch off, custom');
+  goalInputService.update('alex_family', 'emergency', { enabled: true });
+  goalInputService.update('alex_family', 'education', { path: 'UNIVERSITY' });
+  assert.strictEqual(optimiserService.optimise(alexHousehold).needsDecision.length, 0);
+  console.log('✓ Goal Inputs: confirm, edit, switch off, custom, categories');
 
   // 2b. Cash flow
   const cashflow = cashflowService.analyze(alexHousehold);
@@ -94,35 +101,35 @@ async function runTests() {
   optimised.plans.forEach(plan => {
     const routed = Object.values(plan.routes).reduce((sum, value) => sum + value, 0);
     assert.strictEqual(routed, optimised.investable, `${plan.id} routes the whole investable surplus`);
-    assert.strictEqual(plan.goals.find(g => g.key === 'housing').status, 'ON_TRACK', 'BTO deadline is never traded away');
+    assert.strictEqual(plan.goals.find(g => g.key === bto.key).status, 'ON_TRACK', 'BTO deadline is never traded away');
   });
   const homeFirst = optimised.plans.find(p => p.id === 'home_first');
   const balancedPlan = optimised.plans.find(p => p.id === 'balanced');
   assert(homeFirst.routes.housing > balancedPlan.routes.housing, 'Home first pushes the BTO fund harder');
-  assert(balancedPlan.stepUps.some(s => s.fromGoal === 'housing'), 'BTO money moves on once the fund completes');
+  assert(balancedPlan.stepUps.some(s => s.fromGoal === bto.key), 'BTO money moves on once the fund completes');
   console.log('✓ Optimiser Plans:', optimised.plans.map(p => p.id).join(', '));
 
   // 2c-ii. The family's own order and amounts
-  const ours = optimiserService.customPlan(alexHousehold, { order: ['education', 'emergency', 'housing'], monthlyOverrides: { education: 500 } }).plan;
+  const ours = optimiserService.customPlan(alexHousehold, { order: ['education', 'emergency', bto.key], monthlyOverrides: { education: 500 } }).plan;
   assert.strictEqual(Object.values(ours.routes).reduce((sum, value) => sum + value, 0), optimised.investable, 'Every dollar stays allocated');
   assert.strictEqual(ours.goals.find(g => g.key === 'education').monthlyNow, 500, 'The family amount is used as-is');
-  assert.strictEqual(ours.goals.find(g => g.key === 'housing').status, 'AT_RISK', 'The engine flags what the choice makes late');
+  assert.strictEqual(ours.goals.find(g => g.key === bto.key).status, 'AT_RISK', 'The engine flags what the choice makes late');
   assert(ours.tradeOffs.some(t => t.includes('misses its 2028-09 deadline')), 'The consequence is explained, not blocked');
-  assert.throws(() => optimiserService.customPlan(alexHousehold, { monthlyOverrides: { housing: 99999 } }), /more than the/);
+  assert.throws(() => optimiserService.customPlan(alexHousehold, { monthlyOverrides: { [bto.key]: 99999 } }), /more than the/);
   assert.throws(() => optimiserService.customPlan(alexHousehold, { order: ['retirement_primary'] }), /Unknown or unplanned/);
-  const sameAmounts = ['housing', 'education', 'emergency'].map(first => optimiserService.customPlan(alexHousehold, { order: [first] }).plan.routes);
+  const sameAmounts = [bto.key, 'education', 'emergency'].map(first => optimiserService.customPlan(alexHousehold, { order: [first] }).plan.routes);
   assert(sameAmounts.every(routes => JSON.stringify(routes) === JSON.stringify(sameAmounts[0])), 'When every goal fits, order does not change the amounts');
-  const homeFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', 'housing', 'education'], monthlyOverrides: { emergency: 900 } }).plan;
-  const educationFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', 'education', 'housing'], monthlyOverrides: { emergency: 900 } }).plan;
+  const homeFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', bto.key, 'education'], monthlyOverrides: { emergency: 900 } }).plan;
+  const educationFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', 'education', bto.key], monthlyOverrides: { emergency: 900 } }).plan;
   assert.strictEqual(homeFirstTight.routes.education, 0, 'When money is short, the lower priority waits');
   assert(educationFirstTight.routes.education > 0 && educationFirstTight.routes.housing < homeFirstTight.routes.housing, 'Moving a goal up funds it first');
-  assert.deepStrictEqual(educationFirstTight.definition.order, ['emergency', 'education', 'housing'], 'The chosen order is returned so it can be restored');
+  assert.deepStrictEqual(educationFirstTight.definition.order, ['emergency', 'education', bto.key], 'The chosen order is returned so it can be restored');
   console.log('✓ Custom Plan: family order and amounts, consequences flagged');
 
   // 2d. What-if scenarios
   const schoolFees = scenarioService.simulate('alex_family', { schoolFeesMonthly: 300 });
   assert.strictEqual(schoolFees.surplusAfter, 1040);
-  assert.strictEqual(schoolFees.goals.find(g => g.key === 'housing').after.status, 'ON_TRACK', 'BTO keeps priority');
+  assert.strictEqual(schoolFees.goals.find(g => g.key === bto.key).after.status, 'ON_TRACK', 'BTO keeps priority');
   assert.strictEqual(schoolFees.goals.find(g => g.key === 'emergency').after.status, 'AT_RISK', 'The buffer top-up absorbs the squeeze');
   const newChild = scenarioService.simulate('alex_family', { extraChild: true });
   assert(newChild.goals.some(g => g.key === 'education_2' && g.isNew), 'A second child adds an education goal');

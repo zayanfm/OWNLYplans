@@ -116,13 +116,15 @@ export interface SupportItem {
   nextDate: string | null;
 }
 
+// Categories for goals the family adds; housing goals show housing support with them.
+export type GoalCategory = 'HOUSING' | 'EDUCATION' | 'FAMILY' | 'OTHER';
 export type GoalInputStatus = 'CONFIRMED' | 'NEEDS_DECISION' | 'AWAITING_PARTNER' | 'OFF';
 export type EducationPath = 'UNIVERSITY' | 'POLYTECHNIC' | 'UNDECIDED';
 
 // What the family decided for one goal, plus the suggestion it started from.
 export interface GoalInput {
   key: string;
-  type: 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT' | 'CUSTOM';
+  type: 'EMERGENCY' | 'EDUCATION' | 'RETIREMENT' | 'CUSTOM';
   owner: 'household' | 'primary' | 'partner';
   enabled: boolean;
   confirmed?: boolean;
@@ -142,6 +144,8 @@ export interface GoalInput {
   adultName?: string;
   retireAge?: number;
   name?: string;
+  category?: GoalCategory;
+  saved?: number;
   suggested?: Partial<GoalInput>;
 }
 
@@ -165,6 +169,7 @@ export interface FamilyGoal {
   annualRate: number;
   dependsOn: string[];
   basis: string;
+  categoryLabel?: string;
   icon: string;
   suggestedMonthlyAllocation: number;
   projectedCompletion: string | null;
@@ -306,16 +311,6 @@ export interface GrowOverview {
     title: string;
     reason: string;
   };
-}
-
-export interface PlanReview {
-  id: string;
-  detectedFor: string;
-  trigger: { type: string; description: string };
-  surplusBefore: number;
-  surplusAfter: number;
-  changes: ScenarioResult['goals'];
-  suggestions: Array<{ id: 'accept' | 'revise' | 'reject'; label: string; detail: string }>;
 }
 
 export interface NextBestAction {
@@ -482,15 +477,7 @@ class ApiService {
     });
   }
 
-  // Anyone can leave: the partner (simulated from their own app) or you, which deletes the plan.
-  async leaveHousehold(member: 'primary' | 'partner'): Promise<{ success: boolean; reviewNote?: string; deleted?: boolean }> {
-    return this.request('/api/household/leave', {
-      method: 'POST',
-      body: JSON.stringify({ member })
-    });
-  }
-
-  async addGoal(goal: { name: string; amount: number; dueDate: string }): Promise<{ success: boolean; goal: GoalInput }> {
+  async addGoal(goal: { name: string; category: GoalCategory; amount: number; saved: number; dueDate: string }): Promise<{ success: boolean; goal: GoalInput }> {
     return this.request('/api/household/goals', {
       method: 'POST',
       body: JSON.stringify(goal)
@@ -542,17 +529,6 @@ class ApiService {
   // Grow: investment readiness, advisory trigger and plan check-ins
   async getGrowOverview(): Promise<GrowOverview> {
     return this.request<GrowOverview>('/api/grow/overview');
-  }
-
-  async simulateReview(): Promise<{ success: boolean; review: PlanReview }> {
-    return this.request('/api/grow/reviews/simulate', { method: 'POST', body: '{}' });
-  }
-
-  async respondToReview(reviewId: string, decision: 'accept' | 'revise' | 'reject'): Promise<{ success: boolean }> {
-    return this.request('/api/grow/reviews/respond', {
-      method: 'POST',
-      body: JSON.stringify({ reviewId, decision })
-    });
   }
 
   // Multi-Agent Engine

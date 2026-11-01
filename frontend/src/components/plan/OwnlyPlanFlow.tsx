@@ -96,7 +96,6 @@ export interface OwnlyPlanFlowProps {
   onNav?: (screenKey: string) => void;
   initialPlan?: OwnlyPlan | null;
   onPlanActivated?: (plan: OwnlyPlan) => void;
-  onPlanCleared?: () => void;
   authenticatedProfile?: MockPassAuthResponse | null;
 }
 
@@ -104,7 +103,7 @@ export interface OwnlyPlanFlowProps {
  * The OWNLYplan journey, one surface per stage:
  * Setup (intro → Singpass → household) → Understand (family picture) → Decide (our plan) → Grow (cockpit).
  */
-export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated, onPlanCleared, authenticatedProfile }) => {
+export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated, authenticatedProfile }) => {
   const [step, setStep] = useState<OwnlyStep>(initialPlan ? 'cockpit' : 'intro');
   const [myInfo, setMyInfo] = useState<MockPassAuthResponse | null>(null);
   const [workspace, setWorkspace] = useState<HouseholdWorkspace | null>(null);
@@ -159,19 +158,6 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     }
   }, [myInfo, onPlanActivated, picture, workspace]);
 
-  // Leaving as the primary user deletes the household plan, so start again from the intro.
-  const handleLeft = (member: 'primary' | 'partner') => {
-    if (member !== 'primary') return;
-    setPlan(null);
-    setPicture(null);
-    setWorkspace(null);
-    setAnalysis(null);
-    setMyInfo(null);
-    setFamily([]);
-    setStep('intro');
-    onPlanCleared?.();
-  };
-
   return (
     <View style={styles.container}>
       {step === 'intro' && <IntroStep onStart={() => setStep('singpass')} onHelp={onHelp} />}
@@ -217,7 +203,6 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
           profile={myInfo}
           aggregate={workspace}
           onEditPlan={() => setStep('plan')}
-          onLeaveHousehold={handleLeft}
         />
       )}
     </View>

@@ -105,6 +105,14 @@ async function runE2ETests() {
     for (const goal of goalList.goals.filter(g => g.status === 'NEEDS_DECISION')) {
       await fetch(`${baseUrl}/api/household/goals/${goal.key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     }
+    // The family adds their BTO purchase as a Housing goal; the app shows housing support with it.
+    const bto = (await fetch(`${baseUrl}/api/household/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'BTO home purchase', category: 'HOUSING', amount: 96000, saved: 80000, dueDate: '2028-09' })
+    }).then(r => r.json())).goal;
+    const btoInPicture = (await fetch(`${baseUrl}/api/household/picture`).then(r => r.json())).goals.find(g => g.key === bto.key);
+    assert(btoInPicture.support.some(s => s.id === 'climate_vouchers'), 'Climate Friendly Households Programme shows under the housing goal');
     const unplanned = (await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json())).needsDecision;
     assert.strictEqual(unplanned.length, 0, 'Every goal is decided before planning');
     console.log('  ✓ Family confirmed every goal; Lila confirmed her own');
@@ -122,14 +130,14 @@ async function runE2ETests() {
     const ownPlan = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: ['education', 'emergency', 'housing'], monthlyOverrides: { education: 500 } })
+      body: JSON.stringify({ order: ['education', 'emergency', bto.key], monthlyOverrides: { education: 500 } })
     }).then(r => r.json());
-    assert(ownPlan.plan.atRisk.includes('housing'), 'Own plan leaves the BTO fund late');
+    assert(ownPlan.plan.atRisk.includes(bto.key), 'Own plan leaves the BTO fund late');
     await fetch(`${baseUrl}/api/scenarios/proposals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId: 'custom' }) });
     await new Promise(resolve => setTimeout(resolve, 3100));
     const pushback = await fetch(`${baseUrl}/api/scenarios/proposals/latest`).then(r => r.json());
     assert.strictEqual(pushback.proposal.status, 'SUGGESTED_CHANGE', 'Lila asks to keep the BTO fund on track');
-    assert(pushback.proposal.response.message.includes('BTO home purchase fund'), 'Lila names the goal at risk');
+    assert(pushback.proposal.response.message.includes('BTO home purchase'), 'Lila names the goal at risk');
     console.log(`  ✓ Own plan proposed; Lila replied "${pushback.proposal.response.message}"`);
 
     const proposed = await fetch(`${baseUrl}/api/scenarios/proposals`, {

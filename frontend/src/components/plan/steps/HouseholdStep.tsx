@@ -232,9 +232,8 @@ export const HouseholdStep: React.FC<{
           <View style={stepStyles.card}>
             <Text style={[stepStyles.sectionLabel, styles.greenLabel]}>Household total</Text>
             <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Shared OCBC cash</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.totalLiquidCash)}</Text></View>
-            <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Investments</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.totalInvestments)}</Text></View>
             <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>CPF (MyInfo)</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.householdCpfTotal)}</Text></View>
-            <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Net worth</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.netWorth)}</Text></View>
+            <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Total</Text><Text style={stepStyles.rowValue}>{money(workspace.summary.totalLiquidCash + workspace.summary.householdCpfTotal)}</Text></View>
           </View>
         ) : null}
       </ScrollView>

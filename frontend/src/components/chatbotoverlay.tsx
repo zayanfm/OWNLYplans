@@ -12,7 +12,34 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import api, { ChatMessage } from '../services/api';
+import api, { ChatMessage, ScenarioLevers, ScenarioResult } from '../services/api';
+import { WhatIfSheet } from './plan/steps/WhatIfSheet';
+import { money, monthLabel } from './plan/stepStyles';
+
+// What-if questions are answered by the planning engine, not generated text.
+const WHAT_IFS: Array<{ label: string; levers: Partial<ScenarioLevers> }> = [
+  { label: 'What if we have another child?', levers: { extraChild: true } },
+  { label: 'What if our income drops 10%?', levers: { incomeChangePct: -10 } },
+  { label: 'What if school fees rise S$300 a month?', levers: { schoolFeesMonthly: 300 } },
+  { label: 'What if we save S$200 more a month?', levers: { extraSavingsMonthly: 200 } },
+];
+
+const describeScenario = (result: ScenarioResult) => {
+  const changed = result.goals.filter((goal) => goal.isNew || !goal.before
+    || goal.before.monthlyNow !== goal.after.monthlyNow || goal.before.status !== goal.after.status);
+  const lines = changed.map((goal) => {
+    const status = goal.after.status === 'AT_RISK' ? 'at risk' : 'on track';
+    const amounts = goal.before ? `${money(goal.before.monthlyNow)} → ${money(goal.after.monthlyNow)}` : money(goal.after.monthlyNow);
+    return `• ${goal.isNew ? 'New: ' : ''}${goal.name}: ${amounts}/month, done ${monthLabel(goal.after.completesBy)} (${status})`;
+  });
+  return [
+    `Monthly surplus: ${money(result.surplusBefore)} → ${money(result.surplusAfter)}.`,
+    ...result.summary.filter((line) => !line.startsWith('Monthly surplus')),
+    ...(lines.length ? ['', ...lines] : []),
+    '',
+    'Calculated by the planning engine. Nothing changes in your plan unless you decide to change it.',
+  ].join('\n');
+};
 
 export interface SetupProps {
   timeline?: string;
@@ -42,11 +69,12 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
   const [messages, setMessages] = useState<Message[]>([
     {
       from: 'ai',
-      text: `Hello! 👋 I’m your OWNLYplan AI Assistant. Ask how your home reserve, children’s education, retirement outlook, government-support checks, or protection recommendations were calculated.`,
+      text: `Hello! 👋 I’m your OWNLYplan AI Assistant. Ask how any number in your plan was calculated, or try a what-if below to see how a change would affect every goal.`,
     },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
+  const [whatIfOpen, setWhatIfOpen] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const dotAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
@@ -108,6 +136,19 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
           text: `I can’t reach the analysis service right now. Your approved plan is still visible, but rates, eligibility and recommendations should be refreshed once the backend reconnects.`
         }
       ]);
+    } finally {
+      setTyping(false);
+    }
+  };
+
+  const runWhatIf = async (label: string, levers: Partial<ScenarioLevers>) => {
+    setMessages((m) => [...m, { from: 'user', text: label }]);
+    setTyping(true);
+    try {
+      const result = await api.simulateScenario(levers);
+      setMessages((m) => [...m, { from: 'ai', text: describeScenario(result) }]);
+    } catch {
+      setMessages((m) => [...m, { from: 'ai', text: 'What-ifs need the planning engine. Start the backend and try again.' }]);
     } finally {
       setTyping(false);
     }
@@ -222,10 +263,21 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.quickPromptsContainer}
               >
+                {WHAT_IFS.map((item) => (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[styles.promptChip, styles.whatIfChip]}
+                    onPress={() => runWhatIf(item.label, item.levers)}
+                  >
+                    <Text style={styles.promptChipText}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={[styles.promptChip, styles.whatIfChip]} onPress={() => setWhatIfOpen(true)}>
+                  <Text style={styles.promptChipText}>More what-ifs…</Text>
+                </TouchableOpacity>
                 {[
                   'Why sweep to LionGlobal MMF?',
                   'What grants are we eligible for?',
-                  'How is our home reserve progressing?',
                   'Tell me about our protection gap'
                 ].map((q) => (
                   <TouchableOpacity
@@ -264,6 +316,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </TouchableOpacity>
+      <WhatIfSheet visible={whatIfOpen} onClose={() => setWhatIfOpen(false)} />
     </Modal>
   );
 };
@@ -413,6 +466,9 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#BBBBBB',
+  },
+  whatIfChip: {
+    borderColor: '#D81E05',
   },
   quickPromptsWrapper: {
     paddingVertical: 8,

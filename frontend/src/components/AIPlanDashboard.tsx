@@ -14,7 +14,6 @@ import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { SetupProps } from './chatbotoverlay';
 import api, { AgentAnalysisData, MockPassAuthResponse } from '../services/api';
 import { GrowCards } from './plan/GrowCards';
-import { HouseholdPrivacyCard } from './plan/HouseholdPrivacyCard';
 import type { GoalOutlook, OwnlyPlan } from './plan/types';
 
 export interface AIPlanDashboardProps {
@@ -25,7 +24,6 @@ export interface AIPlanDashboardProps {
   profile?: MockPassAuthResponse | null;
   aggregate?: any | null;
   onEditPlan?: () => void;
-  onLeaveHousehold?: (member: 'primary' | 'partner') => void;
 }
 
 interface RecommendCard {
@@ -181,7 +179,7 @@ const getGreeting = (): string => {
   return 'Good Evening';
 };
 
-export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, activePlan, analysis, profile, aggregate, onEditPlan, onLeaveHousehold }) => {
+export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, activePlan, analysis, profile, aggregate, onEditPlan }) => {
   const timeline = String(activePlan?.timelineYears || setup?.timeline || '5');
   const split = setup?.split ?? 60;
   const goalType = setup?.goalType || 'shared';
@@ -313,11 +311,6 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
             </View>
           </View>
 
-          <GrowCards onTalkToAdviser={() => setRmModalVisible(true)} />
-          {onLeaveHousehold ? (
-            <HouseholdPrivacyCard partnerFirstName={profile?.partner?.name?.split(' ')[0] || snapshot?.partnerName?.split(' ')[0]} onLeft={onLeaveHousehold} />
-          ) : null}
-
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View>
@@ -345,7 +338,6 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
             </View>
             <View style={styles.breakdownRows}>
               <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Shared OCBC cash</Text><Text style={styles.breakdownValue}>S${(snapshot?.totalLiquidCash || 0).toLocaleString()}</Text></View>
-              <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Investments</Text><Text style={styles.breakdownValue}>S${(snapshot?.totalInvestments || 0).toLocaleString()}</Text></View>
               <View style={styles.breakdownRow}><Text style={styles.breakdownLabel}>Protected emergency floor</Text><Text style={styles.breakdownValue}>S${(snapshot?.emergencyFund || 0).toLocaleString()}</Text></View>
             </View>
           </View>
@@ -428,6 +420,8 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
               <Text style={styles.emptyStateText}>Edit and reconfirm this plan to generate goal-level forecasts.</Text>
             )}
           </View>
+
+          <GrowCards onTalkToAdviser={() => setRmModalVisible(true)} />
         </View>
 
         {/* OCBC Recommends Horizontal Scroll */}

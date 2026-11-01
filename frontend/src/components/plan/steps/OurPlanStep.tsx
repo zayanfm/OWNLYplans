@@ -5,7 +5,6 @@ import type { PlanGoalOutcome, PlanOption, PlanOptionId, PlanOptions, PlanPropos
 import { FALLBACK_PLAN_OPTIONS } from '../../../constants/planningFallback';
 import { futureValue } from '../planPersonalization';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
-import { WhatIfSheet } from './WhatIfSheet';
 import { Stepper } from '../Stepper';
 
 const ROUTE_ORDER = ['housing', 'education', 'custom', 'emergency'];
@@ -89,7 +88,6 @@ export const OurPlanStep: React.FC<{
   const [selectedId, setSelectedId] = useState<PlanOptionId>('balanced');
   const [showAlternatives, setShowAlternatives] = useState<boolean>(false);
   const [expandedGoal, setExpandedGoal] = useState<string | null>(null);
-  const [whatIfOpen, setWhatIfOpen] = useState<boolean>(false);
   const [proposal, setProposal] = useState<PlanProposal | null>(null);
   const [proposing, setProposing] = useState<boolean>(false);
   const [editing, setEditing] = useState<boolean>(false);
@@ -314,7 +312,7 @@ export const OurPlanStep: React.FC<{
             </Text>
             {everythingFits ? (
               <Text style={styles.fitNote}>
-                Right now every goal gets what it needs, so changing the order does not change the amounts. Order decides who waits when money is short: try a What if, or set your own amounts.
+                Right now every goal gets what it needs, so changing the order does not change the amounts. Order decides who waits when money is short: ask the assistant a what-if, or set your own amounts.
               </Text>
             ) : null}
             {order.map((key, index) => {
@@ -361,9 +359,6 @@ export const OurPlanStep: React.FC<{
           </View>
         )}
 
-        <TouchableOpacity style={[stepStyles.secondaryButton, styles.gap]} onPress={() => setWhatIfOpen(true)} activeOpacity={0.8}>
-          <Text style={stepStyles.secondaryButtonText}>What if…</Text>
-        </TouchableOpacity>
 
         {proposal ? (
           <View style={[stepStyles.card, styles.proposalCard]}>
@@ -384,7 +379,6 @@ export const OurPlanStep: React.FC<{
         ) : null}
       </ScrollView>
 
-      <WhatIfSheet visible={whatIfOpen} planId={plan.id} onClose={() => setWhatIfOpen(false)} />
 
       <View style={stepStyles.footer}>
         {!proposal ? (

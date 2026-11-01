@@ -139,13 +139,13 @@ async function testApi() {
     const ownPlanRes = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: ['housing', 'education'], monthlyOverrides: { education: 300 } })
+      body: JSON.stringify({ order: ['education', 'emergency'], monthlyOverrides: { education: 300 } })
     }).then(r => r.json());
     assert.strictEqual(ownPlanRes.plan.id, 'custom');
     const tooMuch = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ monthlyOverrides: { housing: 50000 } })
+      body: JSON.stringify({ monthlyOverrides: { emergency: 50000 } })
     });
     assert.strictEqual(tooMuch.status, 400, 'Amounts above the investable surplus are rejected');
     const customPlanRes = await fetch(`${baseUrl}/api/finance/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId: 'custom' }) }).then(r => r.json());

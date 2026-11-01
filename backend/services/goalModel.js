@@ -1,4 +1,5 @@
 const goalInputService = require('./goalInputService');
+const { GOAL_CATEGORIES } = require('./goalInputService');
 const { plannableAccounts } = require('./workspaceService');
 const { requiredMonthly, monthsUntil, addMonthsIso, money } = require('../utils/finance');
 
@@ -19,7 +20,7 @@ const essentialMonthly = (financials) => {
  * options.includeKeys, used by what-ifs) are marked `planned` and fed to the optimiser.
  */
 const buildGoals = (household, options = {}) => {
-  const { financials, housing = {}, dependents = [], primaryUser, partner, accounts = {} } = household;
+  const { financials, dependents = [], primaryUser, partner, accounts = {} } = household;
   const scenarioRate = SCENARIO_RATES[options.predictionScenario] || SCENARIO_RATES.balanced;
   const now = options.now || new Date();
   const includeKeys = options.includeKeys || [];
@@ -44,17 +45,6 @@ const buildGoals = (household, options = {}) => {
         deadline: addMonthsIso(input.withinMonths, now),
         annualRate: CASH_RATE, dependsOn: [],
         basis: `${input.months} months of essential spending (${money(essentials)}/month), built within ${input.withinMonths} months`
-      };
-    }
-
-    if (input.type === 'HOUSING') {
-      return {
-        ...base, name: 'BTO home purchase fund', category: 'HOUSING', routeKey: 'housing', priority: 2,
-        targetAmount: input.amount,
-        currentAmount: Number(housing.downpaymentAccumulated || 0),
-        deadline: input.dueDate,
-        annualRate: CASH_RATE, dependsOn: ['emergency'],
-        basis: `Downpayment due ${input.dueDate}`
       };
     }
 
@@ -86,23 +76,34 @@ const buildGoals = (household, options = {}) => {
         targetAmount: input.amount,
         currentAmount: owned,
         deadline: addMonthsIso(months, now),
-        annualRate: scenarioRate, dependsOn: ['housing'],
+        annualRate: scenarioRate, dependsOn: [],
         owner: input.owner,
         basis: `Savings on top of CPF LIFE by age ${input.retireAge}`
       };
     }
 
-    // CUSTOM: the family's own goal; short horizons stay in cash.
+    // CUSTOM: the family's own goal in the category they chose; short horizons stay in cash.
     const months = monthsUntil(input.dueDate, now);
+    const category = GOAL_CATEGORIES[input.category] || GOAL_CATEGORIES.OTHER;
+    const isHousing = category.routeKey === 'housing';
     return {
-      ...base, name: input.name, category: 'CUSTOM', routeKey: 'custom', priority: 3,
+      ...base, name: input.name,
+      category: isHousing ? 'HOUSING' : category.routeKey === 'education' ? 'EDUCATION' : 'CUSTOM',
+      categoryLabel: category.label,
+      routeKey: category.routeKey,
+      priority: isHousing ? 2 : 3,
       targetAmount: input.amount,
-      currentAmount: 0,
+      currentAmount: Number(input.saved || 0),
       deadline: input.dueDate,
-      annualRate: months < SHORT_HORIZON_MONTHS ? CASH_RATE : scenarioRate, dependsOn: [],
-      basis: `Your goal, due ${input.dueDate}`
+      annualRate: months < SHORT_HORIZON_MONTHS ? CASH_RATE : scenarioRate,
+      dependsOn: isHousing ? ['emergency'] : [],
+      basis: `${category.label} goal, due ${input.dueDate}`
     };
   });
+
+  // Retirement savings step up once the family's home goals are funded.
+  const homeKeys = goals.filter((goal) => goal.routeKey === 'housing' && goal.planned).map((goal) => goal.key);
+  goals.filter((goal) => goal.category === 'RETIREMENT').forEach((goal) => { goal.dependsOn = homeKeys; });
 
   return goals.map((goal) => {
     const monthsRemaining = monthsUntil(goal.deadline, now);

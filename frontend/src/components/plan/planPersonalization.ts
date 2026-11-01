@@ -120,7 +120,7 @@ export const personalizePlan = (
     },
   };
 
-  // Prefer the planning engine's real targets and deadlines (BTO keys, child at 18, age 65).
+  // Prefer the targets and dates the family confirmed in the planning engine.
   (['housing', 'education', 'wealth'] as PlanRouteId[]).forEach((key) => {
     const goals = (picture?.goals || []).filter((goal) => goal.routeKey === key && goal.planned);
     if (!goals.length) return;
@@ -135,7 +135,13 @@ export const personalizePlan = (
     };
   });
 
-  const goalOutlooks: GoalOutlook[] = plan.routes.map((route) => {
+  // Only show routes the family actually has a goal for; nothing is assumed (e.g. no home goal
+  // unless they added one).
+  const activeRoutes = picture
+    ? plan.routes.filter((route) => picture.goals.some((goal) => goal.routeKey === route.key && goal.planned))
+    : plan.routes;
+
+  const goalOutlooks: GoalOutlook[] = activeRoutes.map((route) => {
     const baseline = baselines[route.key];
     const months = monthCount(now, baseline.date);
     const rate = rates[route.key];
@@ -177,7 +183,7 @@ export const personalizePlan = (
     ...plan,
     householdSnapshot: snapshot,
     goalOutlooks,
-    routes: plan.routes.map((route) => ({
+    routes: activeRoutes.map((route) => ({
       ...route,
       name: routeLabels[route.key].name,
       purpose: routeLabels[route.key].purpose,

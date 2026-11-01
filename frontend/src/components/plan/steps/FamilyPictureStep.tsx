@@ -48,7 +48,7 @@ const GoalCard = ({ goal, goalsByKey, onPress }: { goal: FamilyGoal; goalsByKey:
       <View style={styles.goalHead}>
         <View style={styles.flex}>
           <Text style={stepStyles.cardTitle}>{goal.name}</Text>
-          <Text style={stepStyles.cardSub}>Due {monthLabel(goal.deadline)} · {goal.basis}</Text>
+          <Text style={stepStyles.cardSub}>{goal.categoryLabel ? `${goal.categoryLabel} · ` : ''}Due {monthLabel(goal.deadline)} · {goal.basis}</Text>
         </View>
         <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
       </View>
@@ -196,7 +196,7 @@ export const FamilyPictureStep: React.FC<{
         </Text>
         {goals.map((goal) => <GoalCard key={goal.key} goal={goal} goalsByKey={goalsByKey} onPress={() => openGoal(goal.input)} />)}
         <TouchableOpacity style={[stepStyles.secondaryButton, styles.bottomGap]} onPress={() => openGoal(null)} activeOpacity={0.8}>
-          <Text style={stepStyles.secondaryButtonText}>+ Add our own goal</Text>
+          <Text style={stepStyles.secondaryButtonText}>+ Add a goal (e.g. BTO, car, wedding)</Text>
         </TouchableOpacity>
 
         <View style={stepStyles.card}>

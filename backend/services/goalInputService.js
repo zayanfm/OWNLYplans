@@ -7,6 +7,14 @@ const EDUCATION_PATHS = {
   POLYTECHNIC: { years: 3, annualCost: 3100, startAge: 17, source: 'Suggested: polytechnic fees about S$3,100 a year (CNA, 2024). Start year is your choice.' },
   UNDECIDED: { years: 0, annualCost: 0, startAge: 0, source: 'Not decided yet. No education amount is planned until you choose a path.' }
 };
+// Categories for goals the family adds. The category decides how the goal is planned and
+// which government support is shown with it (e.g. housing schemes under a housing goal).
+const GOAL_CATEGORIES = {
+  HOUSING: { label: 'Housing', routeKey: 'housing' },
+  EDUCATION: { label: 'Education', routeKey: 'education' },
+  FAMILY: { label: 'Family', routeKey: 'custom' },
+  OTHER: { label: 'Other', routeKey: 'custom' }
+};
 const LIMITS = {
   months: [3, 12],
   withinMonths: [6, 36],
@@ -29,7 +37,7 @@ const partnerConsented = (household) => {
 class GoalInputService {
   /** Suggested inputs for every goal the household could have. All start unconfirmed. */
   suggest(household) {
-    const { housing = {}, dependents = [], primaryUser, partner } = household;
+    const { dependents = [], primaryUser, partner } = household;
     const suggestions = [
       {
         key: 'emergency', type: 'EMERGENCY', owner: 'household', enabled: true,
@@ -37,15 +45,6 @@ class GoalInputService {
         source: 'Suggested: 3–6 months of essential spending is a common guideline. Choose what lets you sleep at night.'
       }
     ];
-
-    if (String(housing.type || '').includes('BTO')) {
-      suggestions.push({
-        key: 'housing', type: 'HOUSING', owner: 'household', enabled: true,
-        amount: Number(housing.downpaymentRequired || 0),
-        dueDate: housing.keyCollectionDate,
-        source: 'From your HDB booking (MyInfo): downpayment and key collection date. Edit if your purchase plan differs.'
-      });
-    }
 
     dependents.filter((child) => child.relation === 'Child').forEach((child, index) => {
       const birthYear = child.birthDate ? new Date(child.birthDate).getFullYear() : new Date().getFullYear();
@@ -120,14 +119,18 @@ class GoalInputService {
     if (current.type === 'EMERGENCY') {
       next.months = check('months', number('months'));
       next.withinMonths = check('withinMonths', number('withinMonths'));
-    } else if (current.type === 'HOUSING' || current.type === 'CUSTOM') {
+    } else if (current.type === 'CUSTOM') {
       next.amount = check('amount', number('amount'));
       const dueDate = patch.dueDate === undefined ? current.dueDate : String(patch.dueDate);
       if (!isMonth(dueDate) || dueDate <= currentMonth()) throw this.error(400, 'dueDate must be a future month (YYYY-MM)');
       next.dueDate = dueDate;
-      if (current.type === 'CUSTOM') {
-        next.name = patch.name === undefined ? current.name : String(patch.name).trim().slice(0, 40);
-        if (!next.name) throw this.error(400, 'name is required');
+      next.name = patch.name === undefined ? current.name : String(patch.name).trim().slice(0, 40);
+      if (!next.name) throw this.error(400, 'name is required');
+      next.category = patch.category === undefined ? current.category : String(patch.category);
+      if (!GOAL_CATEGORIES[next.category]) throw this.error(400, `category must be one of ${Object.keys(GOAL_CATEGORIES).join(', ')}`);
+      next.saved = patch.saved === undefined ? Number(current.saved || 0) : Number(patch.saved);
+      if (!Number.isFinite(next.saved) || next.saved < 0 || next.saved > next.amount) {
+        throw this.error(400, 'saved must be between 0 and the goal amount');
       }
     } else if (current.type === 'EDUCATION') {
       const path = patch.path === undefined ? current.path : String(patch.path);
@@ -161,16 +164,16 @@ class GoalInputService {
   }
 
   // Priority is not set here: the family orders all goals together when building the plan.
-  addCustom(householdId, { name, amount, dueDate } = {}) {
+  addCustom(householdId, { name, category = 'OTHER', amount, saved = 0, dueDate } = {}) {
     const household = this.household(householdId);
-    const key = `custom_${Date.now().toString(36)}`;
+    const key = `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     householdStore.saveGoalInput(household.id, key, {
       key, type: 'CUSTOM', owner: 'household', enabled: true, confirmed: false,
-      name: '', amount: 0, dueDate: null,
+      name: '', category: 'OTHER', amount: 0, saved: 0, dueDate: null,
       source: 'Your own goal.'
     });
     try {
-      return this.update(household.id, key, { name, amount, dueDate });
+      return this.update(household.id, key, { name, category, amount, saved, dueDate });
     } catch (error) {
       householdStore.removeGoalInput(household.id, key);
       throw error;
@@ -204,3 +207,4 @@ class GoalInputService {
 
 module.exports = new GoalInputService();
 module.exports.EDUCATION_PATHS = EDUCATION_PATHS;
+module.exports.GOAL_CATEGORIES = GOAL_CATEGORIES;

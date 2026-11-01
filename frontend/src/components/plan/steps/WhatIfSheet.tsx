@@ -13,7 +13,7 @@ const DEFAULT_LEVERS: ScenarioLevers = { extraChild: false, incomeChangePct: 0, 
  */
 export const WhatIfSheet: React.FC<{
   visible: boolean;
-  planId: PlanOptionId;
+  planId?: PlanOptionId;
   onClose: () => void;
 }> = ({ visible, planId, onClose }) => {
   const [levers, setLevers] = useState<ScenarioLevers>(DEFAULT_LEVERS);

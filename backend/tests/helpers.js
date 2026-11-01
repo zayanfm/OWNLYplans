@@ -20,4 +20,9 @@ const shareAndConsent = (householdId = 'alex_family') => {
   householdStore.getFamilyInviteStatus(householdId);
 };
 
-module.exports = { confirmSuggestedGoals, shareAndConsent };
+// The family adds their BTO purchase as a Housing goal; the app does not assume it.
+const addBtoGoal = (householdId = 'alex_family') => goalInputService.addCustom(householdId, {
+  name: 'BTO home purchase', category: 'HOUSING', amount: 96000, saved: 80000, dueDate: '2028-09'
+});
+
+module.exports = { confirmSuggestedGoals, shareAndConsent, addBtoGoal };
