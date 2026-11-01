@@ -76,7 +76,7 @@ export const ChatbotOverlay: React.FC<ChatbotOverlayProps> = ({ onClose, setup, 
   const [typing, setTyping] = useState(false);
   const [whatIfOpen, setWhatIfOpen] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const dotAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
 
   // Animate typing indicator dots

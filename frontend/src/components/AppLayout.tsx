@@ -48,7 +48,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <SafeAreaView style={styles.outerContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F4F0" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.mobileFrame}>
         {/* Dynamic Island Simulation */}
         <View style={styles.dynamicIsland} />
