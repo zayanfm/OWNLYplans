@@ -120,9 +120,9 @@ async function testApi() {
     const optimisedPlanRes = await fetch(`${baseUrl}/api/finance/plan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId: 'home_first' })
+      body: JSON.stringify({ planId: 'education_first' })
     }).then(r => r.json());
-    assert.strictEqual(optimisedPlanRes.plan.optimiserPlanId, 'home_first', 'Without a split, the chosen optimiser plan drives routing');
+    assert.strictEqual(optimisedPlanRes.plan.optimiserPlanId, 'education_first', 'Without a split, the chosen optimiser plan drives routing');
     const optimisedTotal = optimisedPlanRes.plan.routes.reduce((sum, route) => sum + route.monthlyAmount, 0)
       + optimisedPlanRes.plan.emergencyReserve.monthlyAmount + optimisedPlanRes.plan.customGoals.monthlyAmount + optimisedPlanRes.plan.keptFree;
     assert.strictEqual(optimisedTotal, optimisedPlanRes.plan.investableSurplus, 'Every dollar is allocated or kept free');

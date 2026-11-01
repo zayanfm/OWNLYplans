@@ -24,6 +24,7 @@ const PLAN_DEFINITIONS = [
     id: 'home_first',
     name: 'Home first',
     tagline: 'Home goals finish early with a cushion for renovation',
+    requires: 'housing',
     order: ['housing', 'emergency', 'education', 'custom'],
     emergencyStretchMonths: 6,
     multipliers: { housing: 1.15 }
@@ -32,6 +33,7 @@ const PLAN_DEFINITIONS = [
     id: 'education_first',
     name: 'Education first',
     tagline: 'Education funded first and front-loaded while time in the market is longest',
+    requires: 'education',
     order: ['education', 'housing', 'custom', 'emergency'],
     emergencyStretchMonths: 6,
     multipliers: { education: 1.5 }
@@ -78,7 +80,11 @@ class OptimiserService {
 
   optimise(household, options = {}) {
     const { now, premium, monthlySurplus, investable, goals, needsDecision, lumpSumAmount, contributions, pots } = this.prepare(household, options);
-    const plans = PLAN_DEFINITIONS.map((definition) => this.simulate(definition, goals, pots, now));
+    // A plan that puts a kind of goal first is only offered when the family has such a goal.
+    const sharedRoutes = new Set(goals.filter((goal) => isShared(goal.owner)).map((goal) => goal.routeKey));
+    const plans = PLAN_DEFINITIONS
+      .filter((definition) => !definition.requires || sharedRoutes.has(definition.requires))
+      .map((definition) => this.simulate(definition, goals, pots, now));
     const recommended = plans.find((plan) => plan.allOnTrack) || plans[0];
     plans.forEach((plan) => { plan.recommended = plan.id === recommended.id; });
     plans.forEach((plan) => { plan.tradeOffs = this.describeTradeOffs(plan, recommended); });

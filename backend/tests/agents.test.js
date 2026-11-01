@@ -49,7 +49,9 @@ async function runTests() {
   assert.deepStrictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.map(g => g.key), ['retirement_partner'], 'The optimiser plans only confirmed goals');
 
   confirmSuggestedGoals('alex_family');
+  assert(!optimiserService.optimise(alexHousehold).plans.some(p => p.id === 'home_first'), 'No home goal, so no Home first plan');
   const bto = addBtoGoal('alex_family');
+  assert(optimiserService.optimise(alexHousehold).plans.some(p => p.id === 'home_first'), 'Adding a housing goal offers Home first');
   assert.throws(() => goalInputService.addCustom('alex_family', { name: 'X', category: 'BOAT', amount: 5000, dueDate: '2030-01' }), /category must be one of/);
   assert.throws(() => goalInputService.addCustom('alex_family', { name: 'X', category: 'OTHER', amount: 5000, saved: 9000, dueDate: '2030-01' }), /saved must be between/);
   const goalsRes = await goalsAgent.analyze(alexHousehold);
