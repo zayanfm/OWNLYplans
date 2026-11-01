@@ -247,6 +247,7 @@ export interface PlanOption {
   tagline: string;
   routes: { emergency: number; housing: number; education: number; custom: number; wealth: number };
   unallocated: number;
+  priorityOrder: string[];
   // Each pot (the family pot and each person's own money) and what it leaves free this month.
   pots: Array<{ id: string; label: string; available: number; free: number }>;
   keptFree: number;

@@ -633,6 +633,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         "custom": 0,
         "wealth": 327
       },
+      "priorityOrder": [
+        "education",
+        "emergency"
+      ],
       "pots": [
         {
           "id": "household",
@@ -759,6 +763,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         "custom": 0,
         "wealth": 327
       },
+      "priorityOrder": [
+        "emergency",
+        "education"
+      ],
       "pots": [
         {
           "id": "household",
@@ -886,6 +894,10 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         "custom": 0,
         "wealth": 327
       },
+      "priorityOrder": [
+        "education",
+        "emergency"
+      ],
       "pots": [
         {
           "id": "household",

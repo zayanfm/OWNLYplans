@@ -5,11 +5,10 @@ import type { PlanGoalOutcome, PlanOption, PlanOptionId, PlanOptions, PlanPropos
 import { FALLBACK_PLAN_OPTIONS } from '../../../constants/planningFallback';
 import { futureValue } from '../planPersonalization';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
-import { Stepper } from '../Stepper';
+import { CompactStepper } from '../Stepper';
 import { GoalIcon } from '../GoalIcon';
 import { ContributionsCard } from '../ContributionsCard';
 
-const ROUTE_ORDER = ['housing', 'education', 'custom', 'emergency'];
 const EDIT_DEBOUNCE_MS = 400;
 
 const PROPOSAL_POLL_MS = 1000;
@@ -48,21 +47,67 @@ const ProjectionRange = ({ goal }: { goal: PlanGoalOutcome }) => {
   );
 };
 
-const GoalRow = ({ goal, expanded, onPress, rank }: { goal: PlanGoalOutcome; expanded: boolean; onPress?: () => void; rank?: number }) => {
+const GoalRow = ({ goal, expanded, onPress }: { goal: PlanGoalOutcome; expanded: boolean; onPress?: () => void }) => {
   const pill = statusPill(goal.status);
   return (
     <TouchableOpacity activeOpacity={onPress ? 0.7 : 1} onPress={onPress} style={stepStyles.rowDivider}>
       <View style={stepStyles.row}>
         <GoalIcon group={goal.group} size={30} />
         <View style={styles.flex}>
-          <Text style={styles.goalName}>{rank ? `${rank}. ` : ''}{goal.name}{onPress ? (expanded ? '  ▴' : '  ▾') : ''}</Text>
-          <Text style={stepStyles.cardSub}>{goal.owner === 'household' ? '' : 'Personal · '}Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
+          <Text style={styles.goalName}>{goal.name}{onPress ? (expanded ? '  ▴' : '  ▾') : ''}</Text>
+          <Text style={stepStyles.cardSub}>Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
         </View>
         <Text style={stepStyles.rowValue}>{money(goal.monthlyNow)}/mo</Text>
         <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
       </View>
       {expanded ? <ProjectionRange goal={goal} /> : null}
     </TouchableOpacity>
+  );
+};
+
+// A shared goal you can rank and fund directly: ↑↓ change the order, −/+ set the monthly amount.
+const SharedGoalRow = ({ goal, rank, isFirst, isLast, amount, isOwnAmount, max, expanded, onToggle, onMove, onAmount, onAuto }: {
+  goal: PlanGoalOutcome;
+  rank: number;
+  isFirst: boolean;
+  isLast: boolean;
+  amount: number;
+  isOwnAmount: boolean;
+  max: number;
+  expanded: boolean;
+  onToggle?: () => void;
+  onMove: (delta: number) => void;
+  onAmount: (value: number) => void;
+  onAuto: () => void;
+}) => {
+  const pill = statusPill(goal.status);
+  return (
+    <View style={[stepStyles.rowDivider, styles.sharedRow]}>
+      <View style={styles.sharedHead}>
+        <Text style={styles.editRank}>{rank}</Text>
+        <GoalIcon group={goal.group} size={30} />
+        <TouchableOpacity style={styles.flex} onPress={onToggle} disabled={!onToggle} activeOpacity={0.7}>
+          <Text style={styles.goalName}>{goal.name}{onToggle ? (expanded ? '  ▴' : '  ▾') : ''}</Text>
+          <Text style={stepStyles.cardSub}>Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
+        </TouchableOpacity>
+        <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
+      </View>
+      <View style={styles.sharedControls}>
+        <View style={styles.moveGroup}>
+          <TouchableOpacity style={[styles.moveButton, isFirst && styles.moveDisabled]} onPress={() => onMove(-1)} disabled={isFirst} accessibilityLabel={`Move ${goal.name} up`}><Text style={styles.moveText}>↑</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.moveButton, isLast && styles.moveDisabled]} onPress={() => onMove(1)} disabled={isLast} accessibilityLabel={`Move ${goal.name} down`}><Text style={styles.moveText}>↓</Text></TouchableOpacity>
+        </View>
+        <View style={styles.flex}>
+          {isOwnAmount ? (
+            <TouchableOpacity onPress={onAuto}><Text style={styles.autoLink}>Your amount · back to auto</Text></TouchableOpacity>
+          ) : (
+            <Text style={stepStyles.note}>Auto: what it needs</Text>
+          )}
+        </View>
+        <CompactStepper label={`${goal.name} monthly amount`} value={amount} step={25} min={0} max={max} display={`${money(amount)}/mo`} onChange={onAmount} />
+      </View>
+      {expanded ? <ProjectionRange goal={goal} /> : null}
+    </View>
   );
 };
 
@@ -78,8 +123,8 @@ const AlternativeCard = ({ plan, selected, onSelect }: { plan: PlanOption; selec
 );
 
 /**
- * Our Plan (Decide): one recommended split from the goal optimiser (#5), the education
- * projection (#8), the What-if sheet (#6), and agreeing the plan with the partner (#7).
+ * Our Plan (Decide): who puts in what, one editable list of goals from the goal optimiser (#5)
+ * with the education projection (#8), and agreeing the plan with the partner (#7).
  */
 export const OurPlanStep: React.FC<{
   partnerFirstName?: string;
@@ -93,7 +138,6 @@ export const OurPlanStep: React.FC<{
   const [expandedGoal, setExpandedGoal] = useState<string | null>(null);
   const [proposal, setProposal] = useState<PlanProposal | null>(null);
   const [proposing, setProposing] = useState<boolean>(false);
-  const [editing, setEditing] = useState<boolean>(false);
   const [order, setOrder] = useState<string[]>([]);
   const [amounts, setAmounts] = useState<Record<string, number>>({});
   const [ownPlan, setOwnPlan] = useState<PlanOption | null>(null);
@@ -127,31 +171,21 @@ export const OurPlanStep: React.FC<{
   const reloadOptions = async () => {
     try {
       setOptions(await api.getPlanOptions());
-      if (ownPlan?.definition) await calculate(ownPlan.definition.order, ownPlan.definition.monthlyOverrides);
+      if (selectedId === 'custom' && ownPlan?.definition) await calculate(ownPlan.definition.order, ownPlan.definition.monthlyOverrides);
     } catch {
       // Offline: keep showing the last plans.
     }
   };
 
-  // The family's own plan. `amounts` holds only the monthly amounts the family set themselves;
-  // every other goal is funded by priority order with what it needs to stay on time.
-  const startEditing = () => {
-    const saved = selectedId === 'custom' ? ownPlan?.definition : undefined;
-    const startOrder = saved?.order || plan.goals.filter((goal) => goal.owner === 'household')
-      .sort((a, b) => ROUTE_ORDER.indexOf(a.routeKey) - ROUTE_ORDER.indexOf(b.routeKey))
-      .map((goal) => goal.key);
-    const startAmounts = saved?.monthlyOverrides || {};
-    setOrder(startOrder);
-    setAmounts(startAmounts);
-    setEditing(true);
-    recalculate(startOrder, startAmounts);
-  };
-
+  // Editing the list makes it the family's own plan. `amounts` holds only the monthly amounts the
+  // family set; every other shared goal gets what it needs, in priority order.
   const calculate = async (nextOrder: string[], nextAmounts: Record<string, number>) => {
     try {
       const result = (await api.customPlan(nextOrder, nextAmounts)).plan;
       setOwnPlan(result);
       setOwnError(null);
+      setSelectedId('custom');
+      setProposal(null);
       return result;
     } catch (err: any) {
       setOwnError(err?.status ? err.message : 'Changing the plan needs the planning engine. Start the backend and try again.');
@@ -164,27 +198,17 @@ export const OurPlanStep: React.FC<{
     debounce.current = setTimeout(() => calculate(nextOrder, nextAmounts), EDIT_DEBOUNCE_MS);
   };
 
-  // 3: always save the latest order and amounts, even if a recalculation is still pending.
-  const useOurPlan = async () => {
-    if (debounce.current) clearTimeout(debounce.current);
-    const saved = await calculate(order, amounts);
-    if (!saved) return;
-    setSelectedId('custom');
-    setEditing(false);
-    setProposal(null);
-  };
-
-  const resetAmount = (key: string) => {
-    const { [key]: removed, ...rest } = amounts;
-    setAmounts(rest);
-    recalculate(order, rest);
-  };
+  const sharedGoals = plan.goals.filter((goal) => goal.owner === 'household');
+  const personalGoals = plan.goals.filter((goal) => goal.owner !== 'household');
+  const planOrder = plan.priorityOrder?.length ? plan.priorityOrder : sharedGoals.map((goal) => goal.key);
+  const currentOrder = order.length ? order : planOrder;
+  const orderedShared = currentOrder.map((key) => sharedGoals.find((goal) => goal.key === key)).filter(Boolean) as PlanGoalOutcome[];
 
   const move = (key: string, delta: number) => {
-    const index = order.indexOf(key);
+    const index = currentOrder.indexOf(key);
     const target = index + delta;
-    if (target < 0 || target >= order.length) return;
-    const next = [...order];
+    if (target < 0 || target >= currentOrder.length) return;
+    const next = [...currentOrder];
     [next[index], next[target]] = [next[target], next[index]];
     setOrder(next);
     recalculate(next, amounts);
@@ -192,27 +216,31 @@ export const OurPlanStep: React.FC<{
 
   const setAmount = (key: string, value: number) => {
     const next = { ...amounts, [key]: value };
+    setOrder(currentOrder);
     setAmounts(next);
-    recalculate(order, next);
+    recalculate(currentOrder, next);
   };
 
-  const goalName = (key: string) => plan.goals.find((goal) => goal.key === key)?.name || ownPlan?.goals.find((goal) => goal.key === key)?.name || key;
-  const ownAmount = (key: string) => amounts[key] ?? ownPlan?.goals.find((goal) => goal.key === key)?.monthlyNow ?? 0;
-  // When retirement still receives money, every dated goal already got what it needs this month,
-  // so the order only starts to matter if money gets tighter.
+  const resetAmount = (key: string) => {
+    const { [key]: removed, ...rest } = amounts;
+    setAmounts(rest);
+    recalculate(currentOrder, rest);
+  };
+
+  // Choosing a suggested plan again drops the family's edits from the list.
+  const selectSuggested = (id: PlanOptionId) => {
+    if (debounce.current) clearTimeout(debounce.current);
+    setOrder([]);
+    setAmounts({});
+    setOwnError(null);
+    setSelectedId(id);
+    setProposal(null);
+  };
+
   const familyPot = options.contributions?.familyPot.available ?? options.investable;
-  const ownFree = ownPlan?.pots?.find((pot) => pot.id === 'household')?.free ?? 0;
-  const everythingFits = Boolean(ownPlan && ownFree > 0 && !ownPlan.goals.some((goal) => goal.owner === 'household' && goal.status === 'AT_RISK'));
-
-  // 4: the family's plan is listed in their priority order; the others by deadline.
-  const priorityOrder = plan.definition?.order || [];
-  const rank = (key: string) => {
-    const index = priorityOrder.indexOf(key);
-    return index === -1 ? priorityOrder.length : index;
-  };
-  const goals = [...plan.goals].sort((a, b) => (priorityOrder.length
-    ? rank(a.key) - rank(b.key) || a.deadline.localeCompare(b.deadline)
-    : a.deadline.localeCompare(b.deadline)));
+  const familyFree = plan.pots?.find((pot) => pot.id === 'household')?.free ?? 0;
+  const everythingFits = familyFree > 0 && !sharedGoals.some((goal) => goal.status === 'AT_RISK');
+  const sharedStepUps = plan.stepUps.filter((step) => step.pot === 'household');
 
   const pollReply = (online: boolean, sent: PlanProposal) => {
     timer.current = setTimeout(async () => {
@@ -283,6 +311,11 @@ export const OurPlanStep: React.FC<{
           <View style={styles.planHead}>
             <Text style={stepStyles.cardTitle}>{plan.name}</Text>
             {plan.recommended ? <Text style={styles.recBadge}>Recommended</Text> : null}
+            {selectedId === 'custom' ? (
+              <TouchableOpacity onPress={() => selectSuggested(options.recommendedPlanId)}>
+                <Text style={styles.autoLink}>Back to suggestion</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
           <Text style={stepStyles.cardSub}>{plan.tagline}</Text>
           {options.lumpSum ? (
@@ -290,23 +323,50 @@ export const OurPlanStep: React.FC<{
               <Text style={styles.lumpSumText}>Today: move {money(options.lumpSum.amount)} of spare cash into the emergency buffer.</Text>
             </View>
           ) : null}
-          {priorityOrder.length ? <Text style={[stepStyles.note, styles.gap]}>Shared goals in your priority order; personal goals come from each person&apos;s own money.</Text> : null}
-          {goals.map((goal) => (
-            <GoalRow
+
+          <Text style={[stepStyles.sectionLabel, styles.sectionTop]}>Shared goals · family pot {money(familyPot)}/mo</Text>
+          <Text style={stepStyles.note}>
+            Goal 1 is funded first. Use ↑↓ to change the order and −/+ to set your own amount.
+            {everythingFits ? ' Everything fits right now, so the order only matters if money gets tight.' : ''}
+          </Text>
+          {orderedShared.map((goal, index) => (
+            <SharedGoalRow
               key={goal.key}
-              rank={priorityOrder.includes(goal.key) ? rank(goal.key) + 1 : undefined}
               goal={goal}
+              rank={index + 1}
+              isFirst={index === 0}
+              isLast={index === orderedShared.length - 1}
+              amount={amounts[goal.key] ?? goal.monthlyNow}
+              isOwnAmount={amounts[goal.key] !== undefined}
+              max={familyPot}
               expanded={expandedGoal === goal.key}
-              onPress={goal.routeKey === 'education' ? () => setExpandedGoal(expandedGoal === goal.key ? null : goal.key) : undefined}
+              onToggle={goal.routeKey === 'education' ? () => setExpandedGoal(expandedGoal === goal.key ? null : goal.key) : undefined}
+              onMove={(delta) => move(goal.key, delta)}
+              onAmount={(value) => setAmount(goal.key, value)}
+              onAuto={() => resetAmount(goal.key)}
             />
           ))}
-          {plan.keptFree > 0 ? (
-            <Text style={[stepStyles.note, styles.gap]}>{money(plan.keptFree)}/month stays free in the pots this plan does not need.</Text>
+          <View style={stepStyles.row}>
+            <Text style={stepStyles.rowLabel}>Kept free in the family pot</Text>
+            <Text style={stepStyles.rowValue}>{money(familyFree)}/mo</Text>
+          </View>
+          {ownError ? <Text style={styles.errorText}>{ownError}</Text> : null}
+          {selectedId === 'custom' ? plan.tradeOffs.map((line) => <Text key={line} style={styles.tradeOff}>• {line}</Text>) : null}
+
+          {personalGoals.length ? (
+            <>
+              <Text style={[stepStyles.sectionLabel, styles.sectionTop]}>Personal goals · each person&apos;s own money</Text>
+              <Text style={stepStyles.note}>Change these amounts in Who puts in what.</Text>
+              {personalGoals.map((goal) => (
+                <GoalRow key={goal.key} goal={goal} expanded={false} />
+              ))}
+            </>
           ) : null}
-          {plan.stepUps.length ? (
+
+          {sharedStepUps.length ? (
             <View style={styles.stepUps}>
-              <Text style={stepStyles.sectionLabel}>As goals finish</Text>
-              {plan.stepUps.slice(0, 2).map((step) => (
+              <Text style={stepStyles.sectionLabel}>As shared goals finish</Text>
+              {sharedStepUps.slice(0, 2).map((step) => (
                 <Text key={step.month + step.fromGoal} style={styles.stepUpText}>{monthLabel(step.month)}: {step.text}</Text>
               ))}
             </View>
@@ -317,69 +377,8 @@ export const OurPlanStep: React.FC<{
           <Text style={[stepStyles.linkText, styles.gap]}>{showAlternatives ? 'Hide alternatives' : `Compare ${options.plans.length - 1} alternatives`}</Text>
         </TouchableOpacity>
         {showAlternatives ? options.plans.map((item) => (
-          <AlternativeCard key={item.id} plan={item} selected={item.id === selectedId} onSelect={() => { setSelectedId(item.id); setProposal(null); }} />
+          <AlternativeCard key={item.id} plan={item} selected={item.id === selectedId} onSelect={() => selectSuggested(item.id)} />
         )) : null}
-
-        {!editing ? (
-          <TouchableOpacity style={[stepStyles.secondaryButton, styles.gap]} onPress={startEditing} activeOpacity={0.8}>
-            <Text style={stepStyles.secondaryButtonText}>Change priorities or amounts</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[stepStyles.card, styles.gap]}>
-            <Text style={stepStyles.cardTitle}>Make it ours</Text>
-            <Text style={stepStyles.cardSub}>
-              Family-pot money goes to goal 1 first, then 2, and so on; anything left stays free. Leave an amount on auto and the goal gets what it needs to stay on time, or set your own.
-            </Text>
-            {everythingFits ? (
-              <Text style={styles.fitNote}>
-                Right now every goal gets what it needs, so changing the order does not change the amounts. Order decides who waits when money is short: ask the assistant a what-if, or set your own amounts.
-              </Text>
-            ) : null}
-            {order.map((key, index) => {
-              const outcome = ownPlan?.goals.find((goal) => goal.key === key);
-              const pill = outcome ? statusPill(outcome.status) : null;
-              return (
-                <View key={key} style={styles.editRow}>
-                  <View style={styles.editHead}>
-                    <Text style={styles.editRank}>{index + 1}</Text>
-                    <GoalIcon group={(ownPlan?.goals.find((goal) => goal.key === key) || plan.goals.find((goal) => goal.key === key))?.group} size={26} />
-                    <Text style={[styles.goalName, styles.flex]}>{goalName(key)}</Text>
-                    {pill ? <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View> : null}
-                    <TouchableOpacity style={styles.moveButton} onPress={() => move(key, -1)} accessibilityLabel={`Move ${goalName(key)} up`}><Text style={styles.moveText}>↑</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.moveButton} onPress={() => move(key, 1)} accessibilityLabel={`Move ${goalName(key)} down`}><Text style={styles.moveText}>↓</Text></TouchableOpacity>
-                  </View>
-                  <Stepper label={amounts[key] === undefined ? 'Each month (auto)' : 'Each month (yours)'} value={ownAmount(key)} step={25} min={0} max={familyPot}
-                    display={money(ownAmount(key))} onChange={(value) => setAmount(key, value)} />
-                  <View style={styles.editFoot}>
-                    {outcome ? <Text style={[stepStyles.note, styles.flex]}>Done {monthLabel(outcome.completesBy)} · due {monthLabel(outcome.deadline)}</Text> : null}
-                    {amounts[key] !== undefined ? (
-                      <TouchableOpacity onPress={() => resetAmount(key)}><Text style={styles.autoLink}>Back to auto</Text></TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-            <View style={stepStyles.row}>
-              <Text style={stepStyles.rowLabel}>Kept free in the family pot</Text>
-              <Text style={stepStyles.rowValue}>{money(ownFree)}/mo</Text>
-            </View>
-            {ownError ? <Text style={styles.errorText}>{ownError}</Text> : null}
-            {ownPlan?.tradeOffs.map((line) => <Text key={line} style={styles.tradeOff}>• {line}</Text>)}
-            <View style={[styles.choiceRow, styles.gap]}>
-              <TouchableOpacity style={[stepStyles.secondaryButton, styles.flex]} onPress={() => { setEditing(false); setSelectedId(options.recommendedPlanId); }}>
-                <Text style={stepStyles.secondaryButtonText}>Back to suggestion</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[stepStyles.primaryButton, styles.flex, (!ownPlan || Boolean(ownError)) && stepStyles.primaryButtonDisabled]}
-                onPress={useOurPlan}
-                disabled={!ownPlan || Boolean(ownError)}
-              >
-                <Text style={stepStyles.primaryButtonText}>Use our plan</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
 
         {proposal ? (
           <View style={[stepStyles.card, styles.proposalCard]}>
@@ -455,15 +454,17 @@ const styles = StyleSheet.create({
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   proposalText: { fontSize: 13, lineHeight: 19, fontWeight: '700', color: COLORS.ink, flex: 1 },
   choiceRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  editRow: { borderTopWidth: 1, borderTopColor: '#F2F2F2', paddingTop: 10, marginTop: 10 },
-  editHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   editRank: { width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.red, color: '#FFFFFF', textAlign: 'center', lineHeight: 22, fontSize: 11, fontWeight: '900', overflow: 'hidden' },
   moveButton: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
   moveText: { fontSize: 14, fontWeight: '900', color: COLORS.ink },
   errorText: { fontSize: 12, fontWeight: '700', color: COLORS.red, marginTop: 6 },
-  fitNote: { fontSize: 12, lineHeight: 17, color: COLORS.green, backgroundColor: COLORS.greenBg, borderRadius: 10, padding: 8, marginTop: 8 },
-  editFoot: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   autoLink: { fontSize: 11, fontWeight: '800', color: COLORS.red },
+  sectionTop: { marginTop: 14 },
+  sharedRow: { paddingVertical: 8 },
+  sharedHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sharedControls: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, paddingLeft: 30 },
+  moveGroup: { flexDirection: 'row', gap: 6 },
+  moveDisabled: { opacity: 0.3 },
 });
 
 export default OurPlanStep;

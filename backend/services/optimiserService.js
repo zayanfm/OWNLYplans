@@ -199,6 +199,8 @@ class OptimiserService {
       name: definition.name,
       tagline: definition.tagline,
       routes: routeTotals,
+      // The order the family pot funds shared goals in, so every plan can be shown ranked.
+      priorityOrder: sharedOrder.map((goal) => goal.key),
       pots: runs.map((run) => ({ id: run.pot.id, label: run.pot.label, available: run.pot.available, free: run.free })),
       keptFree: runs.reduce((sum, run) => sum + run.free, 0),
       unallocated: runs.reduce((sum, run) => sum + run.free, 0),
