@@ -7,7 +7,7 @@ const { requiredMonthly, addMonthsIso, money } = require('../utils/finance');
 const PROTECTION_PREMIUMS = { essential: 28, enhanced: 52 };
 
 // Each plan is a priority order for the family pot plus how hard it pushes its lead goal. Home
-// goals come first because key collection cannot move; the existing emergency floor already
+// goals usually come first because key collection cannot move; the existing emergency floor already
 // covers several months, so its top-up can flex. Personal goals are funded from each person's
 // own money, in deadline order. Money nobody chose to put in, or freed by a finished goal,
 // stays free for the family to decide on.
@@ -31,8 +31,8 @@ const PLAN_DEFINITIONS = [
   {
     id: 'education_first',
     name: 'Education first',
-    tagline: 'Front-loads education savings while time in the market is longest',
-    order: ['housing', 'education', 'custom', 'emergency'],
+    tagline: 'Education funded first and front-loaded while time in the market is longest',
+    order: ['education', 'housing', 'custom', 'emergency'],
     emergencyStretchMonths: 6,
     multipliers: { education: 1.5 }
   }

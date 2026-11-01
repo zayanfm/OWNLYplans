@@ -886,7 +886,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
     {
       "id": "education_first",
       "name": "Education first",
-      "tagline": "Front-loads education savings while time in the market is longest",
+      "tagline": "Education funded first and front-loaded while time in the market is longest",
       "routes": {
         "emergency": 269,
         "housing": 0,

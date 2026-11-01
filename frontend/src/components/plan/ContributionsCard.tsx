@@ -7,8 +7,12 @@ import { Stepper } from './Stepper';
 
 const firstName = (name: string) => String(name).split(' ')[0];
 
-const PersonRow = ({ person, editable, asPartnerDemo, onSaved }: {
+const percent = (part: number, whole: number) => (whole > 0 ? Math.round(part / whole * 100) : 0);
+
+const PersonRow = ({ person, othersShared, editable, asPartnerDemo, onSaved }: {
   person: ContributionPerson;
+  // What everyone else puts into the family pot, so this person's share updates as they edit.
+  othersShared: number;
   editable: boolean;
   asPartnerDemo?: boolean;
   onSaved: () => void;
@@ -19,6 +23,7 @@ const PersonRow = ({ person, editable, asPartnerDemo, onSaved }: {
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const name = firstName(person.name);
+  const potShare = percent(editing ? toShared : person.toShared, (editing ? toShared : person.toShared) + othersShared);
 
   const save = async () => {
     setSaving(true);
@@ -53,7 +58,7 @@ const PersonRow = ({ person, editable, asPartnerDemo, onSaved }: {
 
       {editing ? (
         <View style={styles.gap}>
-          <Stepper label="To family goals" value={toShared} step={25} min={0} max={person.leftover}
+          <Stepper label={`To family goals (${potShare}% of the pot)`} value={toShared} step={25} min={0} max={person.leftover}
             display={money(toShared)} onChange={(value) => { setToShared(value); setToPersonal(Math.min(toPersonal, person.leftover - value)); }} />
           <Stepper label={`To ${name}'s own goals`} value={toPersonal} step={25} min={0} max={Math.max(0, person.leftover - toShared)}
             display={money(toPersonal)} onChange={setToPersonal} />
@@ -70,7 +75,11 @@ const PersonRow = ({ person, editable, asPartnerDemo, onSaved }: {
         </View>
       ) : (
         <>
-          <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>→ Family goals</Text><Text style={stepStyles.rowValue}>{money(person.toShared)}</Text></View>
+          <View style={stepStyles.row}>
+            <Text style={stepStyles.rowLabel}>→ Family goals</Text>
+            <Text style={styles.percent}>{potShare}% of the pot</Text>
+            <Text style={stepStyles.rowValue}>{money(person.toShared)}</Text>
+          </View>
           <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>→ {name}&apos;s own goals</Text><Text style={stepStyles.rowValue}>{money(person.toPersonal)}</Text></View>
           <View style={stepStyles.row}><Text style={stepStyles.rowLabel}>Kept free</Text><Text style={stepStyles.rowValue}>{money(person.keptFree)}</Text></View>
           {editable ? (
@@ -98,6 +107,7 @@ export const ContributionsCard: React.FC<{ contributions: Contributions; onChang
       <PersonRow
         key={`${person.member}-${person.toShared}-${person.toPersonal}`}
         person={person}
+        othersShared={contributions.people.filter((other) => other.member !== person.member).reduce((sum, other) => sum + other.toShared, 0)}
         editable
         asPartnerDemo={person.member === 'partner'}
         onSaved={onChanged}
@@ -107,6 +117,14 @@ export const ContributionsCard: React.FC<{ contributions: Contributions; onChang
       <Text style={styles.potLabel}>Family pot for shared goals</Text>
       <Text style={styles.potValue}>{money(contributions.familyPot.available)}/mo</Text>
     </View>
+    <View style={styles.splitBar}>
+      {contributions.people.map((person, index) => (
+        <View key={person.member} style={{ flex: Math.max(person.toShared, 0.001), backgroundColor: index === 0 ? COLORS.red : '#7AB5E8' }} />
+      ))}
+    </View>
+    <Text style={styles.splitText}>
+      {contributions.people.map((person) => `${firstName(person.name)} ${percent(person.toShared, contributions.familyPot.contributed)}% (${money(person.toShared)})`).join('  ·  ')}
+    </Text>
     <Text style={stepStyles.note}>
       {money(contributions.familyPot.contributed)} put in, less {money(contributions.familyPot.protectionPremium)} for family protection.
     </Text>
@@ -125,6 +143,9 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginTop: 6 },
   error: { fontSize: 12, fontWeight: '700', color: COLORS.red, marginTop: 4 },
   potRow: { marginTop: 10, backgroundColor: COLORS.greenBg, borderRadius: 10, paddingHorizontal: 10 },
+  percent: { fontSize: 11, fontWeight: '800', color: COLORS.muted },
+  splitBar: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', marginTop: 8 },
+  splitText: { fontSize: 12, fontWeight: '800', color: COLORS.ink, marginTop: 4, marginBottom: 4 },
   potLabel: { fontSize: 13, fontWeight: '900', color: COLORS.green, flex: 1 },
   potValue: { fontSize: 14, fontWeight: '900', color: COLORS.green },
 });

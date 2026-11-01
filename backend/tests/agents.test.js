@@ -108,6 +108,9 @@ async function runTests() {
   const homeFirst = optimised.plans.find(p => p.id === 'home_first');
   const balancedPlan = optimised.plans.find(p => p.id === 'balanced');
   assert(homeFirst.routes.housing > balancedPlan.routes.housing, 'Home first pushes the BTO fund harder');
+  const educationFirstPlan = optimised.plans.find(p => p.id === 'education_first');
+  assert.strictEqual(educationFirstPlan.priorityOrder[0], 'education', 'Education first funds education first');
+  assert.strictEqual(new Set(optimised.plans.map(p => p.priorityOrder.join('>'))).size, 3, 'Each plan has its own priority order');
   assert(balancedPlan.stepUps.some(s => s.fromGoal === bto.key), 'BTO money moves on once the fund completes');
   console.log('✓ Optimiser Plans:', optimised.plans.map(p => p.id).join(', '));
 

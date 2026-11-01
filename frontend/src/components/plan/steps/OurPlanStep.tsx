@@ -111,10 +111,11 @@ const SharedGoalRow = ({ goal, rank, isFirst, isLast, amount, isOwnAmount, max, 
   );
 };
 
-const AlternativeCard = ({ plan, selected, onSelect }: { plan: PlanOption; selected: boolean; onSelect: () => void }) => (
-  <TouchableOpacity style={[stepStyles.card, selected && styles.selectedCard]} onPress={onSelect} activeOpacity={0.8}>
+// One option in the plan dropdown: what it prioritises and what it trades off.
+const PlanChoice = ({ plan, selected, onSelect }: { plan: PlanOption; selected: boolean; onSelect: () => void }) => (
+  <TouchableOpacity style={[styles.choice, selected && styles.choiceSelected]} onPress={onSelect} activeOpacity={0.8}>
     <View style={styles.planHead}>
-      <Text style={stepStyles.cardTitle}>{plan.name}</Text>
+      <Text style={styles.goalName}>{selected ? '● ' : '○ '}{plan.name}</Text>
       {plan.recommended ? <Text style={styles.recBadge}>Recommended</Text> : null}
     </View>
     <Text style={stepStyles.cardSub}>{plan.tagline}</Text>
@@ -308,16 +309,27 @@ export const OurPlanStep: React.FC<{
         {options.contributions ? <ContributionsCard contributions={options.contributions} onChanged={reloadOptions} /> : null}
 
         <View style={[stepStyles.card, styles.planCard]}>
-          <View style={styles.planHead}>
-            <Text style={stepStyles.cardTitle}>{plan.name}</Text>
+          <TouchableOpacity style={styles.dropdown} onPress={() => setShowAlternatives(!showAlternatives)} activeOpacity={0.8}
+            accessibilityLabel="Choose a plan">
+            <View style={styles.flex}>
+              <Text style={stepStyles.cardTitle}>{plan.name} {showAlternatives ? '▴' : '▾'}</Text>
+              <Text style={stepStyles.cardSub}>{plan.tagline}</Text>
+            </View>
             {plan.recommended ? <Text style={styles.recBadge}>Recommended</Text> : null}
-            {selectedId === 'custom' ? (
-              <TouchableOpacity onPress={() => selectSuggested(options.recommendedPlanId)}>
-                <Text style={styles.autoLink}>Back to suggestion</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-          <Text style={stepStyles.cardSub}>{plan.tagline}</Text>
+          </TouchableOpacity>
+          {showAlternatives ? (
+            <View style={styles.choices}>
+              {options.plans.map((item) => (
+                <PlanChoice key={item.id} plan={item} selected={item.id === selectedId}
+                  onSelect={() => { selectSuggested(item.id); setShowAlternatives(false); }} />
+              ))}
+              {ownPlan ? (
+                <PlanChoice plan={ownPlan} selected={selectedId === 'custom'}
+                  onSelect={() => { setSelectedId('custom'); setProposal(null); setShowAlternatives(false); }} />
+              ) : null}
+              <Text style={stepStyles.note}>Each plan funds the shared goals in a different order. Choosing one reorders the list below.</Text>
+            </View>
+          ) : null}
           {options.lumpSum ? (
             <View style={styles.lumpSum}>
               <Text style={styles.lumpSumText}>Today: move {money(options.lumpSum.amount)} of spare cash into the emergency buffer.</Text>
@@ -373,13 +385,6 @@ export const OurPlanStep: React.FC<{
           ) : null}
         </View>
 
-        <TouchableOpacity onPress={() => setShowAlternatives(!showAlternatives)} activeOpacity={0.7}>
-          <Text style={[stepStyles.linkText, styles.gap]}>{showAlternatives ? 'Hide alternatives' : `Compare ${options.plans.length - 1} alternatives`}</Text>
-        </TouchableOpacity>
-        {showAlternatives ? options.plans.map((item) => (
-          <AlternativeCard key={item.id} plan={item} selected={item.id === selectedId} onSelect={() => selectSuggested(item.id)} />
-        )) : null}
-
         {proposal ? (
           <View style={[stepStyles.card, styles.proposalCard]}>
             {proposal.status === 'PENDING' ? (
@@ -433,7 +438,10 @@ const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   gap: { marginTop: 10, marginBottom: 6 },
   planCard: { borderColor: '#F3C9C1', borderWidth: 1.5 },
-  selectedCard: { borderColor: COLORS.red, borderWidth: 1.5 },
+  dropdown: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FBF8F4', borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 10 },
+  choices: { marginTop: 8, gap: 8 },
+  choice: { borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 10 },
+  choiceSelected: { borderColor: COLORS.red, backgroundColor: '#FFF8F6' },
   planHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   recBadge: { fontSize: 10, fontWeight: '900', color: '#FFFFFF', backgroundColor: COLORS.red, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   lumpSum: { backgroundColor: COLORS.greenBg, borderRadius: 10, padding: 8, marginTop: 10 },
