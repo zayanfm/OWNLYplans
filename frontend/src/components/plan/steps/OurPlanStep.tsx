@@ -7,6 +7,7 @@ import { futureValue } from '../planPersonalization';
 import { COLORS, money, monthLabel, statusPill, stepStyles } from '../stepStyles';
 import { Stepper } from '../Stepper';
 import { GoalIcon } from '../GoalIcon';
+import { ContributionsCard } from '../ContributionsCard';
 
 const ROUTE_ORDER = ['housing', 'education', 'custom', 'emergency'];
 const EDIT_DEBOUNCE_MS = 400;
@@ -55,7 +56,7 @@ const GoalRow = ({ goal, expanded, onPress, rank }: { goal: PlanGoalOutcome; exp
         <GoalIcon group={goal.group} size={30} />
         <View style={styles.flex}>
           <Text style={styles.goalName}>{rank ? `${rank}. ` : ''}{goal.name}{onPress ? (expanded ? '  ▴' : '  ▾') : ''}</Text>
-          <Text style={stepStyles.cardSub}>Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
+          <Text style={stepStyles.cardSub}>{goal.owner === 'household' ? '' : 'Personal · '}Done {monthLabel(goal.completesBy)} · due {monthLabel(goal.deadline)}</Text>
         </View>
         <Text style={stepStyles.rowValue}>{money(goal.monthlyNow)}/mo</Text>
         <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
@@ -122,11 +123,21 @@ export const OurPlanStep: React.FC<{
 
   const plan = (selectedId === 'custom' && ownPlan) || options.plans.find((item) => item.id === selectedId) || options.plans[0];
 
+  // After someone changes what they put in, recalculate every plan (and the family's own).
+  const reloadOptions = async () => {
+    try {
+      setOptions(await api.getPlanOptions());
+      if (ownPlan?.definition) await calculate(ownPlan.definition.order, ownPlan.definition.monthlyOverrides);
+    } catch {
+      // Offline: keep showing the last plans.
+    }
+  };
+
   // The family's own plan. `amounts` holds only the monthly amounts the family set themselves;
   // every other goal is funded by priority order with what it needs to stay on time.
   const startEditing = () => {
     const saved = selectedId === 'custom' ? ownPlan?.definition : undefined;
-    const startOrder = saved?.order || plan.goals.filter((goal) => goal.routeKey !== 'wealth')
+    const startOrder = saved?.order || plan.goals.filter((goal) => goal.owner === 'household')
       .sort((a, b) => ROUTE_ORDER.indexOf(a.routeKey) - ROUTE_ORDER.indexOf(b.routeKey))
       .map((goal) => goal.key);
     const startAmounts = saved?.monthlyOverrides || {};
@@ -189,7 +200,9 @@ export const OurPlanStep: React.FC<{
   const ownAmount = (key: string) => amounts[key] ?? ownPlan?.goals.find((goal) => goal.key === key)?.monthlyNow ?? 0;
   // When retirement still receives money, every dated goal already got what it needs this month,
   // so the order only starts to matter if money gets tighter.
-  const everythingFits = Boolean(ownPlan && ownPlan.routes.wealth > 0 && ownPlan.atRisk.length === 0);
+  const familyPot = options.contributions?.familyPot.available ?? options.investable;
+  const ownFree = ownPlan?.pots?.find((pot) => pot.id === 'household')?.free ?? 0;
+  const everythingFits = Boolean(ownPlan && ownFree > 0 && !ownPlan.goals.some((goal) => goal.owner === 'household' && goal.status === 'AT_RISK'));
 
   // 4: the family's plan is listed in their priority order; the others by deadline.
   const priorityOrder = plan.definition?.order || [];
@@ -261,8 +274,10 @@ export const OurPlanStep: React.FC<{
         <Text style={stepStyles.eyebrow}>Decide together</Text>
         <Text style={stepStyles.title}>Our plan</Text>
         <Text style={stepStyles.subtitle}>
-          {money(options.investable)}/month to plan after {money(options.protectionPremium)} protection. We suggest a split; you decide.
+          Each of you decides what to put in. Shared goals come from the family pot, personal goals from each person&apos;s own money, and the rest stays free.
         </Text>
+
+        {options.contributions ? <ContributionsCard contributions={options.contributions} onChanged={reloadOptions} /> : null}
 
         <View style={[stepStyles.card, styles.planCard]}>
           <View style={styles.planHead}>
@@ -275,7 +290,7 @@ export const OurPlanStep: React.FC<{
               <Text style={styles.lumpSumText}>Today: move {money(options.lumpSum.amount)} of spare cash into the emergency buffer.</Text>
             </View>
           ) : null}
-          {priorityOrder.length ? <Text style={[stepStyles.note, styles.gap]}>In your priority order. Retirement gets what is left.</Text> : null}
+          {priorityOrder.length ? <Text style={[stepStyles.note, styles.gap]}>Shared goals in your priority order; personal goals come from each person&apos;s own money.</Text> : null}
           {goals.map((goal) => (
             <GoalRow
               key={goal.key}
@@ -285,6 +300,9 @@ export const OurPlanStep: React.FC<{
               onPress={goal.routeKey === 'education' ? () => setExpandedGoal(expandedGoal === goal.key ? null : goal.key) : undefined}
             />
           ))}
+          {plan.keptFree > 0 ? (
+            <Text style={[stepStyles.note, styles.gap]}>{money(plan.keptFree)}/month stays free in the pots this plan does not need.</Text>
+          ) : null}
           {plan.stepUps.length ? (
             <View style={styles.stepUps}>
               <Text style={stepStyles.sectionLabel}>As goals finish</Text>
@@ -310,7 +328,7 @@ export const OurPlanStep: React.FC<{
           <View style={[stepStyles.card, styles.gap]}>
             <Text style={stepStyles.cardTitle}>Make it ours</Text>
             <Text style={stepStyles.cardSub}>
-              Money goes to goal 1 first, then 2, and so on; retirement gets what is left. Leave an amount on auto and the goal gets what it needs to stay on time, or set your own.
+              Family-pot money goes to goal 1 first, then 2, and so on; anything left stays free. Leave an amount on auto and the goal gets what it needs to stay on time, or set your own.
             </Text>
             {everythingFits ? (
               <Text style={styles.fitNote}>
@@ -330,7 +348,7 @@ export const OurPlanStep: React.FC<{
                     <TouchableOpacity style={styles.moveButton} onPress={() => move(key, -1)} accessibilityLabel={`Move ${goalName(key)} up`}><Text style={styles.moveText}>↑</Text></TouchableOpacity>
                     <TouchableOpacity style={styles.moveButton} onPress={() => move(key, 1)} accessibilityLabel={`Move ${goalName(key)} down`}><Text style={styles.moveText}>↓</Text></TouchableOpacity>
                   </View>
-                  <Stepper label={amounts[key] === undefined ? 'Each month (auto)' : 'Each month (yours)'} value={ownAmount(key)} step={25} min={0} max={options.investable}
+                  <Stepper label={amounts[key] === undefined ? 'Each month (auto)' : 'Each month (yours)'} value={ownAmount(key)} step={25} min={0} max={familyPot}
                     display={money(ownAmount(key))} onChange={(value) => setAmount(key, value)} />
                   <View style={styles.editFoot}>
                     {outcome ? <Text style={[stepStyles.note, styles.flex]}>Done {monthLabel(outcome.completesBy)} · due {monthLabel(outcome.deadline)}</Text> : null}
@@ -342,8 +360,8 @@ export const OurPlanStep: React.FC<{
               );
             })}
             <View style={stepStyles.row}>
-              <Text style={stepStyles.rowLabel}>Retirement gets the rest</Text>
-              <Text style={stepStyles.rowValue}>{money(ownPlan?.routes.wealth || 0)}/mo</Text>
+              <Text style={stepStyles.rowLabel}>Kept free in the family pot</Text>
+              <Text style={stepStyles.rowValue}>{money(ownFree)}/mo</Text>
             </View>
             {ownError ? <Text style={styles.errorText}>{ownError}</Text> : null}
             {ownPlan?.tradeOffs.map((line) => <Text key={line} style={styles.tradeOff}>• {line}</Text>)}

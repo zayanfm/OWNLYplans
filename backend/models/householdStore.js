@@ -12,6 +12,7 @@ class HouseholdStore {
     this.scenarioLogs = {};
     this.goalInputs = {};
     this.customPlans = {};
+    this.contributions = {};
     this.init();
   }
 
@@ -152,12 +153,23 @@ class HouseholdStore {
     (invite?.members || []).filter((m) => m.relation === 'Spouse').forEach((m) => { m.status = 'LEFT'; });
     delete this.proposals[householdId];
     delete this.customPlans[householdId];
+    if (this.contributions[householdId]) delete this.contributions[householdId].partner;
     const { retirement_partner: removedGoal, ...goals } = this.getGoalInputs(householdId);
     this.goalInputs[householdId] = goals;
     if (household.activePlan) household.activePlan.status = 'NEEDS_REVIEW';
     household.reviewNote = `${partner.name.split(' ')[0]} left. Shared commitments were planned with two incomes; review them now.`;
     this.recordAudit(householdId, 'MEMBER_LEFT', { member: 'partner' });
     return household;
+  }
+
+  getContributions(householdId = this.activePersonaId) {
+    return this.contributions[householdId] || {};
+  }
+
+  saveContribution(householdId = this.activePersonaId, member, choice) {
+    this.contributions[householdId] = { ...this.getContributions(householdId), [member]: choice };
+    this.recordAudit(householdId, 'CONTRIBUTION_SET', { member, ...choice });
+    return choice;
   }
 
   getCustomPlan(householdId = this.activePersonaId) {
@@ -222,6 +234,10 @@ class HouseholdStore {
     if (record.status === 'PENDING' && elapsed >= FAMILY_APPROVAL_DELAY_MS) {
       record.response = record.partnerResponse;
       record.status = record.partnerResponse.decision;
+      // Agreeing to the plan confirms the partner's own share, unless they already set one.
+      if (record.status === 'AGREED' && record.partnerContribution && !this.getContributions(householdId).partner) {
+        this.saveContribution(householdId, 'partner', { ...record.partnerContribution, confirmedBy: 'partner', confirmedAt: new Date().toISOString() });
+      }
       this.recordAudit(householdId, 'PLAN_PARTNER_RESPONSE', { proposalId: record.id, decision: record.status });
     }
     return this.publicProposal(record);
@@ -237,7 +253,7 @@ class HouseholdStore {
   }
 
   publicProposal(record) {
-    const { partnerResponse, ...visible } = record;
+    const { partnerResponse, partnerContribution, ...visible } = record;
     return visible;
   }
 
@@ -298,6 +314,7 @@ class HouseholdStore {
     this.scenarioLogs = {};
     this.goalInputs = {};
     this.customPlans = {};
+    this.contributions = {};
     return true;
   }
 }

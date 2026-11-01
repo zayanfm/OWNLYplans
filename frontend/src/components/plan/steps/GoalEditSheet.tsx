@@ -50,7 +50,7 @@ export const GoalEditSheet: React.FC<{
     if (!visible) return;
     const initial: Partial<GoalInput> = goal
       ? { ...goal }
-      : { type: 'CUSTOM', name: '', category: 'HOUSING', amount: 10000, saved: 0, dueDate: nextYearMonth() };
+      : { type: 'CUSTOM', name: '', category: 'HOUSING', owner: 'household', amount: 10000, saved: 0, dueDate: nextYearMonth() };
     setDraft(initial);
     setAmountText(String(initial.amount ?? ''));
     setSavedText(String(initial.saved ?? 0));
@@ -71,7 +71,7 @@ export const GoalEditSheet: React.FC<{
         : { path: draft.path, startYear: draft.startYear, years: draft.years, annualCost: toNumber(costText), enabled: true };
     }
     if (type === 'RETIREMENT') return { retireAge: draft.retireAge, amount: toNumber(amountText), enabled: true };
-    return { name: draft.name, category: draft.category, amount: toNumber(amountText), saved: toNumber(savedText), dueDate: draft.dueDate, enabled: true };
+    return { name: draft.name, category: draft.category, owner: draft.owner, amount: toNumber(amountText), saved: toNumber(savedText), dueDate: draft.dueDate, enabled: true };
   };
 
   const save = async () => {
@@ -80,7 +80,7 @@ export const GoalEditSheet: React.FC<{
     try {
       if (creating) {
         const body = payload();
-        const result = await api.addGoal({ name: String(body.name || ''), category: body.category || 'OTHER', amount: Number(body.amount), saved: Number(body.saved || 0), dueDate: String(body.dueDate) });
+        const result = await api.addGoal({ name: String(body.name || ''), category: body.category || 'OTHER', owner: body.owner === 'primary' ? 'primary' : 'household', amount: Number(body.amount), saved: Number(body.saved || 0), dueDate: String(body.dueDate) });
         onSaved({ key: result.goal.key, input: result.goal });
       } else {
         const result = await api.updateGoal(goal.key, payload());
@@ -163,6 +163,17 @@ export const GoalEditSheet: React.FC<{
                   ))}
                 </View>
                 {categoryHint ? <Text style={[stepStyles.note, styles.hint]}>{categoryHint}</Text> : null}
+                <Text style={styles.fieldLabel}>Whose goal is it?</Text>
+                <View style={styles.segment}>
+                  {([['household', 'Shared'], ['primary', 'Just me']] as const).map(([owner, label]) => (
+                    <TouchableOpacity key={owner} style={[styles.segmentItem, draft.owner === owner && styles.segmentActive]} onPress={() => update({ owner })}>
+                      <Text style={[styles.segmentText, draft.owner === owner && styles.segmentTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[stepStyles.note, styles.hint]}>
+                  {draft.owner === 'primary' ? 'Paid from your own money, after your share of the bills.' : 'Paid from the family pot that you both put into.'}
+                </Text>
                 <TextInput style={styles.input} placeholder="Goal name, e.g. BTO downpayment" value={draft.name || ''} onChangeText={(name) => update({ name })} />
                 <Text style={styles.fieldLabel}>Amount needed (S$)</Text>
                 <TextInput style={styles.input} keyboardType="numeric" value={amountText} onChangeText={setAmountText} />

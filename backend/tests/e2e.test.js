@@ -164,6 +164,10 @@ async function runE2ETests() {
 
     const replied = await fetch(`${baseUrl}/api/scenarios/proposals/latest`).then(r => r.json());
     assert.strictEqual(replied.proposal.status, 'AGREED', 'Lila agrees to a plan that keeps every goal on track');
+    const afterAgreement = await fetch(`${baseUrl}/api/household/contributions`).then(r => r.json());
+    const lilaShare = afterAgreement.people.find(p => p.member === 'partner');
+    assert.strictEqual(lilaShare.status, 'CONFIRMED', 'Agreeing to the plan confirms her own share');
+    assert.strictEqual(lilaShare.confirmedBy, 'partner', 'Confirmed by Lila, not Alex');
     const agreed = await fetch(`${baseUrl}/api/scenarios/proposals/resolve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

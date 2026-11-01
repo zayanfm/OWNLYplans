@@ -4,6 +4,8 @@ const workspaceService = require('../services/workspaceService');
 const pictureService = require('../services/pictureService');
 const goalInputService = require('../services/goalInputService');
 const householdStore = require('../models/householdStore');
+const contributionService = require('../services/contributionService');
+const optimiserService = require('../services/optimiserService');
 
 /**
  * GET /api/household/workspace
@@ -106,6 +108,36 @@ router.post('/leave', (req, res) => {
       return res.status(409).json({ success: false, error: 'There is no partner in this household' });
     }
     res.json({ success: true, member, reviewNote: updated.reviewNote, monthlySurplus: updated.financials.monthlySurplus });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * GET /api/household/contributions
+ * Who puts in what: shared bills split by income, what each person has left, and how much of it
+ * goes to the family pot, to their own goals, and stays free.
+ */
+router.get('/contributions', (req, res) => {
+  try {
+    const household = goalInputService.household(req.query.householdId);
+    res.json({ success: true, ...optimiserService.optimise(household).contributions });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * PUT /api/household/contributions/:member  { toShared, toPersonal }
+ * Only that person can set their own amounts. In the sandbox, { as: 'partner' } stands in for the
+ * partner setting theirs in their own app.
+ */
+router.put('/contributions/:member', (req, res) => {
+  try {
+    const { householdId, toShared, toPersonal, as } = req.body || {};
+    const household = goalInputService.household(householdId);
+    const actor = as === 'partner' ? 'partner' : 'primary';
+    res.json({ success: true, contribution: contributionService.setContribution(household, req.params.member, { toShared, toPersonal }, actor) });
   } catch (error) {
     sendError(res, error);
   }

@@ -61,6 +61,8 @@ class PlannerService {
     let emergencyReserve = null;
     let optimiserPlanId = null;
     let customGoals = null;
+    let keptFree = 0;
+    let contributions = null;
     if (config.split) {
       const requestedSplits = {
         housing: config.split.housing !== undefined ? Number(config.split.housing) : 0.50,
@@ -84,6 +86,8 @@ class PlannerService {
         targetProduct: 'LionGlobal SGD Money Market Fund (T+0)'
       };
       customGoals = { monthlyAmount: chosen.routes.custom || 0 };
+      keptFree = chosen.keptFree + optimised.contributions.people.reduce((sum, person) => sum + person.keptFree, 0);
+      contributions = optimised.contributions;
     }
     const share = (amount) => (investableSurplus ? amount / investableSurplus : 0);
     const housingSplit = share(amounts.housing);
@@ -161,12 +165,15 @@ class PlannerService {
       optimiserPlanId,
       emergencyReserve,
       customGoals,
+      keptFree,
+      contributions,
       protection,
       assumptions: { annualReturnRate, inflationRate },
       milestones,
       guardrails,
       summary: {
-        totalMonthlyRouted: investableSurplus,
+        // Only what the family chose to put towards goals; the rest stays free.
+        totalMonthlyRouted: investableSurplus - keptFree,
         totalMonthlyCommitted: investableSurplus + protection.monthlyPremium,
         projected5YearAccumulation: Number((investableSurplus * 60 * (1 + annualReturnRate)).toFixed(0)),
         projected10YearAccumulation: Number((investableSurplus * 120 * (1 + annualReturnRate * 2)).toFixed(0)),

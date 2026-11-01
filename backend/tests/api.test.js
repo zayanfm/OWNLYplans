@@ -123,8 +123,15 @@ async function testApi() {
       body: JSON.stringify({ planId: 'home_first' })
     }).then(r => r.json());
     assert.strictEqual(optimisedPlanRes.plan.optimiserPlanId, 'home_first', 'Without a split, the chosen optimiser plan drives routing');
-    const optimisedTotal = optimisedPlanRes.plan.routes.reduce((sum, route) => sum + route.monthlyAmount, 0) + optimisedPlanRes.plan.emergencyReserve.monthlyAmount;
-    assert.strictEqual(optimisedTotal, optimisedPlanRes.plan.investableSurplus, 'Routes plus the emergency top-up use the investable surplus');
+    const optimisedTotal = optimisedPlanRes.plan.routes.reduce((sum, route) => sum + route.monthlyAmount, 0)
+      + optimisedPlanRes.plan.emergencyReserve.monthlyAmount + optimisedPlanRes.plan.customGoals.monthlyAmount + optimisedPlanRes.plan.keptFree;
+    assert.strictEqual(optimisedTotal, optimisedPlanRes.plan.investableSurplus, 'Every dollar is allocated or kept free');
+    const contributionsRes = await fetch(`${baseUrl}/api/household/contributions`).then(r => r.json());
+    assert.strictEqual(contributionsRes.people.length, 2);
+    const setPartner = await fetch(`${baseUrl}/api/household/contributions/partner`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toShared: 100, toPersonal: 0 }) });
+    assert.strictEqual(setPartner.status, 403, 'Alex cannot set the partner contribution');
+    const setOwn = await fetch(`${baseUrl}/api/household/contributions/primary`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toShared: 300, toPersonal: 100 }) }).then(r => r.json());
+    assert.strictEqual(setOwn.contribution.toShared, 300);
     console.log('✓ Optimiser-Driven Plan OK');
 
     // 5b. Decision engine endpoints

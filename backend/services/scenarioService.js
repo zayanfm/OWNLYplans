@@ -29,7 +29,7 @@ class ScenarioService {
     const before = optimiserService.optimise(household, options);
     // A hypothetical new child's education goal is included so its impact shows.
     const newChildKeys = levers.extraChild ? [`education_${modified.dependents.filter((item) => item.relation === 'Child').length}`] : [];
-    const after = optimiserService.optimise(modified, { ...options, includeKeys: newChildKeys });
+    const after = optimiserService.optimise(modified, { ...options, includeKeys: newChildKeys, extraShared: levers.extraSavingsMonthly });
     const planId = options.planId || before.recommendedPlanId;
     const beforePlan = before.plans.find((plan) => plan.id === planId) || before.plans[0];
     const afterPlan = after.plans.find((plan) => plan.id === planId) || after.plans[0];
@@ -146,25 +146,28 @@ class ScenarioService {
       note: note ? String(note).slice(0, 200) : null,
       proposedBy: household.primaryUser.name,
       reviewer: household.partner.name,
-      partnerResponse: this.partnerResponse(household, plan)
+      partnerResponse: this.partnerResponse(household, plan),
+      partnerContribution: this.partnerContribution(household)
     });
   }
 
-  // Simulated partner reply: agree when every goal is on track and the plan does not
-  // shrink retirement savings by more than S$40/month against the balanced plan.
+  partnerContribution(household) {
+    const optimised = optimiserService.optimise(household);
+    const partner = optimised.contributions.people.find((person) => person.member === 'partner');
+    return partner ? { toShared: partner.toShared, toPersonal: partner.toPersonal } : null;
+  }
+
+  // Simulated partner reply: agree when every shared goal stays on track. Each person's own
+  // goals are theirs to manage, so they do not decide the household plan.
   partnerResponse(household, plan) {
     const partnerFirst = household.partner.name.split(' ')[0];
-    const balanced = optimiserService.optimise(household).plans.find((item) => item.id === 'balanced');
-    const retirementCut = balanced.routes.wealth - plan.routes.wealth;
-    if (plan.allOnTrack && retirementCut <= 40) {
-      return { decision: 'AGREED', message: `${partnerFirst}: Looks good to me. Let's go with ${plan.name}.` };
+    const sharedAtRisk = plan.goals.filter((goal) => goal.owner === 'household' && goal.status === 'AT_RISK').map((goal) => goal.name);
+    if (!sharedAtRisk.length) {
+      return { decision: 'AGREED', message: `${partnerFirst}: Looks good to me. Let's go with ${plan.name}, and I'm in for my share.` };
     }
-    const atRisk = plan.goals.filter((goal) => goal.status === 'AT_RISK').map((goal) => goal.name);
     return {
       decision: 'SUGGESTED_CHANGE',
-      message: atRisk.length
-        ? `${partnerFirst}: Can we adjust so ${atRisk.join(' and ')} stays on track?`
-        : `${partnerFirst}: Happy with the goals, but this starts our retirement ${money(retirementCut)}/month lower. Can we use Balanced instead?`,
+      message: `${partnerFirst}: Can we adjust so ${sharedAtRisk.join(' and ')} stays on track?`,
       suggestedPlanId: 'balanced'
     };
   }

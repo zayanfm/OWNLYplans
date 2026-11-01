@@ -176,6 +176,7 @@ export interface FamilyGoal {
   group: GoalGroup;
   groupLabel: string;
   childName: string | null;
+  owner: 'household' | 'primary' | 'partner';
   icon: string;
   suggestedMonthlyAllocation: number;
   projectedCompletion: string | null;
@@ -228,6 +229,7 @@ export interface PlanGoalOutcome {
   group: GoalGroup;
   groupLabel: string;
   childName: string | null;
+  owner: 'household' | 'primary' | 'partner';
   name: string;
   targetAmount: number;
   startingAmount: number;
@@ -245,14 +247,43 @@ export interface PlanOption {
   tagline: string;
   routes: { emergency: number; housing: number; education: number; custom: number; wealth: number };
   unallocated: number;
+  // Each pot (the family pot and each person's own money) and what it leaves free this month.
+  pots: Array<{ id: string; label: string; available: number; free: number }>;
+  keptFree: number;
   goals: PlanGoalOutcome[];
-  stepUps: Array<{ month: string; fromGoal: string; amount: number; text: string }>;
+  // Money freed when a goal completes, and which pot it is freed in; the family decides where it goes.
+  stepUps: Array<{ month: string; fromGoal: string; pot: string; amount: number; text: string }>;
   allOnTrack: boolean;
   atRisk: string[];
   recommended: boolean;
   tradeOffs: string[];
   // Only on the family's own plan: the order and amounts they chose.
   definition?: { order: string[]; monthlyOverrides: Record<string, number> };
+}
+
+// Who puts in what: each adult's share of bills, what is left, and how they split it.
+export interface ContributionPerson {
+  member: 'primary' | 'partner';
+  name: string;
+  takeHome: number;
+  billShare: number;
+  sharedBills: number;
+  personalBills: number;
+  leftover: number;
+  toShared: number;
+  toPersonal: number;
+  keptFree: number;
+  suggested: { toShared: number; toPersonal: number };
+  status: 'SUGGESTED' | 'PROPOSED' | 'CONFIRMED';
+  confirmedBy: string | null;
+}
+
+export interface Contributions {
+  billSplit: { method: string; note: string };
+  sharedBills: number;
+  people: ContributionPerson[];
+  familyPot: { contributed: number; protectionPremium: number; available: number };
+  personalPots: Record<string, number>;
 }
 
 export interface PlanOptions {
@@ -262,6 +293,7 @@ export interface PlanOptions {
   investable: number;
   lumpSum: { amount: number; toGoal: string; reason: string } | null;
   recommendedPlanId: PlanOptionId;
+  contributions: Contributions;
   needsDecision: Array<{ key: string; name: string; status: GoalInputStatus }>;
   plans: PlanOption[];
 }
@@ -486,7 +518,15 @@ class ApiService {
     });
   }
 
-  async addGoal(goal: { name: string; category: GoalCategory; amount: number; saved: number; dueDate: string }): Promise<{ success: boolean; goal: GoalInput }> {
+  // Only that person sets their own amounts; asPartner stands in for the partner's own app (sandbox).
+  async setContribution(member: 'primary' | 'partner', toShared: number, toPersonal: number, asPartner = false): Promise<{ success: boolean }> {
+    return this.request(`/api/household/contributions/${member}`, {
+      method: 'PUT',
+      body: JSON.stringify({ toShared, toPersonal, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async addGoal(goal: { name: string; category: GoalCategory; owner: 'household' | 'primary'; amount: number; saved: number; dueDate: string }): Promise<{ success: boolean; goal: GoalInput }> {
     return this.request('/api/household/goals', {
       method: 'POST',
       body: JSON.stringify(goal)

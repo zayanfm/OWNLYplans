@@ -26,6 +26,7 @@ class GoalsAgent {
       childName: goal.childName || null,
       name: goal.name,
       category: goal.category,
+      owner: goal.owner,
       priority: goal.priority,
       targetAmount: goal.targetAmount,
       currentAmount: goal.currentAmount,
@@ -59,7 +60,7 @@ class GoalsAgent {
       goals,
       findings: [
         totalRequired > surplus
-          ? `Funding every goal at once would need ${money(totalRequired)}/month, ${money(totalRequired - surplus)} more than the ${money(surplus)} surplus. ${planned.every((goal) => goal.status !== 'AT_RISK') ? 'Sequencing them, with retirement stepping up as earlier goals finish, keeps every deadline.' : 'Even sequenced, some deadlines are at risk.'}`
+          ? `Funding every goal at once would need ${money(totalRequired)}/month, ${money(totalRequired - surplus)} more than the ${money(surplus)} surplus. ${planned.filter((goal) => goal.owner === 'household').every((goal) => goal.status !== 'AT_RISK') ? 'Shared goals are on track with what you each put in; personal goals depend on what each person sets aside, and money frees up as shared goals finish.' : 'Some shared goals are at risk with what you each put in.'}`
           : `All goals can be funded on time from the ${money(surplus)} monthly surplus.`,
         home ? `${home.name}: ${money(home.shortfall)} still needed by ${home.deadline}.` : 'No home goal is set.',
         ...(optimised.needsDecision.length ? [`${optimised.needsDecision.length} goal(s) need your decision before they are planned.`] : []),

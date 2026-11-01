@@ -128,6 +128,8 @@ class GoalInputService {
       if (!next.name) throw this.error(400, 'name is required');
       next.category = patch.category === undefined ? current.category : String(patch.category);
       if (!GOAL_CATEGORIES[next.category]) throw this.error(400, `category must be one of ${Object.keys(GOAL_CATEGORIES).join(', ')}`);
+      next.owner = patch.owner === undefined ? current.owner : String(patch.owner);
+      if (!['household', 'primary'].includes(next.owner)) throw this.error(400, 'owner must be household (shared) or primary (just me)');
       next.saved = patch.saved === undefined ? Number(current.saved || 0) : Number(patch.saved);
       if (!Number.isFinite(next.saved) || next.saved < 0 || next.saved > next.amount) {
         throw this.error(400, 'saved must be between 0 and the goal amount');
@@ -164,7 +166,7 @@ class GoalInputService {
   }
 
   // Priority is not set here: the family orders all goals together when building the plan.
-  addCustom(householdId, { name, category = 'OTHER', amount, saved = 0, dueDate } = {}) {
+  addCustom(householdId, { name, category = 'OTHER', owner = 'household', amount, saved = 0, dueDate } = {}) {
     const household = this.household(householdId);
     const key = `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     householdStore.saveGoalInput(household.id, key, {
@@ -173,7 +175,7 @@ class GoalInputService {
       source: 'Your own goal.'
     });
     try {
-      return this.update(household.id, key, { name, category, amount, saved, dueDate });
+      return this.update(household.id, key, { name, category, owner, amount, saved, dueDate });
     } catch (error) {
       householdStore.removeGoalInput(household.id, key);
       throw error;

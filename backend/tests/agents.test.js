@@ -7,6 +7,7 @@ const orchestratorAgent = require('../agents/orchestratorAgent');
 const householdStore = require('../models/householdStore');
 const cashflowService = require('../services/cashflowService');
 const optimiserService = require('../services/optimiserService');
+const contributionService = require('../services/contributionService');
 const scenarioService = require('../services/scenarioService');
 const goalInputService = require('../services/goalInputService');
 const { confirmSuggestedGoals, shareAndConsent, addBtoGoal } = require('./helpers');
@@ -63,7 +64,8 @@ async function runTests() {
   assert.strictEqual(educationGoal.targetAmount, 44000, '4 years at the suggested S$11,000');
   assert.strictEqual(goalsRes.goals.find(g => g.key === 'emergency').targetAmount, 35400, 'Six months of essential spending');
   assert(goalsRes.fundingGap > 0, 'Goals compete for the surplus');
-  assert(goalsRes.goals.every(g => g.status === 'ON_TRACK'), 'The recommended plan sequences goals so each meets its deadline');
+  assert(goalsRes.goals.filter(g => g.owner === 'household').every(g => g.status === 'ON_TRACK'), 'Shared goals are on track with the suggested contributions');
+  assert.strictEqual(goalsRes.goals.find(g => g.key === 'retirement_primary').owner, 'primary', 'Retirement is personal');
   const growthGoals = await goalsAgent.analyze(alexHousehold, { predictionScenario: 'growth' });
   const educationRequired = (result) => result.goals.find(g => g.key === 'education').requiredMonthlyAllocation;
   assert(educationRequired(growthGoals) < educationRequired(goalsRes), 'Higher assumed returns lower required education funding');
@@ -100,7 +102,7 @@ async function runTests() {
   assert.strictEqual(optimised.lumpSum, null, 'Shared cash does not exceed the emergency fund plus a month of bills; private savings are never counted');
   optimised.plans.forEach(plan => {
     const routed = Object.values(plan.routes).reduce((sum, value) => sum + value, 0);
-    assert.strictEqual(routed, optimised.investable, `${plan.id} routes the whole investable surplus`);
+    assert.strictEqual(routed + plan.keptFree, optimised.investable, `${plan.id} accounts for every dollar put in: allocated or kept free`);
     assert.strictEqual(plan.goals.find(g => g.key === bto.key).status, 'ON_TRACK', 'BTO deadline is never traded away');
   });
   const homeFirst = optimised.plans.find(p => p.id === 'home_first');
@@ -109,9 +111,30 @@ async function runTests() {
   assert(balancedPlan.stepUps.some(s => s.fromGoal === bto.key), 'BTO money moves on once the fund completes');
   console.log('✓ Optimiser Plans:', optimised.plans.map(p => p.id).join(', '));
 
+  // 2c-i. Who puts in what
+  const people = optimised.contributions.people;
+  const alex = people.find(p => p.member === 'primary');
+  const lila = people.find(p => p.member === 'partner');
+  assert.strictEqual(alex.sharedBills + lila.sharedBills, 6600, 'Shared bills are split between them');
+  assert(Math.abs(alex.billShare - 4400 / 8240) < 0.001, 'Bills are split in proportion to take-home pay');
+  assert.strictEqual(alex.personalBills, 300, 'Alex pays his own RoboInvest plan himself');
+  assert.strictEqual(alex.leftover + lila.leftover, 1340, 'What each has left adds up to the household surplus');
+  const retirementGoals = balancedPlan.goals.filter(g => g.routeKey === 'wealth');
+  assert.strictEqual(retirementGoals.find(g => g.owner === 'primary').monthlyNow, alex.toPersonal, 'Alex funds his own retirement from his own money');
+  assert.strictEqual(retirementGoals.find(g => g.owner === 'partner').monthlyNow, lila.toPersonal, 'Lila funds hers from hers');
+  assert.throws(() => contributionService.setContribution(alexHousehold, 'partner', { toShared: 100, toPersonal: 0 }), /Only Lila/, 'Alex cannot set the partner share');
+  assert.throws(() => contributionService.setContribution(alexHousehold, 'primary', { toShared: 5000, toPersonal: 0 }), /more than the/);
+  contributionService.setContribution(alexHousehold, 'primary', { toShared: alex.toShared, toPersonal: 0 });
+  assert.strictEqual(optimiserService.optimise(alexHousehold).contributions.people.find(p => p.member === 'primary').keptFree, alex.toPersonal, 'Money not chosen stays free');
+  contributionService.setContribution(alexHousehold, 'partner', { toShared: 300, toPersonal: lila.toPersonal }, 'partner');
+  const lilaLess = optimiserService.optimise(alexHousehold);
+  assert(lilaLess.plans.find(p => p.id === 'balanced').atRisk.length > 0, 'When Lila puts in less, the priority order decides which shared goal waits');
+  householdStore.contributions = {};
+  console.log('✓ Contributions: bills by income, own goals from own money, the rest kept free');
+
   // 2c-ii. The family's own order and amounts
   const ours = optimiserService.customPlan(alexHousehold, { order: ['education', 'emergency', bto.key], monthlyOverrides: { education: 500 } }).plan;
-  assert.strictEqual(Object.values(ours.routes).reduce((sum, value) => sum + value, 0), optimised.investable, 'Every dollar stays allocated');
+  assert.strictEqual(Object.values(ours.routes).reduce((sum, value) => sum + value, 0) + ours.keptFree, optimised.investable, 'Every dollar put in is allocated or kept free');
   assert.strictEqual(ours.goals.find(g => g.key === 'education').monthlyNow, 500, 'The family amount is used as-is');
   assert.strictEqual(ours.goals.find(g => g.key === bto.key).status, 'AT_RISK', 'The engine flags what the choice makes late');
   assert(ours.tradeOffs.some(t => t.includes('misses its 2028-09 deadline')), 'The consequence is explained, not blocked');

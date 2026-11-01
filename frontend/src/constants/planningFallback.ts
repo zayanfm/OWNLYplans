@@ -279,6 +279,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "childName": null,
       "name": "Emergency buffer",
       "category": "EMERGENCY",
+      "owner": "household",
       "priority": 1,
       "targetAmount": 35400,
       "currentAmount": 28000,
@@ -334,6 +335,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "childName": "Percy Lim",
       "name": "Percy's education",
       "category": "EDUCATION",
+      "owner": "household",
       "priority": 3,
       "targetAmount": 44000,
       "currentAmount": 8000,
@@ -426,6 +428,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "childName": null,
       "name": "Alex's retirement",
       "category": "RETIREMENT",
+      "owner": "primary",
       "priority": 4,
       "targetAmount": 200000,
       "currentAmount": 14200,
@@ -477,6 +480,7 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "childName": null,
       "name": "Lila's retirement",
       "category": "RETIREMENT",
+      "owner": "partner",
       "priority": 4,
       "targetAmount": 200000,
       "currentAmount": 0,
@@ -488,8 +492,8 @@ export const FALLBACK_PICTURE: FamilyPicture = {
       "dependsOn": [],
       "basis": "Savings on top of CPF LIFE by age 65",
       "icon": "trending-up",
-      "suggestedMonthlyAllocation": 1312,
-      "projectedCompletion": "2036-12",
+      "suggestedMonthlyAllocation": 186,
+      "projectedCompletion": "2062-11",
       "status": "ON_TRACK",
       "support": []
     }
@@ -559,7 +563,61 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
   "success": true,
   "monthlySurplus": 1340,
   "protectionPremium": 28,
-  "investable": 1312,
+  "investable": 802,
+  "contributions": {
+    "billSplit": {
+      "method": "INCOME_PROPORTIONAL",
+      "note": "Shared bills are split in proportion to take-home pay."
+    },
+    "sharedBills": 6600,
+    "people": [
+      {
+        "member": "primary",
+        "name": "Alex Lim",
+        "takeHome": 4400,
+        "billShare": 0.534,
+        "sharedBills": 3524,
+        "personalBills": 300,
+        "leftover": 576,
+        "suggested": {
+          "toShared": 216,
+          "toPersonal": 141
+        },
+        "toShared": 216,
+        "toPersonal": 141,
+        "keptFree": 219,
+        "status": "SUGGESTED",
+        "confirmedBy": null
+      },
+      {
+        "member": "partner",
+        "name": "Lila Tan",
+        "takeHome": 3840,
+        "billShare": 0.466,
+        "sharedBills": 3076,
+        "personalBills": 0,
+        "leftover": 764,
+        "suggested": {
+          "toShared": 287,
+          "toPersonal": 186
+        },
+        "toShared": 287,
+        "toPersonal": 186,
+        "keptFree": 291,
+        "status": "PROPOSED",
+        "confirmedBy": null
+      }
+    ],
+    "familyPot": {
+      "contributed": 503,
+      "protectionPremium": 28,
+      "available": 475
+    },
+    "personalPots": {
+      "primary": 141,
+      "partner": 186
+    }
+  },
   "lumpSum": null,
   "recommendedPlanId": "balanced",
   "needsDecision": [],
@@ -567,15 +625,36 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
     {
       "id": "balanced",
       "name": "Balanced",
-      "tagline": "Every goal on time, retirement steps up as earlier goals finish",
+      "tagline": "Every shared goal on its own date",
       "routes": {
         "emergency": 372,
         "housing": 0,
         "education": 102,
         "custom": 0,
-        "wealth": 838
+        "wealth": 327
       },
-      "unallocated": 0,
+      "pots": [
+        {
+          "id": "household",
+          "label": "Family pot",
+          "available": 475,
+          "free": 1
+        },
+        {
+          "id": "primary",
+          "label": "Alex's own goals",
+          "available": 141,
+          "free": 0
+        },
+        {
+          "id": "partner",
+          "label": "Lila's own goals",
+          "available": 186,
+          "free": 0
+        }
+      ],
+      "keptFree": 1,
+      "unallocated": 1,
       "goals": [
         {
           "key": "emergency",
@@ -583,6 +662,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "EMERGENCY",
           "groupLabel": "Emergency",
           "childName": null,
+          "owner": "household",
           "name": "Emergency buffer",
           "targetAmount": 35400,
           "startingAmount": 28000,
@@ -599,6 +679,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "EDUCATION",
           "groupLabel": "Education",
           "childName": "Percy Lim",
+          "owner": "household",
           "name": "Percy's education",
           "targetAmount": 44000,
           "startingAmount": 8000,
@@ -615,14 +696,15 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "RETIREMENT",
           "groupLabel": "Retirement",
           "childName": null,
+          "owner": "primary",
           "name": "Alex's retirement",
           "targetAmount": 200000,
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 362,
-          "completesBy": "2044-06",
-          "projectedAtDeadline": 418968,
+          "monthlyNow": 141,
+          "completesBy": "2060-10",
+          "projectedAtDeadline": 200797,
           "status": "ON_TRACK"
         },
         {
@@ -631,14 +713,15 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "RETIREMENT",
           "groupLabel": "Retirement",
           "childName": null,
+          "owner": "partner",
           "name": "Lila's retirement",
           "targetAmount": 200000,
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 476,
-          "completesBy": "2043-09",
-          "projectedAtDeadline": 473591,
+          "monthlyNow": 186,
+          "completesBy": "2062-11",
+          "projectedAtDeadline": 200275,
           "status": "ON_TRACK"
         }
       ],
@@ -646,35 +729,58 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         {
           "month": "2028-05",
           "fromGoal": "emergency",
+          "pot": "household",
           "amount": 372,
-          "text": "Emergency buffer complete: S$372/month moves to retirement"
+          "text": "Emergency buffer complete: S$372/month frees up in the family pot. You decide where it goes"
         },
         {
-          "month": "2042-08",
-          "fromGoal": "education",
-          "amount": 102,
-          "text": "Percy's education complete: S$102/month moves to retirement"
+          "month": "2060-10",
+          "fromGoal": "retirement_primary",
+          "pot": "primary",
+          "amount": 141,
+          "text": "Alex's retirement complete: S$141/month frees up. You decide where it goes"
         }
       ],
       "allOnTrack": true,
       "atRisk": [],
       "recommended": true,
       "tradeOffs": [
-        "Retirement steps up as earlier goals finish: 2028-05, 2042-08."
+        "Money frees up as goals finish (2028-05, 2060-10); you decide where it goes."
       ]
     },
     {
       "id": "home_first",
       "name": "Home first",
-      "tagline": "BTO fund finishes early with a cushion for renovation",
+      "tagline": "Home goals finish early with a cushion for renovation",
       "routes": {
         "emergency": 269,
         "housing": 0,
         "education": 102,
         "custom": 0,
-        "wealth": 941
+        "wealth": 327
       },
-      "unallocated": 0,
+      "pots": [
+        {
+          "id": "household",
+          "label": "Family pot",
+          "available": 475,
+          "free": 104
+        },
+        {
+          "id": "primary",
+          "label": "Alex's own goals",
+          "available": 141,
+          "free": 0
+        },
+        {
+          "id": "partner",
+          "label": "Lila's own goals",
+          "available": 186,
+          "free": 0
+        }
+      ],
+      "keptFree": 104,
+      "unallocated": 104,
       "goals": [
         {
           "key": "emergency",
@@ -682,6 +788,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "EMERGENCY",
           "groupLabel": "Emergency",
           "childName": null,
+          "owner": "household",
           "name": "Emergency buffer",
           "targetAmount": 35400,
           "startingAmount": 28000,
@@ -698,6 +805,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "EDUCATION",
           "groupLabel": "Education",
           "childName": "Percy Lim",
+          "owner": "household",
           "name": "Percy's education",
           "targetAmount": 44000,
           "startingAmount": 8000,
@@ -714,14 +822,15 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "RETIREMENT",
           "groupLabel": "Retirement",
           "childName": null,
+          "owner": "primary",
           "name": "Alex's retirement",
           "targetAmount": 200000,
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 406,
-          "completesBy": "2044-06",
-          "projectedAtDeadline": 419531,
+          "monthlyNow": 141,
+          "completesBy": "2060-10",
+          "projectedAtDeadline": 200797,
           "status": "ON_TRACK"
         },
         {
@@ -730,14 +839,15 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "RETIREMENT",
           "groupLabel": "Retirement",
           "childName": null,
+          "owner": "partner",
           "name": "Lila's retirement",
           "targetAmount": 200000,
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 535,
-          "completesBy": "2043-09",
-          "projectedAtDeadline": 474488,
+          "monthlyNow": 186,
+          "completesBy": "2062-11",
+          "projectedAtDeadline": 200275,
           "status": "ON_TRACK"
         }
       ],
@@ -745,14 +855,16 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         {
           "month": "2028-11",
           "fromGoal": "emergency",
+          "pot": "household",
           "amount": 269,
-          "text": "Emergency buffer complete: S$269/month moves to retirement"
+          "text": "Emergency buffer complete: S$269/month frees up in the family pot. You decide where it goes"
         },
         {
-          "month": "2042-08",
-          "fromGoal": "education",
-          "amount": 102,
-          "text": "Percy's education complete: S$102/month moves to retirement"
+          "month": "2060-10",
+          "fromGoal": "retirement_primary",
+          "pot": "primary",
+          "amount": 141,
+          "text": "Alex's retirement complete: S$141/month frees up. You decide where it goes"
         }
       ],
       "allOnTrack": true,
@@ -760,7 +872,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "recommended": false,
       "tradeOffs": [
         "Emergency buffer completes later (2028-11 vs 2028-05).",
-        "Retirement starts with S$103/month more."
+        "Leaves S$103/month more free."
       ]
     },
     {
@@ -772,9 +884,30 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         "housing": 0,
         "education": 153,
         "custom": 0,
-        "wealth": 890
+        "wealth": 327
       },
-      "unallocated": 0,
+      "pots": [
+        {
+          "id": "household",
+          "label": "Family pot",
+          "available": 475,
+          "free": 53
+        },
+        {
+          "id": "primary",
+          "label": "Alex's own goals",
+          "available": 141,
+          "free": 0
+        },
+        {
+          "id": "partner",
+          "label": "Lila's own goals",
+          "available": 186,
+          "free": 0
+        }
+      ],
+      "keptFree": 53,
+      "unallocated": 53,
       "goals": [
         {
           "key": "emergency",
@@ -782,6 +915,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "EMERGENCY",
           "groupLabel": "Emergency",
           "childName": null,
+          "owner": "household",
           "name": "Emergency buffer",
           "targetAmount": 35400,
           "startingAmount": 28000,
@@ -798,6 +932,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "EDUCATION",
           "groupLabel": "Education",
           "childName": "Percy Lim",
+          "owner": "household",
           "name": "Percy's education",
           "targetAmount": 44000,
           "startingAmount": 8000,
@@ -814,14 +949,15 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "RETIREMENT",
           "groupLabel": "Retirement",
           "childName": null,
+          "owner": "primary",
           "name": "Alex's retirement",
           "targetAmount": 200000,
           "startingAmount": 14200,
           "deadline": "2060-11",
           "requiredMonthly": 141,
-          "monthlyNow": 384,
-          "completesBy": "2044-09",
-          "projectedAtDeadline": 415822,
+          "monthlyNow": 141,
+          "completesBy": "2060-10",
+          "projectedAtDeadline": 200797,
           "status": "ON_TRACK"
         },
         {
@@ -830,14 +966,15 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
           "group": "RETIREMENT",
           "groupLabel": "Retirement",
           "childName": null,
+          "owner": "partner",
           "name": "Lila's retirement",
           "targetAmount": 200000,
           "startingAmount": 0,
           "deadline": "2062-11",
           "requiredMonthly": 186,
-          "monthlyNow": 506,
-          "completesBy": "2043-12",
-          "projectedAtDeadline": 469542,
+          "monthlyNow": 186,
+          "completesBy": "2062-11",
+          "projectedAtDeadline": 200275,
           "status": "ON_TRACK"
         }
       ],
@@ -845,14 +982,23 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
         {
           "month": "2028-11",
           "fromGoal": "emergency",
+          "pot": "household",
           "amount": 269,
-          "text": "Emergency buffer complete: S$269/month moves to retirement"
+          "text": "Emergency buffer complete: S$269/month frees up in the family pot. You decide where it goes"
         },
         {
           "month": "2039-03",
           "fromGoal": "education",
+          "pot": "household",
           "amount": 153,
-          "text": "Percy's education complete: S$153/month moves to retirement"
+          "text": "Percy's education complete: S$153/month frees up in the family pot. You decide where it goes"
+        },
+        {
+          "month": "2060-10",
+          "fromGoal": "retirement_primary",
+          "pot": "primary",
+          "amount": 141,
+          "text": "Alex's retirement complete: S$141/month frees up. You decide where it goes"
         }
       ],
       "allOnTrack": true,
@@ -861,7 +1007,7 @@ export const FALLBACK_PLAN_OPTIONS: PlanOptions = {
       "tradeOffs": [
         "Emergency buffer completes later (2028-11 vs 2028-05).",
         "Percy's education completes earlier (2039-03 vs 2042-08).",
-        "Retirement starts with S$52/month more."
+        "Leaves S$52/month more free."
       ]
     }
   ]
@@ -902,19 +1048,19 @@ export const FALLBACK_GROW: GrowOverview = {
       {
         "goalKey": "retirement_primary",
         "goalName": "Alex's retirement",
-        "monthlyAmount": 362,
+        "monthlyAmount": 141,
         "product": "OCBC RoboInvest",
         "horizon": "2060-11"
       },
       {
         "goalKey": "retirement_partner",
         "goalName": "Lila's retirement",
-        "monthlyAmount": 476,
+        "monthlyAmount": 186,
         "product": "OCBC RoboInvest",
         "horizon": "2062-11"
       }
     ],
-    "totalMonthly": 940,
+    "totalMonthly": 429,
     "handoff": {
       "label": "Continue in OCBC",
       "destination": "OCBC investment set-up",

@@ -30,6 +30,8 @@ const buildGoals = (household, options = {}) => {
   const goals = goalInputService.getInputs(household).map((input) => {
     const base = {
       key: input.key,
+      // 'household' goals are funded from the family pot; 'primary'/'partner' from that person's own money.
+      owner: input.owner || 'household',
       inputStatus: input.status,
       planned: input.status === 'CONFIRMED' || (includeKeys.includes(input.key) && input.status !== 'OFF'),
       source: input.source,

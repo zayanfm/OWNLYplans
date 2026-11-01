@@ -50,7 +50,7 @@ const GoalCard = ({ goal, goalsByKey, onPress }: { goal: FamilyGoal; goalsByKey:
         <GoalIcon group={goal.group} />
         <View style={styles.flex}>
           <Text style={stepStyles.cardTitle}>{goal.name}</Text>
-          <Text style={stepStyles.cardSub}>{goal.groupLabel} · Due {monthLabel(goal.deadline)} · {goal.basis}</Text>
+          <Text style={stepStyles.cardSub}>{goal.groupLabel} · {goal.owner === 'household' ? 'Shared' : 'Personal'} · Due {monthLabel(goal.deadline)} · {goal.basis}</Text>
         </View>
         <View style={[stepStyles.pill, { backgroundColor: pill.bg }]}><Text style={[stepStyles.pillText, { color: pill.fg }]}>{pill.label}</Text></View>
       </View>
