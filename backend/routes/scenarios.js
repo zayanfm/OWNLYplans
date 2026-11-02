@@ -3,6 +3,62 @@ const router = express.Router();
 const householdStore = require('../models/householdStore');
 const optimiserService = require('../services/optimiserService');
 const scenarioService = require('../services/scenarioService');
+const planAgreementService = require('../services/planAgreementService');
+
+// In the sandbox, { as: 'partner' } stands in for the partner acting in their own app.
+const actorOf = (body = {}) => (body.as === 'partner' ? 'partner' : 'primary');
+const sendError = (res, error) => res.status(error.status || 400).json({ success: false, error: error.message });
+
+/**
+ * GET /api/scenarios/plan
+ * The one family plan, with who has approved it.
+ */
+router.get('/plan', (req, res) => {
+  try {
+    res.json({ success: true, ...planAgreementService.current(req.query.householdId) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/scenarios/plan/edit  { order, monthlyOverrides, as? }
+ * Changes the plan. The person changing it approves it; the other adult approves again.
+ */
+router.post('/plan/edit', (req, res) => {
+  try {
+    const { householdId, order, monthlyOverrides, as } = req.body || {};
+    res.json({ success: true, ...planAgreementService.edit(householdId, { order, monthlyOverrides }, actorOf({ as })) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/scenarios/plan/reset  { as? }
+ * Back to the recommended plan.
+ */
+router.post('/plan/reset', (req, res) => {
+  try {
+    const { householdId, as } = req.body || {};
+    res.json({ success: true, ...planAgreementService.reset(householdId, actorOf({ as })) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/scenarios/plan/approve  { as? }
+ * Approves the plan as it stands. Once every adult approves, it is agreed.
+ */
+router.post('/plan/approve', (req, res) => {
+  try {
+    const { householdId, as } = req.body || {};
+    res.json({ success: true, ...planAgreementService.approve(householdId, actorOf({ as })) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
 
 /**
  * GET /api/scenarios/plans

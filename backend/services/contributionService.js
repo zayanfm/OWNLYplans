@@ -55,9 +55,16 @@ class ContributionService {
     const sharedNeed = goals.filter((goal) => isShared(goal.owner)).reduce((sum, goal) => sum + goal.requiredMonthly, 0) + premium;
     const totalLeftover = people.reduce((sum, person) => sum + person.leftover, 0) || 1;
     const stored = householdStore.getContributions(household.id);
+    // Suggestions: each person's fair share of the family pot's needs, by what they have left. If
+    // someone has already chosen less than theirs, the others' suggestions cover the rest.
+    const chosenShared = people.filter((person) => stored[person.member])
+      .reduce((sum, person) => sum + Math.min(person.leftover, stored[person.member].toShared), 0);
+    const openLeftover = people.filter((person) => !stored[person.member]).reduce((sum, person) => sum + person.leftover, 0) || 1;
 
     people.forEach((person) => {
-      const suggestedShared = Math.min(person.leftover, Math.ceil(sharedNeed * person.leftover / totalLeftover));
+      const fairShare = Math.ceil(sharedNeed * person.leftover / totalLeftover);
+      const coverRest = stored[person.member] ? 0 : Math.ceil(Math.max(0, sharedNeed - chosenShared) * person.leftover / openLeftover);
+      const suggestedShared = Math.min(person.leftover, Math.max(fairShare, coverRest));
       const personalNeed = goals.filter((goal) => goal.owner === person.member).reduce((sum, goal) => sum + goal.requiredMonthly, 0);
       const suggestedPersonal = Math.min(person.leftover - suggestedShared, personalNeed);
       const choice = stored[person.member];

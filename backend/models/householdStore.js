@@ -13,6 +13,9 @@ class HouseholdStore {
     this.goalInputs = {};
     this.customPlans = {};
     this.contributions = {};
+    this.goalsDone = {};
+    this.planAgreements = {};
+    this.alertDecisions = {};
     this.init();
   }
 
@@ -134,6 +137,10 @@ class HouseholdStore {
     household.accounts.ocbc
       .filter((account) => account.owner === 'partner' && choices.shareAccounts.includes(account.number))
       .forEach((account) => { account.sharing = 'FULL'; });
+    // The amount they chose to put in, set in their own app when they accepted.
+    if (choices.contribution && !this.getContributions(householdId).partner) {
+      this.saveContribution(householdId, 'partner', { ...choices.contribution, confirmedBy: 'partner', confirmedAt: new Date().toISOString() });
+    }
     this.recordAudit(householdId, 'PARTNER_CONSENT_APPLIED', { sharedAccounts: choices.shareAccounts.length });
   }
 
@@ -153,6 +160,7 @@ class HouseholdStore {
     (invite?.members || []).filter((m) => m.relation === 'Spouse').forEach((m) => { m.status = 'LEFT'; });
     delete this.proposals[householdId];
     delete this.customPlans[householdId];
+    delete this.planAgreements[householdId];
     if (this.contributions[householdId]) delete this.contributions[householdId].partner;
     const { retirement_partner: removedGoal, ...goals } = this.getGoalInputs(householdId);
     this.goalInputs[householdId] = goals;
@@ -172,6 +180,46 @@ class HouseholdStore {
     return choice;
   }
 
+  clearCustomPlan(householdId = this.activePersonaId) {
+    delete this.customPlans[householdId];
+    this.recordAudit(householdId, 'CUSTOM_PLAN_CLEARED', {});
+  }
+
+  getAlertDecisions(householdId = this.activePersonaId) {
+    return this.alertDecisions[householdId] || {};
+  }
+
+  saveAlertDecision(householdId = this.activePersonaId, alertId, decision, member) {
+    this.alertDecisions[householdId] = { ...this.getAlertDecisions(householdId), [alertId]: decision };
+    this.recordAudit(householdId, 'ALERT_DECISION', { alertId, decision, member });
+  }
+
+  getPlanAgreement(householdId = this.activePersonaId) {
+    return this.planAgreements[householdId] || {};
+  }
+
+  savePlanAgreement(householdId = this.activePersonaId, agreement) {
+    this.planAgreements[householdId] = agreement;
+    this.recordAudit(householdId, 'PLAN_APPROVALS', agreement);
+  }
+
+  // Both adults approved the family plan: recorded as an agreed proposal.
+  recordAgreement(householdId = this.activePersonaId, { planId, planName, routes }) {
+    const record = {
+      id: `prop-${Date.now().toString(36)}`,
+      proposedAt: new Date().toISOString(),
+      status: 'AGREED',
+      planId,
+      planName,
+      routes,
+      finalPlanId: planId,
+      response: { decision: 'AGREED', message: 'Both of you approved the plan.' }
+    };
+    this.proposals[householdId] = record;
+    this.recordAudit(householdId, 'PLAN_AGREED', { proposalId: record.id, planId });
+    return record;
+  }
+
   getCustomPlan(householdId = this.activePersonaId) {
     return this.customPlans[householdId] || null;
   }
@@ -189,6 +237,19 @@ class HouseholdStore {
     this.goalInputs[householdId] = { ...this.getGoalInputs(householdId), [key]: input };
     this.recordAudit(householdId, input.enabled === false ? 'GOAL_SWITCHED_OFF' : 'GOAL_CONFIRMED', { key, by: input.confirmedBy });
     return input;
+  }
+
+  getGoalsDone(householdId = this.activePersonaId) {
+    return this.goalsDone[householdId] || {};
+  }
+
+  setGoalsDone(householdId = this.activePersonaId, member, done) {
+    this.goalsDone[householdId] = { ...this.getGoalsDone(householdId), [member]: done };
+    this.recordAudit(householdId, 'GOALS_DONE', { member });
+  }
+
+  clearGoalsDone(householdId = this.activePersonaId) {
+    delete this.goalsDone[householdId];
   }
 
   removeGoalInput(householdId = this.activePersonaId, key) {
@@ -315,6 +376,9 @@ class HouseholdStore {
     this.goalInputs = {};
     this.customPlans = {};
     this.contributions = {};
+    this.goalsDone = {};
+    this.planAgreements = {};
+    this.alertDecisions = {};
     return true;
   }
 }

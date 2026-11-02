@@ -10,7 +10,7 @@ const optimiserService = require('../services/optimiserService');
 const contributionService = require('../services/contributionService');
 const scenarioService = require('../services/scenarioService');
 const goalInputService = require('../services/goalInputService');
-const { confirmSuggestedGoals, shareAndConsent, addBtoGoal } = require('./helpers');
+const { confirmSuggestedGoals, shareAndConsent, addBtoGoal, approveAsPartner } = require('./helpers');
 const workspaceService = require('../services/workspaceService');
 
 async function runTests() {
@@ -23,7 +23,8 @@ async function runTests() {
   const before = workspaceService.getWorkspace('alex_family');
   assert(before.accounts.filter(a => a.owner !== 'joint').every(a => a.sharing === 'PRIVATE'), 'Personal accounts start private');
   assert.strictEqual(before.summary.totalLiquidCash, 9200, 'Only the joint account counts until someone shares');
-  assert.strictEqual(goalInputService.getInputs(alexHousehold).find(g => g.key === 'retirement_partner').status, 'AWAITING_PARTNER', 'Lila confirms her own goal');
+  assert.strictEqual(goalInputService.getInputs(alexHousehold).length, 0, 'Shared goals start empty');
+  assert.throws(() => goalInputService.propose('alex_family', { type: 'RETIREMENT' }, 'partner'), /not joined/, 'Lila acts only after joining');
   shareAndConsent('alex_family');
   const after = workspaceService.getWorkspace('alex_family');
   assert.strictEqual(after.summary.totalLiquidCash, 32200, 'Alex shared his 360 account and Lila shared her Frank account');
@@ -38,17 +39,32 @@ async function runTests() {
   assert(healthRes.metrics.emergencyBufferMonths > 0, 'Buffer months should be calculated');
   assert(healthRes.metrics.protectionGap === 160000, 'Alex household protection gap should be 160k');
 
-  // 2. Goals Agent: nothing is planned until the family confirms it
-  const unconfirmed = await goalsAgent.analyze(alexHousehold);
-  assert.deepStrictEqual(unconfirmed.goals.map(g => g.key), ['emergency', 'education', 'retirement_primary', 'retirement_partner'], 'No home goal is assumed');
-  assert(unconfirmed.goals.filter(g => g.input.owner !== 'partner').every(g => !g.planned), 'Suggestions are not planned until confirmed');
-  assert.strictEqual(unconfirmed.goals.find(g => g.key === 'retirement_partner').input.confirmedBy, 'partner', 'Lila confirmed her own goal when she accepted');
+  // 2. Goals: each adult adds goals with the assistant; shared goals need both approvals
+  assert.deepStrictEqual(goalInputService.available(alexHousehold).map(g => g.key), ['emergency', 'education', 'retirement_primary', 'retirement_partner'], 'No home goal is assumed');
+  const emergency = goalInputService.propose('alex_family', { type: 'EMERGENCY', months: 6 }, 'primary');
+  assert.strictEqual(emergency.status, 'AWAITING_PARTNER', 'Alex added it; Lila still has to approve');
+  assert.throws(() => goalInputService.propose('alex_family', { type: 'EMERGENCY' }, 'partner'), /already on the list/);
+  const lilaRetirement = goalInputService.propose('alex_family', { type: 'RETIREMENT' }, 'partner');
+  assert.strictEqual(lilaRetirement.status, 'CONFIRMED', 'A personal goal needs only its owner');
   assert.throws(() => goalInputService.update('alex_family', 'retirement_partner', { amount: 300000 }), /Only Lila/, 'Alex cannot set the partner goal');
-  assert.throws(() => goalInputService.update('alex_family', 'education', { startYear: 2020 }), /future year/);
-  assert.throws(() => goalInputService.update('alex_family', 'emergency', { months: 30 }), /between 3 and 12/);
-  assert.deepStrictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.map(g => g.key), ['retirement_partner'], 'The optimiser plans only confirmed goals');
+  assert.throws(() => goalInputService.approve('alex_family', 'retirement_partner', 'primary'), /Only Lila/);
+  assert.deepStrictEqual(optimiserService.optimise(alexHousehold).plans[0].goals.map(g => g.key), ['retirement_partner'], 'The optimiser plans only approved goals');
+  const lilaEdit = goalInputService.update('alex_family', 'emergency', { months: 9 }, 'partner');
+  assert.deepStrictEqual(lilaEdit.approvals, { partner: true }, 'Editing clears the other approval');
+  assert.strictEqual(lilaEdit.status, 'NEEDS_DECISION', 'Alex now approves Lila\'s change');
+  assert.throws(() => goalInputService.markDone('alex_family', 'primary'), /approving first/);
+  assert.strictEqual(goalInputService.approve('alex_family', 'emergency', 'primary').status, 'CONFIRMED');
+  goalInputService.markDone('alex_family', 'primary');
+  assert.strictEqual(goalInputService.doneStatus(alexHousehold).ready, false, 'Both adults say done');
+  goalInputService.markDone('alex_family', 'partner');
+  assert.strictEqual(goalInputService.doneStatus(alexHousehold).ready, true);
+  goalInputService.update('alex_family', 'emergency', { months: 6 }, 'primary');
+  assert.deepStrictEqual(goalInputService.doneStatus(alexHousehold).done, { primary: false, partner: false }, 'A change reopens the list');
+  goalInputService.approve('alex_family', 'emergency', 'partner');
 
   confirmSuggestedGoals('alex_family');
+  assert.throws(() => goalInputService.update('alex_family', 'education', { startYear: 2020 }), /future year/);
+  assert.throws(() => goalInputService.update('alex_family', 'emergency', { months: 30 }), /between 3 and 12/);
   assert(!optimiserService.optimise(alexHousehold).plans.some(p => p.id === 'home_first'), 'No home goal, so no Home first plan');
   const bto = addBtoGoal('alex_family');
   assert(optimiserService.optimise(alexHousehold).plans.some(p => p.id === 'home_first'), 'Adding a housing goal offers Home first');
@@ -74,18 +90,23 @@ async function runTests() {
 
   // 2a. The family's own choices drive the plan
   goalInputService.update('alex_family', 'education', { path: 'POLYTECHNIC', startYear: 2040 });
+  approveAsPartner('alex_family', { key: 'education', owner: 'household' });
   const polyGoal = (await goalsAgent.analyze(alexHousehold)).goals.find(g => g.key === 'education');
   assert.strictEqual(polyGoal.deadline, '2040-08');
   assert.strictEqual(polyGoal.targetAmount, 9300, 'Polytechnic: 3 years at the suggested S$3,100');
   const custom = goalInputService.addCustom('alex_family', { name: 'Family car', amount: 30000, dueDate: '2030-06' });
-  assert((await goalsAgent.analyze(alexHousehold)).goals.some(g => g.key === custom.key && g.planned), 'Custom goals are planned');
+  assert(!(await goalsAgent.analyze(alexHousehold)).goals.find(g => g.key === custom.key).planned, 'Not planned until Lila approves');
+  approveAsPartner('alex_family', custom);
+  assert((await goalsAgent.analyze(alexHousehold)).goals.some(g => g.key === custom.key && g.planned), 'Custom goals are planned once approved');
   goalInputService.remove('alex_family', custom.key);
   goalInputService.remove('alex_family', 'emergency');
-  assert(!optimiserService.optimise(alexHousehold).plans[0].goals.some(g => g.key === 'emergency'), 'Switched-off goals are not planned');
-  goalInputService.update('alex_family', 'emergency', { enabled: true });
+  assert(!optimiserService.optimise(alexHousehold).plans[0].goals.some(g => g.key === 'emergency'), 'Removed goals are not planned');
+  assert(goalInputService.available(alexHousehold).some(g => g.key === 'emergency'), 'The assistant can offer it again');
+  approveAsPartner('alex_family', goalInputService.propose('alex_family', { type: 'EMERGENCY' }, 'primary'));
   goalInputService.update('alex_family', 'education', { path: 'UNIVERSITY' });
+  approveAsPartner('alex_family', { key: 'education', owner: 'household' });
   assert.strictEqual(optimiserService.optimise(alexHousehold).needsDecision.length, 0);
-  console.log('✓ Goal Inputs: confirm, edit, switch off, custom, categories');
+  console.log('✓ Goals: added through the assistant, approved by both, edited, removed, custom, categories');
 
   // 2b. Cash flow
   const cashflow = cashflowService.analyze(alexHousehold);
@@ -139,7 +160,7 @@ async function runTests() {
 
   // 2c-ii. The family's own order and amounts
   const ours = optimiserService.customPlan(alexHousehold, { order: ['education', 'emergency', bto.key], monthlyOverrides: { education: 500 } }).plan;
-  assert.strictEqual(Object.values(ours.routes).reduce((sum, value) => sum + value, 0) + ours.keptFree, optimised.investable, 'Every dollar put in is allocated or kept free');
+  assert.strictEqual(Object.values(ours.routes).reduce((sum, value) => sum + value, 0) + ours.keptFree, optimiserService.optimise(alexHousehold).investable, 'Every dollar put in is allocated or kept free');
   assert.strictEqual(ours.goals.find(g => g.key === 'education').monthlyNow, 500, 'The family amount is used as-is');
   assert.strictEqual(ours.goals.find(g => g.key === bto.key).status, 'AT_RISK', 'The engine flags what the choice makes late');
   assert(ours.tradeOffs.some(t => t.includes('misses its 2028-09 deadline')), 'The consequence is explained, not blocked');
@@ -149,8 +170,9 @@ async function runTests() {
   assert(sameAmounts.every(routes => JSON.stringify(routes) === JSON.stringify(sameAmounts[0])), 'When every goal fits, order does not change the amounts');
   const homeFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', bto.key, 'education'], monthlyOverrides: { emergency: 900 } }).plan;
   const educationFirstTight = optimiserService.customPlan(alexHousehold, { order: ['emergency', 'education', bto.key], monthlyOverrides: { emergency: 900 } }).plan;
-  assert.strictEqual(homeFirstTight.routes.education, 0, 'When money is short, the lower priority waits');
-  assert(educationFirstTight.routes.education > 0 && educationFirstTight.routes.housing < homeFirstTight.routes.housing, 'Moving a goal up funds it first');
+  assert(homeFirstTight.routes.education > 0, 'When money is short, a long-term goal last in line still gets its starter amount');
+  const btoFirstTight = optimiserService.customPlan(alexHousehold, { order: [bto.key, 'emergency', 'education'], monthlyOverrides: { emergency: 900 } }).plan;
+  assert(btoFirstTight.routes.housing > homeFirstTight.routes.housing, 'Moving a goal up funds it first');
   assert.deepStrictEqual(educationFirstTight.definition.order, ['emergency', 'education', bto.key], 'The chosen order is returned so it can be restored');
   console.log('✓ Custom Plan: family order and amounts, consequences flagged');
 
@@ -215,6 +237,40 @@ async function runTests() {
   const chatYield = await orchestratorAgent.handleChat(alexHousehold, [], 'Why sweep idle cash?');
   assert(chatYield.reply.includes('emergency floor'), 'Chat should explain the protected emergency floor');
   console.log('✓ Chat reasoning verified');
+
+  // 5b. One family plan: either adult changes it; both approve it
+  const planAgreementService = require('../services/planAgreementService');
+  const start = planAgreementService.current('alex_family');
+  assert.strictEqual(start.plan.id, optimiserService.optimise(alexHousehold).recommendedPlanId, 'Starts as the recommended plan');
+  assert.deepStrictEqual(start.adults, ['primary', 'partner']);
+  const firstGoal = start.plan.priorityOrder[0];
+  const lilaChange = planAgreementService.edit('alex_family', { order: [...start.plan.priorityOrder.slice(1), firstGoal], monthlyOverrides: {} }, 'partner');
+  assert.strictEqual(lilaChange.plan.id, 'custom', 'A change makes it the family plan of their own');
+  assert.deepStrictEqual(lilaChange.approvals, { primary: false, partner: true }, 'The person changing it approves it; the other approves again');
+  assert.strictEqual(lilaChange.agreed, false);
+  const agreed = planAgreementService.approve('alex_family', 'primary');
+  assert(agreed.agreed, 'Both approved');
+  assert.strictEqual(householdStore.getProposal('alex_family').status, 'AGREED', 'Recorded so the plan can be activated');
+  assert.deepStrictEqual(planAgreementService.reset('alex_family', 'primary').approvals, { primary: true, partner: false }, 'Going back is a change too');
+  console.log('✓ One family plan: changed by either adult, approved by both');
+
+  // 5c. Alerts: big changes move dates, not money; nothing changes until someone accepts
+  const alertService = require('../services/alertService');
+  const alerts = alertService.list('alex_family');
+  const bad = alerts.find(a => a.tone === 'NEGATIVE');
+  const good = alerts.find(a => a.tone === 'POSITIVE');
+  assert(bad && good, 'One bad and one good change');
+  assert(bad.after.reachedBy > bad.before.reachedBy, 'A cost rise finishes the goal later at the same monthly amount');
+  assert(good.after.reachedBy < good.before.reachedBy, 'Good news finishes it sooner');
+  assert.throws(() => alertService.respond('alex_family', bad.id, 'accept', 'primary', '1999-01'), /changed since/, 'Accepting applies only what was shown');
+  alertService.respond('alex_family', bad.id, 'accept', 'primary', bad.after.deadline);
+  const moved = goalInputService.getInputs(alexHousehold).find(g => g.key === bad.goalKey);
+  assert.strictEqual(moved.status, 'AWAITING_PARTNER', 'A new date on a shared goal goes to Lila to approve');
+  goalInputService.approve('alex_family', bad.goalKey, 'partner');
+  const goodNow = alertService.list('alex_family').find(a => a.tone === 'POSITIVE');
+  alertService.respond('alex_family', goodNow.id, 'dismiss', 'partner');
+  assert.strictEqual(alertService.list('alex_family').length, 0, 'Answered alerts are not replaced');
+  console.log('✓ Alerts: dates move, money does not; accepted by one, approved by both');
 
   // 6. Anyone can leave
   const leaving = householdStore.partnerLeaves('alex_family');

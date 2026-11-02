@@ -151,6 +151,24 @@ export interface GoalInput {
   category?: GoalCategory;
   saved?: number;
   suggested?: Partial<GoalInput>;
+  // Who has approved it; a shared goal needs every adult in the plan, a personal goal its owner.
+  approvals?: Partial<Record<Member, boolean>>;
+  requiredApprovers?: Member[];
+  proposedBy?: Member;
+  editedBy?: Member;
+}
+
+export type Member = 'primary' | 'partner';
+
+export interface GoalsState {
+  success: boolean;
+  goals: GoalInput[];
+  // Suggested goals not added yet, which the goal assistant offers.
+  available: GoalInput[];
+  adults: Member[];
+  done: Partial<Record<Member, boolean>>;
+  allApproved: boolean;
+  ready: boolean;
 }
 
 export interface FamilyGoal {
@@ -260,6 +278,33 @@ export interface PlanOption {
   tradeOffs: string[];
   // Only on the family's own plan: the order and amounts they chose.
   definition?: { order: string[]; monthlyOverrides: Record<string, number> };
+}
+
+// The one family plan and who has approved it. A change by either adult needs the other's approval.
+export interface FamilyPlanState {
+  success: boolean;
+  plan: PlanOption;
+  investable: number;
+  contributions: Contributions;
+  lumpSum: PlanOptions['lumpSum'];
+  adults: Member[];
+  approvals: Partial<Record<Member, boolean>>;
+  editedBy: Member | null;
+  agreed: boolean;
+}
+
+// A big change, good or bad, that moves when a goal is reached. Monthly amounts stay the same;
+// the alert proposes a new date instead.
+export interface PlanAlert {
+  id: string;
+  tone: 'POSITIVE' | 'NEGATIVE';
+  title: string;
+  detail: string;
+  goalKey: string;
+  goalName: string;
+  monthly: number;
+  before: { deadline: string; reachedBy: string };
+  after: { deadline: string; reachedBy: string };
 }
 
 // Who puts in what: each adult's share of bills, what is left, and how they split it.
@@ -511,12 +556,44 @@ class ApiService {
     return this.request<FamilyPicture>(`/api/household/picture${q}`);
   }
 
-  // Goals: suggestions the family confirms, edits, switches off or adds to
-  async updateGoal(key: string, patch: Partial<GoalInput>): Promise<{ success: boolean; goal: GoalInput }> {
+  // Goals: each adult adds goals with the assistant; the other approves or edits them.
+  // asPartner stands in for the partner acting in their own app (sandbox).
+  async getGoals(householdId?: string): Promise<GoalsState> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<GoalsState>(`/api/household/goals${q}`);
+  }
+
+  async proposeGoal(goal: Partial<GoalInput>, asPartner = false): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request('/api/household/goals/propose', {
+      method: 'POST',
+      body: JSON.stringify({ ...goal, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async approveGoal(key: string, asPartner = false): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(asPartner ? { as: 'partner' } : {})
+    });
+  }
+
+  async markGoalsDone(asPartner = false): Promise<GoalsState> {
+    return this.request('/api/household/goals/done', {
+      method: 'POST',
+      body: JSON.stringify(asPartner ? { as: 'partner' } : {})
+    });
+  }
+
+  async updateGoal(key: string, patch: Partial<GoalInput>, asPartner = false): Promise<{ success: boolean; goal: GoalInput }> {
     return this.request(`/api/household/goals/${encodeURIComponent(key)}`, {
       method: 'PUT',
-      body: JSON.stringify(patch)
+      body: JSON.stringify({ ...patch, ...(asPartner ? { as: 'partner' } : {}) })
     });
+  }
+
+  async getContributions(householdId?: string): Promise<Contributions> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<Contributions>(`/api/household/contributions${q}`);
   }
 
   // Only that person sets their own amounts; asPartner stands in for the partner's own app (sandbox).
@@ -534,8 +611,8 @@ class ApiService {
     });
   }
 
-  async removeGoal(key: string): Promise<{ success: boolean }> {
-    return this.request(`/api/household/goals/${encodeURIComponent(key)}`, { method: 'DELETE' });
+  async removeGoal(key: string, asPartner = false): Promise<{ success: boolean }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}${asPartner ? '?as=partner' : ''}`, { method: 'DELETE' });
   }
 
   // Decision engine: plan options, what-if scenarios and partner proposals
@@ -549,6 +626,36 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ order, monthlyOverrides })
     });
+  }
+
+  async getAlerts(): Promise<{ success: boolean; alerts: PlanAlert[] }> {
+    return this.request('/api/grow/alerts');
+  }
+
+  async respondToAlert(alertId: string, decision: 'accept' | 'dismiss', expectedDeadline?: string): Promise<{ success: boolean }> {
+    return this.request(`/api/grow/alerts/${encodeURIComponent(alertId)}`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, expectedDeadline })
+    });
+  }
+
+  async getFamilyPlan(): Promise<FamilyPlanState> {
+    return this.request<FamilyPlanState>('/api/scenarios/plan');
+  }
+
+  async editFamilyPlan(order: string[], monthlyOverrides: Record<string, number>, asPartner = false): Promise<FamilyPlanState> {
+    return this.request('/api/scenarios/plan/edit', {
+      method: 'POST',
+      body: JSON.stringify({ order, monthlyOverrides, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async resetFamilyPlan(asPartner = false): Promise<FamilyPlanState> {
+    return this.request('/api/scenarios/plan/reset', { method: 'POST', body: JSON.stringify(asPartner ? { as: 'partner' } : {}) });
+  }
+
+  async approveFamilyPlan(asPartner = false): Promise<FamilyPlanState> {
+    return this.request('/api/scenarios/plan/approve', { method: 'POST', body: JSON.stringify(asPartner ? { as: 'partner' } : {}) });
   }
 
   async simulateScenario(levers: Partial<ScenarioLevers>, planId?: PlanOptionId): Promise<ScenarioResult> {

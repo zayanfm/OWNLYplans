@@ -2,7 +2,8 @@ export type OwnlyStep =
   | 'intro'
   | 'singpass'
   | 'household'
-  | 'picture'
+  | 'contribution'
+  | 'goals'
   | 'plan'
   | 'cockpit';
 
@@ -102,6 +103,7 @@ export interface FamilyMember {
   name: string;
   relation: 'Spouse' | 'Child' | 'Parent';
   maskedNric: string;
+  age?: number;
   selected: boolean;
   status: 'IDLE' | 'PENDING' | 'APPROVED';
 }

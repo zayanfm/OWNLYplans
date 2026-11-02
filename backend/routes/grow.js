@@ -1,6 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const growService = require('../services/growService');
+const alertService = require('../services/alertService');
+
+/**
+ * GET /api/grow/alerts
+ * Big changes that move when a goal is reached, each with a proposed new date.
+ */
+router.get('/alerts', (req, res) => {
+  try {
+    res.json({ success: true, alerts: alertService.list(req.query.householdId) });
+  } catch (error) {
+    res.status(error.status || 400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/grow/alerts/:id  { decision: 'accept' | 'dismiss', as? }
+ * Accepting applies the change and the new date; a shared goal then needs the other adult's approval.
+ */
+router.post('/alerts/:id', (req, res) => {
+  try {
+    const { householdId, decision, as, expectedDeadline } = req.body || {};
+    res.json({ success: true, ...alertService.respond(householdId, req.params.id, decision, as === 'partner' ? 'partner' : 'primary', expectedDeadline) });
+  } catch (error) {
+    res.status(error.status || 400).json({ success: false, error: error.message });
+  }
+});
 
 /**
  * GET /api/grow/overview

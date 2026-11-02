@@ -13,7 +13,9 @@ import {
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { SetupProps } from './chatbotoverlay';
 import api, { AgentAnalysisData, MockPassAuthResponse } from '../services/api';
-import { GrowCards } from './plan/GrowCards';
+import { FamilyOverviewCards } from './plan/FamilyOverviewCards';
+import { MonthlyPlanCard } from './plan/MonthlyPlanCard';
+import { DecisionsCarousel } from './plan/DecisionsCarousel';
 import type { GoalOutlook, OwnlyPlan } from './plan/types';
 
 export interface AIPlanDashboardProps {
@@ -24,6 +26,7 @@ export interface AIPlanDashboardProps {
   profile?: MockPassAuthResponse | null;
   aggregate?: any | null;
   onEditPlan?: () => void;
+  onEditGoals?: () => void;
 }
 
 interface RecommendCard {
@@ -179,13 +182,11 @@ const getGreeting = (): string => {
   return 'Good Evening';
 };
 
-export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, activePlan, analysis, profile, aggregate, onEditPlan }) => {
+export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, activePlan, analysis, profile, aggregate, onEditPlan, onEditGoals }) => {
   const timeline = String(activePlan?.timelineYears || setup?.timeline || '5');
-  const split = setup?.split ?? 60;
-  const goalType = setup?.goalType || 'shared';
-
-  const partnerSplit = 100 - split;
   const [rmModalVisible, setRmModalVisible] = useState(false);
+  // Bumped when an alert is answered, so the cards that read the plan load it again.
+  const [refreshKey, setRefreshKey] = useState(0);
   const [shareJointOnly, setShareJointOnly] = useState(false);
   const [maskNric, setMaskNric] = useState(true);
   const [includeScenarios, setIncludeScenarios] = useState(true);
@@ -193,23 +194,16 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
   const [rmBriefing, setRmBriefing] = useState<any>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<RecommendCard | null>(null);
   const [recommendationAccepted, setRecommendationAccepted] = useState(false);
-  const [showAllRecommendations, setShowAllRecommendations] = useState(false);
   const [selectedGoalKey, setSelectedGoalKey] = useState<string>(activePlan?.goalOutlooks?.[0]?.key || 'housing');
 
   const label = `${timeline}-Year Plan`;
-  const planRoutes = activePlan?.routes || [];
   const routeColors = ['#D81E05', '#7AB5E8', '#22A06B'];
-  const totalRouted = activePlan?.summary.totalMonthlyRouted || 1340;
-  const projected = activePlan?.summary.projectedAtHorizon || (timeline === '10' ? 500000 : 200000);
   const protectionCoverage = activePlan?.protection.enabled ? activePlan.protection.coverageAmount : 0;
   const snapshot = activePlan?.householdSnapshot;
   const goals = activePlan?.goalOutlooks || [];
   const selectedGoal = goals.find((goal) => goal.key === selectedGoalKey) || goals[0];
   const onTrackCount = goals.filter((goal) => goal.status !== 'AT_RISK').length;
   const primaryName = snapshot?.firstName || profile?.user?.name?.split(' ')[0] || 'Alex';
-  const familyDescription = snapshot?.dependentNames?.length
-    ? [primaryName, snapshot.partnerName, ...snapshot.dependentNames].filter(Boolean).join(', ')
-    : `${primaryName}'s household`;
   const educationGoal = goals.find((goal) => goal.key === 'education');
   const liquidExcess = Math.max(0, (snapshot?.totalLiquidCash || 0) - (snapshot?.emergencyFund || 0));
   const personalizedRecommendations = RECOMMENDS.map((recommendation) => {
@@ -311,6 +305,20 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
             </View>
           </View>
 
+          <DecisionsCarousel
+            key={`decisions-${refreshKey}`}
+            partnerName={profile?.partner?.name?.split(' ')[0]}
+            products={personalizedRecommendations}
+            onOpenProduct={(id) => {
+              const product = personalizedRecommendations.find((item) => item.id === id);
+              if (product) { setRecommendationAccepted(false); setSelectedRecommendation(product); }
+            }}
+            onEditGoals={onEditGoals}
+            onChanged={() => setRefreshKey((key) => key + 1)}
+          />
+
+          <FamilyOverviewCards key={`overview-${refreshKey}`} profile={profile} onEditGoals={onEditGoals} />
+
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View>
@@ -342,32 +350,7 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
             </View>
           </View>
 
-          {/* Contribution Split Bar */}
-          <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle}>Monthly contribution plan</Text>
-              <Text style={styles.cardSubHeader}>S${totalRouted.toLocaleString()} routed</Text>
-            </View>
-            <View style={styles.splitBarContainer}>
-              {(planRoutes.length ? planRoutes : [
-                { id: 'fallback-1', percentage: split, name: 'Home' },
-                { id: 'fallback-2', percentage: partnerSplit, name: 'Family' },
-              ]).map((route, index) => (
-                <View key={route.id} style={[styles.splitBarSegment, { width: `${route.percentage}%`, backgroundColor: routeColors[index % routeColors.length] }]}>
-                  {route.percentage >= 18 && <Text style={styles.splitSegmentText}>{route.percentage}%</Text>}
-                </View>
-              ))}
-            </View>
-            <View style={styles.routeLegendStack}>
-              {planRoutes.map((route, index) => (
-                <View style={styles.routeLegendRow} key={route.id}>
-                  <View style={[styles.legendDot, { backgroundColor: routeColors[index % routeColors.length] }]} />
-                  <Text style={styles.routeLegendName}>{index + 1}. {route.name}</Text>
-                  <Text style={styles.legendText}>S${route.monthlyAmount}/mo</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          <MonthlyPlanCard key={`plan-${refreshKey}`} onEditPlan={onEditPlan} />
 
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
@@ -421,64 +404,8 @@ export const AIPlanDashboard: React.FC<AIPlanDashboardProps> = ({ setup, onNav, 
             )}
           </View>
 
-          <GrowCards onTalkToAdviser={() => setRmModalVisible(true)} />
         </View>
 
-        {/* OCBC Recommends Horizontal Scroll */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.cardHeaderRow}>
-            <View>
-              <Text style={styles.cardTitle}>OCBC Recommends</Text>
-              <Text style={styles.cardSubHeader}>Personalised next steps for {familyDescription}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setShowAllRecommendations((current) => !current)}>
-              <Text style={styles.seeAllText}>{showAllRecommendations ? 'Show less' : 'See all →'}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScrollContent}
-          >
-            {(showAllRecommendations ? personalizedRecommendations : personalizedRecommendations.slice(0, 4)).map((p) => (
-              <TouchableOpacity
-                key={p.id}
-                activeOpacity={0.85}
-                style={[styles.recommendCard, { backgroundColor: p.colors[0] }]}
-                onPress={() => { setRecommendationAccepted(false); setSelectedRecommendation(p); }}
-              >
-                <View style={styles.brandRow}>
-                  <Text style={styles.cardIcon}>{p.icon}</Text>
-                  <Text style={styles.brandText}>{p.brand}</Text>
-                </View>
-                <Text style={styles.recTitle}>{p.title}</Text>
-                <Text style={styles.recSub}>{p.sub}</Text>
-                <View style={styles.ctaButton}>
-                  <Text style={styles.ctaText}>{p.cta} →</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Quick Stat Tiles Grid */}
-        <View style={styles.gridSection}>
-          <View style={styles.tilesGrid}>
-            {[
-              { icon: '💰', label: 'Monthly Surplus', value: `S$${(activePlan?.monthlySurplus || 1340).toLocaleString()}`, sub: `${planRoutes.length} active routes`, color: '#2563EB' },
-              { icon: '📈', label: 'Plan Projection', value: `S$${Math.round(projected / 1000)}K`, sub: `${timeline}-year ${activePlan?.predictionScenario || 'balanced'} case`, color: '#16A34A' },
-              { icon: '🛡️', label: 'Asset Protection', value: protectionCoverage ? `S$${Math.round(protectionCoverage / 1000)}K` : 'Off', sub: activePlan?.protection.enabled ? `${activePlan.protection.tier} cover active` : 'Not included', color: '#9333EA' },
-              { icon: '🎯', label: 'Goal Outlook', value: `${onTrackCount}/${goals.length}`, sub: goals.length ? 'Goals currently on track' : 'Reconfirm plan to forecast', color: '#D81E05' },
-            ].map((s) => (
-              <View key={s.label} style={styles.tileCard}>
-                <Text style={styles.tileIcon}>{s.icon}</Text>
-                <Text style={styles.tileLabel}>{s.label}</Text>
-                <Text style={[styles.tileValue, { color: s.color }]}>{s.value}</Text>
-                <Text style={styles.tileSub}>{s.sub}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
       </ScrollView>
 
       <Modal visible={Boolean(selectedRecommendation)} transparent animationType="slide" onRequestClose={() => setSelectedRecommendation(null)}>
@@ -639,28 +566,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  ringContainer: {
-    width: 64,
-    height: 64,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringCenterText: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringPctText: {
-    color: '#D81E05',
-    fontWeight: '900',
-    fontSize: 13,
-  },
-  ringLabelText: {
-    color: '#767676',
-    fontSize: 8,
-    fontWeight: '700',
-  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -702,92 +607,10 @@ const styles = StyleSheet.create({
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   breakdownLabel: { color: '#767676', fontSize: 10 },
   breakdownValue: { color: '#333333', fontSize: 10, fontWeight: '700' },
-  splitBarContainer: {
-    flexDirection: 'row',
-    height: 48,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  splitBarSegment: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-  },
-  splitSegmentText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  splitLegendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  routeLegendStack: { gap: 8 },
-  routeLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  routeLegendName: { flex: 1, color: '#333333', fontSize: 10, fontWeight: '600' },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   legendDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  legendText: {
-    color: '#1A1A1A',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  goalRow: {
-    marginBottom: 12,
-  },
-  goalLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  goalLabel: {
-    color: '#1A1A1A',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  goalVal: {
-    color: '#767676',
-    fontSize: 10,
-  },
-  progressBarTrack: {
-    height: 6,
-    backgroundColor: '#F0EDE8',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  statusFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EDE8',
-  },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22C55E',
-  },
-  statusFooterText: {
-    color: '#16A34A',
-    fontSize: 10,
-    fontWeight: '600',
   },
   onTrackPill: { backgroundColor: '#E9F8EE', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
   onTrackText: { color: '#16803A', fontSize: 9, fontWeight: '800' },
@@ -825,103 +648,6 @@ const styles = StyleSheet.create({
   chartLabelCenter: { textAlign: 'center', color: '#D81E05', fontWeight: '700' },
   chartLabelRight: { textAlign: 'right' },
   chartTarget: { position: 'absolute', right: 4, top: 2, color: '#B34B3F', fontSize: 8, fontWeight: '700' },
-  sectionContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 18,
-  },
-  seeAllText: {
-    color: '#D81E05',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  horizontalScrollContent: {
-    gap: 12,
-    paddingRight: 16,
-    paddingTop: 4,
-  },
-  recommendCard: {
-    width: 208,
-    borderRadius: 20,
-    padding: 16,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  cardIcon: {
-    fontSize: 20,
-  },
-  brandText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 8,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  recTitle: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-  recSub: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 10,
-    lineHeight: 14,
-    marginBottom: 12,
-  },
-  ctaButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  gridSection: {
-    paddingHorizontal: 20,
-  },
-  tilesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  tileCard: {
-    width: (Dimensions.get('window').width - 52) / 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    padding: 14,
-  },
-  tileIcon: {
-    fontSize: 20,
-    marginBottom: 8,
-  },
-  tileLabel: {
-    color: '#767676',
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  tileValue: {
-    fontWeight: '900',
-    fontSize: 16,
-  },
-  tileSub: {
-    color: '#767676',
-    fontSize: 9,
-    marginTop: 2,
-  },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(17,17,17,0.48)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 30 },
   recModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },

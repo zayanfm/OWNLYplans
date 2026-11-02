@@ -9,7 +9,9 @@ import { AIPlanDashboard } from '../AIPlanDashboard';
 import { IntroStep } from './steps/IntroStep';
 import { SingpassLoginStep } from './steps/SingpassLoginStep';
 import { HouseholdStep } from './steps/HouseholdStep';
-import { FamilyPictureStep } from './steps/FamilyPictureStep';
+import { ContributionStep } from './steps/ContributionStep';
+import { SharedGoalsStep } from './steps/SharedGoalsStep';
+import { FALLBACK_PICTURE } from '../../constants/planningFallback';
 import { OurPlanStep } from './steps/OurPlanStep';
 import { FamilyMember, OwnlyPlan, OwnlyStep } from './types';
 import { personalizePlan } from './planPersonalization';
@@ -101,7 +103,7 @@ export interface OwnlyPlanFlowProps {
 
 /**
  * The OWNLYplan journey, one surface per stage:
- * Setup (intro → Singpass → household) → Understand (family picture) → Decide (our plan) → Grow (cockpit).
+ * Setup (intro → Singpass → household → contribution) → Decide (shared goals → our plan) → Grow (cockpit).
  */
 export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated, authenticatedProfile }) => {
   const [step, setStep] = useState<OwnlyStep>(initialPlan ? 'cockpit' : 'intro');
@@ -119,6 +121,8 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
       setStep('cockpit');
     }
   }, [initialPlan, plan]);
+
+  const partnerJoined = family.some((m) => m.relation === 'Spouse' && m.status === 'APPROVED');
 
   const handleAuthenticated = (profile: MockPassAuthResponse) => {
     setMyInfo(profile);
@@ -138,7 +142,7 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     api.analyzeAgents()
       .then((response) => setAnalysis(response.data))
       .catch(() => setAnalysis(null));
-    setStep('picture');
+    setStep('contribution');
   };
 
   const handleAgreed = useCallback(async (planId: PlanOptionId) => {
@@ -176,21 +180,36 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
         />
       )}
 
-      {step === 'picture' && (
-        <FamilyPictureStep
-          onNext={(result) => {
-            setPicture(result);
+      {step === 'contribution' && (
+        <ContributionStep
+          partnerJoined={partnerJoined}
+          jointBalance={(workspace?.accounts || []).filter((a) => a.owner === 'joint').reduce((sum, a) => sum + (a.balance || 0), 0)}
+          onNext={() => setStep('goals')}
+          onBack={() => setStep('household')}
+        />
+      )}
+
+      {step === 'goals' && (
+        <SharedGoalsStep
+          primaryName={myInfo?.user?.name?.split(' ')[0] || 'You'}
+          partnerName={myInfo?.partner?.name?.split(' ')[0] || null}
+          partnerJoined={partnerJoined}
+          onNext={() => {
+            // The cockpit personalises the plan with the family picture; load it in the background.
+            api.getPicture().then(setPicture).catch(() => setPicture(FALLBACK_PICTURE));
             setStep('plan');
           }}
-          onBack={() => setStep('household')}
+          onBack={() => setStep('contribution')}
         />
       )}
 
       {step === 'plan' && (
         <OurPlanStep
+          primaryName={myInfo?.user?.name?.split(' ')[0]}
           partnerFirstName={myInfo?.partner?.name?.split(' ')[0]}
+          partnerJoined={partnerJoined}
           saving={savingPlan}
-          onBack={() => setStep(plan ? 'cockpit' : 'picture')}
+          onBack={() => setStep(plan ? 'cockpit' : 'goals')}
           onAgreed={handleAgreed}
         />
       )}
@@ -203,6 +222,7 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
           profile={myInfo}
           aggregate={workspace}
           onEditPlan={() => setStep('plan')}
+          onEditGoals={() => setStep('goals')}
         />
       )}
     </View>

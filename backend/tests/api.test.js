@@ -44,7 +44,29 @@ async function testApi() {
     assert.strictEqual(jointSharing.status, 400, 'Joint accounts cannot be made private by one holder');
     console.log('✓ Family Workspace OK');
 
-    // 3b. Our Family Picture
+    // 3b. Goals start empty; each adult adds goals through the assistant.
+    const post = (path, body) => fetch(`${baseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const emptyGoals = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
+    assert.strictEqual(emptyGoals.goals.length, 0, 'No goals until the family adds them');
+    assert(emptyGoals.available.every(g => g.source), 'Every suggestion shows where it came from');
+    const education = await post('/api/household/goals/propose', { type: 'EDUCATION', childIndex: 0 }).then(r => r.json());
+    assert(education.goal.confirmed, 'Before the partner joins, Alex alone approves shared goals');
+    const duplicate = await post('/api/household/goals/propose', { type: 'EDUCATION', childIndex: 0 });
+    assert.strictEqual(duplicate.status, 409, 'The same goal cannot be added twice');
+    const partnerPropose = await post('/api/household/goals/propose', { type: 'RETIREMENT', as: 'partner' });
+    assert.strictEqual(partnerPropose.status, 403, 'Lila acts only after she joins');
+    const badPut = await fetch(`${baseUrl}/api/household/goals/education`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startYear: 2001 }) });
+    assert.strictEqual(badPut.status, 400, 'Past start years are rejected');
+    const customRes = await post('/api/household/goals', { name: 'Renovation', amount: 25000, dueDate: '2029-01' }).then(r => r.json());
+    assert(customRes.goal.key.startsWith('custom_'), 'Custom goal added');
+    const deleted = await fetch(`${baseUrl}/api/household/goals/${customRes.goal.key}`, { method: 'DELETE' }).then(r => r.json());
+    assert(deleted.removed, 'Custom goal removed');
+    const done = await post('/api/household/goals/done', {}).then(r => r.json());
+    assert(done.ready, 'With every goal approved, saying done lets the family move on');
+    confirmSuggestedGoals('alex_family', { includePartner: false });
+    console.log('✓ Shared Goals OK');
+
+    // 3c. Our Family Picture
     const pictureRes = await fetch(`${baseUrl}/api/household/picture`).then(r => r.json());
     assert(pictureRes.success, 'Picture should succeed');
     assert.strictEqual(pictureRes.cashflow.freeToPlan, 1340);
@@ -52,24 +74,6 @@ async function testApi() {
     assert(educationGoal.support.some(s => s.id === 'cda_matching_percy'), 'CDA support appears inside the education goal');
     assert(pictureRes.support.notEligible.some(s => s.id === 'ehg_housing_grant'), 'Ineligible schemes are explained');
     console.log('✓ Family Picture OK');
-
-    // Goals are suggestions until confirmed; only the owner can confirm a personal goal.
-    const goalsList = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
-    assert(goalsList.goals.every(g => g.source), 'Every goal shows where its suggestion came from');
-    const partnerPut = await fetch(`${baseUrl}/api/household/goals/retirement_partner`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    assert.strictEqual(partnerPut.status, 403, 'Alex cannot confirm the partner retirement goal');
-    const badPut = await fetch(`${baseUrl}/api/household/goals/education`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startYear: 2001 }) });
-    assert.strictEqual(badPut.status, 400, 'Past start years are rejected');
-    for (const goal of goalsList.goals.filter(g => g.owner !== 'partner')) {
-      const put = await fetch(`${baseUrl}/api/household/goals/${goal.key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json());
-      assert(put.goal.confirmed, `${goal.key} confirmed`);
-    }
-    const customRes = await fetch(`${baseUrl}/api/household/goals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Renovation', amount: 25000, dueDate: '2029-01' }) }).then(r => r.json());
-    assert(customRes.goal.key.startsWith('custom_'), 'Custom goal added');
-    const deleted = await fetch(`${baseUrl}/api/household/goals/${customRes.goal.key}`, { method: 'DELETE' }).then(r => r.json());
-    assert(deleted.removed, 'Custom goal removed');
-    confirmSuggestedGoals('alex_family');
-    console.log('✓ Goal Confirmation OK');
 
     // 4. Multi-Agent Analysis
     const agentRes = await fetch(`${baseUrl}/api/agents/analyze`, {
@@ -213,7 +217,7 @@ async function testApi() {
     }).then(r => r.json());
     assert(rmRes.success, 'RM summary should succeed');
     assert(rmRes.data.exportId.startsWith('RM-BRIEF'), 'Briefing ID generated');
-    assert(rmRes.data.familyGoals.length >= 4, 'Briefing carries the family goals');
+    assert(rmRes.data.familyGoals.length >= 3, 'Briefing carries the family goals (Lila has not joined, so not her retirement)');
     assert(rmRes.data.scenariosExplored.length > 0, 'Briefing carries the what-ifs the family explored');
     assert(rmRes.data.decisionsForAdviser.length > 0, 'Briefing lists decisions needing professional review');
     const privateRes = await fetch(`${baseUrl}/api/rm/household-summary`, {
@@ -233,7 +237,7 @@ async function testApi() {
     const primaryLeaves = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'primary' }) }).then(r => r.json());
     assert(primaryLeaves.deleted, 'Leaving as the primary user deletes the household data');
     const fresh = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
-    assert(fresh.goals.every(g => g.status !== 'CONFIRMED'), 'No decisions survive deletion');
+    assert.strictEqual(fresh.goals.length, 0, 'No goals survive deletion');
     console.log('✓ Leave Household OK');
 
     console.log('--- ALL API INTEGRATION TESTS PASSED ---\n');

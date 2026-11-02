@@ -35,14 +35,63 @@ router.get('/picture', async (req, res) => {
 
 const sendError = (res, error) => res.status(error.status || 400).json({ success: false, error: error.message });
 
+// In the sandbox, { as: 'partner' } stands in for the partner acting in their own app.
+const actorOf = (source = {}) => (source.as === 'partner' ? 'partner' : 'primary');
+
 /**
  * GET /api/household/goals
- * Every goal with the family's inputs, the suggestion it started from, its source and status.
+ * The goals the family has added (with who approved each), the suggested goals the assistant can
+ * still offer, and who has said they are done.
  */
 router.get('/goals', (req, res) => {
   try {
     const household = goalInputService.household(req.query.householdId);
-    res.json({ success: true, goals: goalInputService.getInputs(household) });
+    res.json({
+      success: true,
+      goals: goalInputService.getInputs(household),
+      available: goalInputService.available(household),
+      ...goalInputService.doneStatus(household)
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/household/goals/propose  { type, childIndex?, ...values, as? }
+ * Adds a goal agreed with the assistant. The person adding it approves it; the other adult then
+ * approves or edits it.
+ */
+router.post('/goals/propose', (req, res) => {
+  try {
+    const { householdId, as, ...goal } = req.body || {};
+    res.json({ success: true, goal: goalInputService.propose(householdId, goal, actorOf({ as })) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/household/goals/done  { as? }
+ * Says "I'm done adding goals". Allowed once every goal is approved.
+ */
+router.post('/goals/done', (req, res) => {
+  try {
+    const { householdId, as } = req.body || {};
+    res.json({ success: true, ...goalInputService.markDone(householdId, actorOf({ as })) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+/**
+ * POST /api/household/goals/:key/approve  { as? }
+ * Approves a goal as it stands.
+ */
+router.post('/goals/:key/approve', (req, res) => {
+  try {
+    const { householdId, as } = req.body || {};
+    res.json({ success: true, goal: goalInputService.approve(householdId, req.params.key, actorOf({ as })) });
   } catch (error) {
     sendError(res, error);
   }
@@ -50,12 +99,13 @@ router.get('/goals', (req, res) => {
 
 /**
  * PUT /api/household/goals/:key
- * Confirms a goal, optionally with edited values. Only the owner can confirm a personal goal.
+ * Saves a goal, optionally with edited values, and approves it. Editing clears the other
+ * adult's approval. Only the owner can change a personal goal.
  */
 router.put('/goals/:key', (req, res) => {
   try {
-    const { householdId, ...patch } = req.body || {};
-    res.json({ success: true, goal: goalInputService.update(householdId, req.params.key, patch) });
+    const { householdId, as, ...patch } = req.body || {};
+    res.json({ success: true, goal: goalInputService.update(householdId, req.params.key, patch, actorOf({ as })) });
   } catch (error) {
     sendError(res, error);
   }
@@ -68,8 +118,8 @@ router.put('/goals/:key', (req, res) => {
  */
 router.post('/goals', (req, res) => {
   try {
-    const { householdId, ...goal } = req.body || {};
-    res.json({ success: true, goal: goalInputService.addCustom(householdId, goal) });
+    const { householdId, as, ...goal } = req.body || {};
+    res.json({ success: true, goal: goalInputService.addCustom(householdId, goal, actorOf({ as })) });
   } catch (error) {
     sendError(res, error);
   }
@@ -77,11 +127,11 @@ router.post('/goals', (req, res) => {
 
 /**
  * DELETE /api/household/goals/:key
- * Deletes a custom goal, or switches off a suggested goal so it is no longer planned.
+ * Takes a goal off the list.
  */
 router.delete('/goals/:key', (req, res) => {
   try {
-    res.json({ success: true, ...goalInputService.remove(req.query.householdId, req.params.key) });
+    res.json({ success: true, ...goalInputService.remove(req.query.householdId, req.params.key, actorOf(req.query)) });
   } catch (error) {
     sendError(res, error);
   }

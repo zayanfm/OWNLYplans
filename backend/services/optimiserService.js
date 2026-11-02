@@ -5,6 +5,10 @@ const { isShared } = require('./contributionService');
 const { requiredMonthly, addMonthsIso, money } = require('../utils/finance');
 
 const PROTECTION_PREMIUMS = { essential: 28, enhanced: 52 };
+// Goals five or more years away get a small starter amount before the priority order applies,
+// so a long-term goal such as a child's education is never left at S$0 while nearer goals fill up.
+const STARTER_HORIZON_MONTHS = 60;
+const STARTER_SHARE = 0.1;
 
 // Each plan is a priority order for the family pot plus how hard it pushes its lead goal. Home
 // goals usually come first because key collection cannot move; the existing emergency floor already
@@ -103,8 +107,9 @@ class OptimiserService {
     };
   }
 
-  // Runs one pot month by month: goals in order each take what they need (or the family's own
-  // amount) until the pot runs out. What is left, or freed when a goal completes, stays free.
+  // Runs one pot month by month. Long-term goals first take a starter amount (up to 10% of the pot,
+  // never more than they need); then goals in order each take the rest of what they need (or the
+  // family's own amount) until the pot runs out. What is left, or freed when a goal completes, stays free.
   runPot(pot, ordered, desired, now) {
     const horizon = Math.max(...ordered.map((goal) => goal.monthsRemaining), 1);
     const state = Object.fromEntries(ordered.map((goal) => [goal.key, {
@@ -113,12 +118,27 @@ class OptimiserService {
     const freed = [];
     let freeFirstMonth = pot.available;
 
+    const starter = (goal) => (goal.monthsRemaining >= STARTER_HORIZON_MONTHS
+      ? Math.min(desired[goal.key], Math.round(pot.available * STARTER_SHARE))
+      : 0);
+
     for (let month = 0; month < horizon; month += 1) {
       let available = pot.available;
+      const amounts = {};
+      ordered.forEach((goal) => {
+        const open = state[goal.key].completedAt === null;
+        amounts[goal.key] = open ? Math.min(available, starter(goal)) : 0;
+        available -= amounts[goal.key];
+      });
+      ordered.forEach((goal) => {
+        if (state[goal.key].completedAt !== null) return;
+        const topUp = Math.min(available, desired[goal.key] - amounts[goal.key]);
+        amounts[goal.key] += topUp;
+        available -= topUp;
+      });
       ordered.forEach((goal) => {
         const goalState = state[goal.key];
-        const amount = goalState.completedAt === null ? Math.min(available, desired[goal.key]) : 0;
-        available -= amount;
+        const amount = amounts[goal.key];
         if (month === 0) goalState.firstMonthly = amount;
         goalState.balance = goalState.balance * (1 + goal.annualRate / 12) + amount;
         if (goalState.completedAt === null && goalState.balance >= goal.targetAmount) {

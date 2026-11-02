@@ -100,17 +100,24 @@ async function runE2ETests() {
     // Scenario 2b: Decide together (optimise -> what-if -> propose -> partner reply -> agree)
     // -------------------------------------------------------------
     console.log('[Scenario 2b] Testing the decide-together journey...');
-    const goalList = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
-    assert.strictEqual(goalList.goals.find(g => g.key === 'retirement_partner').status, 'CONFIRMED', 'Lila confirmed her own goal when she accepted');
-    for (const goal of goalList.goals.filter(g => g.status === 'NEEDS_DECISION')) {
-      await fetch(`${baseUrl}/api/household/goals/${goal.key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const post = (path, body = {}) => fetch(`${baseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+    // Shared goals start empty. Each adult adds goals with the assistant; the other approves.
+    assert.strictEqual((await fetch(`${baseUrl}/api/household/goals`).then(r => r.json())).goals.length, 0, 'Shared goals start empty');
+    for (const goal of [{ type: 'EMERGENCY' }, { type: 'EDUCATION', childIndex: 0 }, { type: 'RETIREMENT' }]) {
+      const added = (await post('/api/household/goals/propose', goal)).goal;
+      if (added.owner === 'household') {
+        assert.strictEqual(added.status, 'AWAITING_PARTNER', 'Waits for Lila');
+        assert((await post(`/api/household/goals/${added.key}/approve`, { as: 'partner' })).goal.confirmed, 'Lila approves');
+      }
     }
+    assert((await post('/api/household/goals/propose', { type: 'RETIREMENT', as: 'partner' })).goal.confirmed, 'Lila adds her own retirement goal');
     // The family adds their BTO purchase as a Housing goal; the app shows housing support with it.
     const bto = (await fetch(`${baseUrl}/api/household/goals`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'BTO home purchase', category: 'HOUSING', amount: 96000, saved: 80000, dueDate: '2028-09' })
     }).then(r => r.json())).goal;
+    await post(`/api/household/goals/${bto.key}/approve`, { as: 'partner' });
     const btoInPicture = (await fetch(`${baseUrl}/api/household/picture`).then(r => r.json())).goals.find(g => g.key === bto.key);
     assert(btoInPicture.support.some(s => s.id === 'climate_vouchers'), 'Climate Friendly Households Programme shows under the housing goal');
     const workshop = (await fetch(`${baseUrl}/api/household/goals`, {
@@ -125,7 +132,9 @@ async function runE2ETests() {
     await fetch(`${baseUrl}/api/household/goals/${workshop.key}`, { method: 'DELETE' });
     const unplanned = (await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json())).needsDecision;
     assert.strictEqual(unplanned.length, 0, 'Every goal is decided before planning');
-    console.log('  ✓ Family confirmed every goal; Lila confirmed her own');
+    await post('/api/household/goals/done');
+    assert((await post('/api/household/goals/done', { as: 'partner' })).ready, 'Both say done, so the family moves on');
+    console.log('  ✓ Goals added through the assistant and approved by both; Lila added her own');
     const options = await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json());
     assert.strictEqual(options.plans.length, 3);
     const whatIf = await fetch(`${baseUrl}/api/scenarios/simulate`, {

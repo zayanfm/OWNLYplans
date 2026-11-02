@@ -76,38 +76,72 @@ class GoalInputService {
     return suggestions;
   }
 
-  /** Suggestions merged with what the family has decided, each with a status. */
-  getInputs(household) {
+  /**
+   * The goals the family has added, each with who has approved it. Goals start empty: each adult
+   * adds goals through the assistant, and a shared goal is planned only once every adult in the
+   * plan has approved it. A personal goal needs only its owner.
+   */
+  getInputs(household, { includeKeys = [] } = {}) {
     const stored = householdStore.getGoalInputs(household.id);
     const consented = partnerConsented(household);
-    const merged = this.suggest(household).map((suggestion) => {
-      const saved = stored[suggestion.key];
-      const input = { ...suggestion, ...(saved || {}), suggested: { ...suggestion } };
-      if (suggestion.owner === 'partner' && !saved) {
-        // The partner confirms their own goal as part of accepting the invite (simulated in the sandbox).
-        input.confirmed = consented;
-        input.confirmedBy = consented ? 'partner' : null;
-      }
-      return input;
-    });
-    const custom = Object.values(stored).filter((input) => input.type === 'CUSTOM');
-    return [...merged, ...custom].map((input) => ({ ...input, status: this.status(input, consented) }));
+    const templates = Object.fromEntries(this.suggest(household).map((item) => [item.key, item]));
+    // What-ifs (e.g. another child) can include a suggested goal nobody has added yet.
+    const extra = includeKeys.filter((key) => templates[key] && !stored[key]?.added).map((key) => ({ key }));
+    return [...Object.values(stored).filter((input) => input.added || input.type === 'CUSTOM'), ...extra]
+      .map((saved) => (templates[saved.key] ? { ...templates[saved.key], ...saved, suggested: { ...templates[saved.key] } } : saved))
+      .map((input) => this.describe(input, consented));
   }
 
-  status(input, consented) {
+  /** Suggested goals not added yet, which the assistant offers as starting points. */
+  available(household) {
+    const stored = householdStore.getGoalInputs(household.id);
+    return this.suggest(household).filter((item) => !stored[item.key]?.added);
+  }
+
+  requiredApprovers(input, consented) {
+    if (input.owner === 'household') return consented ? ['primary', 'partner'] : ['primary'];
+    return [input.owner];
+  }
+
+  describe(input, consented) {
+    const approvals = input.approvals || {};
+    const requiredApprovers = this.requiredApprovers(input, consented);
+    const confirmed = requiredApprovers.every((member) => approvals[member]);
+    return { ...input, approvals, requiredApprovers, confirmed, status: this.status(input, confirmed, approvals) };
+  }
+
+  status(input, confirmed, approvals = {}) {
     if (input.enabled === false) return 'OFF';
     if (input.type === 'EDUCATION' && input.path === 'UNDECIDED') return 'NEEDS_DECISION';
-    if (input.owner === 'partner' && !input.confirmed) return consented ? 'NEEDS_DECISION' : 'AWAITING_PARTNER';
-    return input.confirmed ? 'CONFIRMED' : 'NEEDS_DECISION';
+    if (confirmed) return 'CONFIRMED';
+    // Relative to the app user (primary): their decision first, otherwise waiting on the partner.
+    if (input.owner !== 'partner' && !approvals.primary) return 'NEEDS_DECISION';
+    return 'AWAITING_PARTNER';
   }
 
+  ownerCheck(household, current, actor) {
+    if (current.owner === 'household' || current.owner === actor) return;
+    const adult = current.owner === 'partner' ? household.partner : household.primaryUser;
+    const first = String(current.adultName || adult?.name || 'the owner').split(' ')[0];
+    throw this.error(403, `Only ${first} can confirm or change this ${current.type === 'RETIREMENT' ? 'retirement goal' : 'personal goal'}`);
+  }
+
+  actorCheck(household, actor) {
+    if (actor === 'partner' && !partnerConsented(household)) {
+      throw this.error(403, 'Your partner has not joined the plan yet');
+    }
+  }
+
+  /**
+   * Saves a goal's values. The person saving approves it; if they changed anything, earlier
+   * approvals from others are cleared so everyone sees and approves the new version.
+   */
   update(householdId, key, patch = {}, actor = 'primary') {
     const household = this.household(householdId);
+    this.actorCheck(household, actor);
     const current = this.getInputs(household).find((input) => input.key === key);
     if (!current) throw this.error(404, 'Goal not found');
-    if (current.owner === 'partner' && actor !== 'partner') {
-      throw this.error(403, `Only ${String(current.adultName).split(' ')[0]} can confirm or change this retirement goal`);
-    }
+    this.ownerCheck(household, current, actor);
 
     const next = { enabled: patch.enabled === undefined ? current.enabled !== false : Boolean(patch.enabled) };
     const number = (field) => (patch[field] === undefined ? current[field] : Number(patch[field]));
@@ -129,7 +163,7 @@ class GoalInputService {
       next.category = patch.category === undefined ? current.category : String(patch.category);
       if (!GOAL_CATEGORIES[next.category]) throw this.error(400, `category must be one of ${Object.keys(GOAL_CATEGORIES).join(', ')}`);
       next.owner = patch.owner === undefined ? current.owner : String(patch.owner);
-      if (!['household', 'primary'].includes(next.owner)) throw this.error(400, 'owner must be household (shared) or primary (just me)');
+      if (!['household', actor].includes(next.owner)) throw this.error(400, 'owner must be household (shared) or yourself (just me)');
       next.saved = patch.saved === undefined ? Number(current.saved || 0) : Number(patch.saved);
       if (!Number.isFinite(next.saved) || next.saved < 0 || next.saved > next.amount) {
         throw this.error(400, 'saved must be between 0 and the goal amount');
@@ -155,43 +189,109 @@ class GoalInputService {
       next.amount = check('amount', number('amount'));
     }
 
+    const stored = householdStore.getGoalInputs(household.id)[key] || {};
+    const changed = Object.keys(next).some((field) => next[field] !== current[field]);
+    if (changed) this.resetDone(household.id);
     const saved = householdStore.saveGoalInput(household.id, key, {
-      ...(householdStore.getGoalInputs(household.id)[key] || {}),
+      ...stored,
       ...next,
-      confirmed: true,
+      approvals: changed ? { [actor]: true } : { ...(stored.approvals || {}), [actor]: true },
       confirmedBy: actor,
-      confirmedAt: new Date().toISOString()
+      confirmedAt: new Date().toISOString(),
+      ...(changed ? { editedBy: actor } : {})
     });
-    return { key, ...saved };
+    return this.describe({ ...current, ...saved }, partnerConsented(household));
+  }
+
+  /** Approves a goal as it stands, without changing it. */
+  approve(householdId, key, actor = 'primary') {
+    const household = this.household(householdId);
+    this.actorCheck(household, actor);
+    const current = this.getInputs(household).find((input) => input.key === key);
+    if (!current) throw this.error(404, 'Goal not found');
+    this.ownerCheck(household, current, actor);
+    const stored = householdStore.getGoalInputs(household.id)[key];
+    const saved = householdStore.saveGoalInput(household.id, key, { ...stored, approvals: { ...(stored.approvals || {}), [actor]: true }, confirmedBy: actor });
+    return this.describe({ ...current, ...saved }, partnerConsented(household));
+  }
+
+  /**
+   * Adds a goal agreed with the assistant. Suggested goal types (emergency, a child's education,
+   * your own retirement) start from their suggestion; anything else is the family's own goal.
+   */
+  propose(householdId, { type, childIndex, ...fields } = {}, actor = 'primary') {
+    const household = this.household(householdId);
+    this.actorCheck(household, actor);
+    if (type === 'CUSTOM' || !type) return this.addCustom(household.id, fields, actor);
+    const template = this.suggest(household).find((item) => item.type === type
+      && (type !== 'EDUCATION' || item.childIndex === Number(childIndex || 0))
+      && (type !== 'RETIREMENT' || item.owner === actor));
+    if (!template) throw this.error(404, 'There is no such goal to add');
+    if (householdStore.getGoalInputs(household.id)[template.key]?.added) throw this.error(409, 'That goal is already on the list');
+    householdStore.saveGoalInput(household.id, template.key, { key: template.key, added: true, proposedBy: actor, approvals: {} });
+    try {
+      return this.update(household.id, template.key, fields, actor);
+    } catch (error) {
+      householdStore.removeGoalInput(household.id, template.key);
+      throw error;
+    }
   }
 
   // Priority is not set here: the family orders all goals together when building the plan.
-  addCustom(householdId, { name, category = 'OTHER', owner = 'household', amount, saved = 0, dueDate } = {}) {
+  addCustom(householdId, { name, category = 'OTHER', owner = 'household', amount, saved = 0, dueDate } = {}, actor = 'primary') {
     const household = this.household(householdId);
+    this.actorCheck(household, actor);
     const key = `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     householdStore.saveGoalInput(household.id, key, {
-      key, type: 'CUSTOM', owner: 'household', enabled: true, confirmed: false,
+      key, type: 'CUSTOM', owner: 'household', enabled: true, added: true, proposedBy: actor, approvals: {},
       name: '', category: 'OTHER', amount: 0, saved: 0, dueDate: null,
       source: 'Your own goal.'
     });
     try {
-      return this.update(household.id, key, { name, category, owner, amount, saved, dueDate });
+      return this.update(household.id, key, { name, category, owner, amount, saved, dueDate }, actor);
     } catch (error) {
       householdStore.removeGoalInput(household.id, key);
       throw error;
     }
   }
 
-  // Custom goals are deleted; suggested goals are switched off so they can be switched back on.
-  remove(householdId, key) {
+  // Removing a goal takes it off the list; a suggested goal can be added again from the assistant.
+  remove(householdId, key, actor = 'primary') {
     const household = this.household(householdId);
     const current = this.getInputs(household).find((input) => input.key === key);
     if (!current) throw this.error(404, 'Goal not found');
-    if (current.type === 'CUSTOM') {
-      householdStore.removeGoalInput(household.id, key);
-      return { key, removed: true };
-    }
-    return this.update(household.id, key, { enabled: false }, current.owner === 'partner' ? 'partner' : 'primary');
+    this.ownerCheck(household, current, actor);
+    householdStore.removeGoalInput(household.id, key);
+    this.resetDone(household.id);
+    return { key, removed: true };
+  }
+
+  /** Who has said they are done adding goals, and whether the family can move on. */
+  doneStatus(household) {
+    const consented = partnerConsented(household);
+    const adults = consented ? ['primary', 'partner'] : ['primary'];
+    const done = householdStore.getGoalsDone(household.id);
+    const goals = this.getInputs(household).filter((input) => input.status !== 'OFF');
+    const allApproved = goals.length > 0 && goals.every((input) => input.status === 'CONFIRMED');
+    return {
+      adults,
+      done: Object.fromEntries(adults.map((member) => [member, Boolean(done[member])])),
+      allApproved,
+      ready: allApproved && adults.every((member) => done[member])
+    };
+  }
+
+  markDone(householdId, actor = 'primary') {
+    const household = this.household(householdId);
+    this.actorCheck(household, actor);
+    const status = this.doneStatus(household);
+    if (!status.allApproved) throw this.error(409, 'Every goal needs approving first');
+    householdStore.setGoalsDone(household.id, actor, true);
+    return this.doneStatus(household);
+  }
+
+  resetDone(householdId) {
+    householdStore.clearGoalsDone(householdId);
   }
 
   household(householdId) {
@@ -210,3 +310,4 @@ class GoalInputService {
 module.exports = new GoalInputService();
 module.exports.EDUCATION_PATHS = EDUCATION_PATHS;
 module.exports.GOAL_CATEGORIES = GOAL_CATEGORIES;
+module.exports.partnerConsented = partnerConsented;

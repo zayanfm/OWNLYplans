@@ -27,7 +27,7 @@ const buildGoals = (household, options = {}) => {
   const investments = accounts.investments || [];
   const adults = { primary: primaryUser, partner };
 
-  const goals = goalInputService.getInputs(household).map((input) => {
+  const goals = goalInputService.getInputs(household, { includeKeys }).map((input) => {
     const base = {
       key: input.key,
       // 'household' goals are funded from the family pot; 'primary'/'partner' from that person's own money.

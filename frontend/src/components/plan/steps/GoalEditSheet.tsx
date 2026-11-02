@@ -37,7 +37,9 @@ export const GoalEditSheet: React.FC<{
   goal: GoalInput | null;
   onClose: () => void;
   onSaved: (result: GoalSheetResult) => void;
-}> = ({ visible, goal, onClose, onSaved }) => {
+  // Viewing as the partner (sandbox stand-in for their own app).
+  asPartner?: boolean;
+}> = ({ visible, goal, onClose, onSaved, asPartner = false }) => {
   const creating = !goal;
   const [draft, setDraft] = useState<Partial<GoalInput>>({});
   const [amountText, setAmountText] = useState<string>('');
@@ -59,7 +61,9 @@ export const GoalEditSheet: React.FC<{
   }, [visible, goal]);
 
   const type = goal?.type || 'CUSTOM';
-  const partnerOwned = goal?.owner === 'partner';
+  const viewer = asPartner ? 'partner' : 'primary';
+  // Someone else's personal goal: only they can change it.
+  const partnerOwned = Boolean(goal && goal.owner !== 'household' && goal.owner !== viewer);
   const ownerFirst = String(goal?.adultName || '').split(' ')[0] || 'Your partner';
   const update = (patch: Partial<GoalInput>) => setDraft({ ...draft, ...patch });
 
@@ -83,7 +87,7 @@ export const GoalEditSheet: React.FC<{
         const result = await api.addGoal({ name: String(body.name || ''), category: body.category || 'OTHER', owner: body.owner === 'primary' ? 'primary' : 'household', amount: Number(body.amount), saved: Number(body.saved || 0), dueDate: String(body.dueDate) });
         onSaved({ key: result.goal.key, input: result.goal });
       } else {
-        const result = await api.updateGoal(goal.key, payload());
+        const result = await api.updateGoal(goal.key, payload(), asPartner);
         onSaved({ key: goal.key, input: result.goal });
       }
     } catch (err: any) {
@@ -102,7 +106,7 @@ export const GoalEditSheet: React.FC<{
     if (!goal) return;
     setSaving(true);
     try {
-      await api.removeGoal(goal.key);
+      await api.removeGoal(goal.key, asPartner);
     } catch {
       // Offline: switch it off for this session.
     } finally {
@@ -135,11 +139,9 @@ export const GoalEditSheet: React.FC<{
             {partnerOwned ? (
               <View style={stepStyles.card}>
                 <Text style={stepStyles.cardTitle}>Only {ownerFirst} can set this goal</Text>
-                <Text style={[stepStyles.note, styles.gap]}>
-                  {goal?.status === 'AWAITING_PARTNER'
-                    ? `It is confirmed by ${ownerFirst} in their own OCBC app once they accept the invite.`
-                    : `${ownerFirst} confirmed retiring at ${goal?.retireAge} with ${money(goal?.amount)} on top of CPF LIFE.`}
-                </Text>
+                {goal?.type === 'RETIREMENT' ? (
+                  <Text style={[stepStyles.note, styles.gap]}>Retiring at {goal?.retireAge} with {money(goal?.amount)} on top of CPF LIFE.</Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -165,14 +167,14 @@ export const GoalEditSheet: React.FC<{
                 {categoryHint ? <Text style={[stepStyles.note, styles.hint]}>{categoryHint}</Text> : null}
                 <Text style={styles.fieldLabel}>Whose goal is it?</Text>
                 <View style={styles.segment}>
-                  {([['household', 'Shared'], ['primary', 'Just me']] as const).map(([owner, label]) => (
+                  {([['household', 'Shared'], [viewer, 'Just me']] as const).map(([owner, label]) => (
                     <TouchableOpacity key={owner} style={[styles.segmentItem, draft.owner === owner && styles.segmentActive]} onPress={() => update({ owner })}>
                       <Text style={[styles.segmentText, draft.owner === owner && styles.segmentTextActive]}>{label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <Text style={[stepStyles.note, styles.hint]}>
-                  {draft.owner === 'primary' ? 'Paid from your own money, after your share of the bills.' : 'Paid from the family pot that you both put into.'}
+                  {draft.owner === viewer ? 'Paid from your own money, after your share of the bills.' : 'Paid from the family pot that you both put into.'}
                 </Text>
                 <TextInput style={styles.input} placeholder="Goal name, e.g. BTO downpayment" value={draft.name || ''} onChangeText={(name) => update({ name })} />
                 <Text style={styles.fieldLabel}>Amount needed (S$)</Text>
@@ -224,12 +226,12 @@ export const GoalEditSheet: React.FC<{
 
             {!partnerOwned ? (
               <TouchableOpacity style={[stepStyles.primaryButton, styles.gap, saving && stepStyles.primaryButtonDisabled]} onPress={save} disabled={saving}>
-                {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={stepStyles.primaryButtonText}>{creating ? 'Add goal' : goal?.status === 'OFF' ? 'Switch back on' : 'Confirm'}</Text>}
+                {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={stepStyles.primaryButtonText}>{creating ? 'Add goal' : goal?.owner === 'household' ? 'Save and approve' : 'Save'}</Text>}
               </TouchableOpacity>
             ) : null}
             {!creating && !partnerOwned && goal?.status !== 'OFF' ? (
               <TouchableOpacity style={[stepStyles.secondaryButton, styles.gap]} onPress={switchOff} disabled={saving}>
-                <Text style={stepStyles.secondaryButtonText}>{goal?.type === 'CUSTOM' ? 'Delete this goal' : 'Not planning for this'}</Text>
+                <Text style={stepStyles.secondaryButtonText}>Remove this goal</Text>
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity style={styles.cancel} onPress={onClose}>

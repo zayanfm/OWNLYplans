@@ -2,13 +2,24 @@ const goalInputService = require('../services/goalInputService');
 const householdStore = require('../models/householdStore');
 const workspaceService = require('../services/workspaceService');
 
-// Confirms every suggested goal as the family would in the app. With includePartner, the
-// partner confirms their own retirement goal (in the sandbox that happens on invite approval).
+// Once the partner has joined, they approve shared goals in their own app (simulated here).
+const approveAsPartner = (householdId, goal) => {
+  const status = goalInputService.doneStatus(householdStore.getHousehold(householdId));
+  if (goal.owner === 'household' && status.adults.includes('partner')) goalInputService.approve(householdId, goal.key, 'partner');
+};
+
+// Adds every suggested goal as the family would through the assistant, and approves it. With
+// includePartner, the partner adds their own retirement goal.
 const confirmSuggestedGoals = (householdId = 'alex_family', { includePartner = true } = {}) => {
-  goalInputService.getInputs(householdStore.getHousehold(householdId)).forEach((input) => {
-    if (input.owner === 'partner' && !includePartner) return;
-    goalInputService.update(householdId, input.key, {}, input.owner === 'partner' ? 'partner' : 'primary');
+  const household = householdStore.getHousehold(householdId);
+  goalInputService.available(household).forEach((template) => {
+    if (template.owner === 'partner' && !includePartner) return;
+    const actor = template.owner === 'partner' ? 'partner' : 'primary';
+    approveAsPartner(householdId, goalInputService.propose(householdId, { type: template.type, childIndex: template.childIndex }, actor));
   });
+  // Goals added before the partner joined still need their approval.
+  goalInputService.getInputs(household).filter((goal) => goal.status === 'AWAITING_PARTNER' && goal.owner === 'household')
+    .forEach((goal) => approveAsPartner(householdId, goal));
 };
 
 // What the family does in setup: Alex shares his own account, and Lila accepts the invite
@@ -21,8 +32,12 @@ const shareAndConsent = (householdId = 'alex_family') => {
 };
 
 // The family adds their BTO purchase as a Housing goal; the app does not assume it.
-const addBtoGoal = (householdId = 'alex_family') => goalInputService.addCustom(householdId, {
-  name: 'BTO home purchase', category: 'HOUSING', amount: 96000, saved: 80000, dueDate: '2028-09'
-});
+const addBtoGoal = (householdId = 'alex_family') => {
+  const goal = goalInputService.addCustom(householdId, {
+    name: 'BTO home purchase', category: 'HOUSING', amount: 96000, saved: 80000, dueDate: '2028-09'
+  });
+  approveAsPartner(householdId, goal);
+  return goal;
+};
 
-module.exports = { confirmSuggestedGoals, shareAndConsent, addBtoGoal };
+module.exports = { confirmSuggestedGoals, shareAndConsent, addBtoGoal, approveAsPartner };

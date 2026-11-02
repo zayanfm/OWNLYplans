@@ -36,7 +36,11 @@
         "shareAccounts": [
           "512-441920-002"
         ],
-        "note": "Sandbox: what Lila chooses in her own app when she accepts. Her income is shared for the household cash flow; her savings account stays private."
+        "contribution": {
+          "toShared": 560,
+          "toPersonal": 186
+        },
+        "note": "Sandbox: what Lila chooses in her own app when she accepts. Her income is shared for the household cash flow; her savings account stays private. She puts S$560/month into the family pot and S$186/month into her own retirement, keeping the rest free."
       }
     },
     "dependents": [
