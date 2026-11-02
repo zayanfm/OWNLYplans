@@ -62,6 +62,344 @@ export interface FamilyInviteStatus {
   members: FamilyInviteMember[];
 }
 
+export type AccountSharing = 'FULL' | 'TOTAL_ONLY' | 'PRIVATE';
+
+export interface WorkspaceAccount {
+  owner: 'primary' | 'partner' | 'joint';
+  sharing: AccountSharing;
+  status: 'CONNECTED' | 'AWAITING_CONSENT';
+  countsTowardTotals: boolean;
+  type: string;
+  number: string | null;
+  holder: string;
+  role: string | null;
+  balance: number | null;
+  interestRate: number | null;
+}
+
+export interface HouseholdWorkspace {
+  success: boolean;
+  lastSynced: string;
+  sources: string[];
+  partnerConsent: 'NONE' | 'NOT_INVITED' | 'PENDING' | 'APPROVED' | 'LEFT';
+  summary: {
+    totalLiquidCash: number;
+    totalInvestments: number;
+    householdCpfTotal: number;
+    totalAssets: number;
+    totalLiabilities: number;
+    netWorth: number;
+    monthlyHouseholdIncome: number;
+    monthlyHouseholdTakeHome: number;
+    monthlyHouseholdExpenses: number;
+    monthlySurplus: number;
+    emergencyFund: number;
+    emergencyBufferMonths: number;
+  };
+  accounts: WorkspaceAccount[];
+  investments: any[];
+}
+
+export type GoalStatus = 'ON_TRACK' | 'AT_RISK' | 'REACHED';
+
+export interface SupportItem {
+  id: string;
+  name: string;
+  agency: string;
+  goalKey: 'housing' | 'education' | null;
+  // Set for child-specific schemes (Baby Bonus, CDA): shown only with that child's goal.
+  childName?: string;
+  fundType: 'CASH' | 'RESTRICTED_CDA' | 'CPF' | 'VOUCHER';
+  restricted: boolean;
+  status: 'AVAILABLE' | 'RECEIVING' | 'RECEIVED' | 'UPCOMING' | 'NOT_ELIGIBLE';
+  amount: number;
+  reason: string;
+  action: string;
+  nextDate: string | null;
+}
+
+// Categories for goals the family adds; housing goals show housing support with them.
+export type GoalCategory = 'HOUSING' | 'EDUCATION' | 'FAMILY' | 'OTHER';
+// The category a goal is shown under, with its icon.
+export type GoalGroup = 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT' | 'FAMILY' | 'OTHER';
+export type GoalInputStatus = 'CONFIRMED' | 'NEEDS_DECISION' | 'AWAITING_PARTNER' | 'OFF';
+export type EducationPath = 'UNIVERSITY' | 'POLYTECHNIC' | 'UNDECIDED';
+
+// What the family decided for one goal, plus the suggestion it started from.
+export interface GoalInput {
+  key: string;
+  type: 'EMERGENCY' | 'EDUCATION' | 'RETIREMENT' | 'CUSTOM';
+  owner: 'household' | 'primary' | 'partner';
+  enabled: boolean;
+  confirmed?: boolean;
+  confirmedBy?: string | null;
+  source: string;
+  status: GoalInputStatus;
+  months?: number;
+  withinMonths?: number;
+  amount?: number;
+  dueDate?: string;
+  childName?: string;
+  childIndex?: number;
+  path?: EducationPath;
+  startYear?: number;
+  years?: number;
+  annualCost?: number;
+  adultName?: string;
+  retireAge?: number;
+  name?: string;
+  category?: GoalCategory;
+  saved?: number;
+  suggested?: Partial<GoalInput>;
+  // Who has approved it; a shared goal needs every adult in the plan, a personal goal its owner.
+  approvals?: Partial<Record<Member, boolean>>;
+  requiredApprovers?: Member[];
+  proposedBy?: Member;
+  editedBy?: Member;
+}
+
+export type Member = 'primary' | 'partner';
+
+export interface GoalsState {
+  success: boolean;
+  goals: GoalInput[];
+  // Suggested goals not added yet, which the goal assistant offers.
+  available: GoalInput[];
+  adults: Member[];
+  done: Partial<Record<Member, boolean>>;
+  allApproved: boolean;
+  ready: boolean;
+}
+
+export interface FamilyGoal {
+  id: string;
+  key: string;
+  routeKey: 'emergency' | 'housing' | 'education' | 'wealth' | 'custom';
+  name: string;
+  category: 'EMERGENCY' | 'HOUSING' | 'EDUCATION' | 'RETIREMENT' | 'CUSTOM';
+  inputStatus: GoalInputStatus;
+  planned: boolean;
+  source: string;
+  input: GoalInput;
+  priority: number;
+  targetAmount: number;
+  currentAmount: number;
+  shortfall: number;
+  deadline: string;
+  monthsRemaining: number;
+  requiredMonthlyAllocation: number;
+  annualRate: number;
+  dependsOn: string[];
+  basis: string;
+  group: GoalGroup;
+  groupLabel: string;
+  childName: string | null;
+  owner: 'household' | 'primary' | 'partner';
+  icon: string;
+  suggestedMonthlyAllocation: number;
+  projectedCompletion: string | null;
+  status: GoalStatus | GoalInputStatus;
+  support: SupportItem[];
+}
+
+export interface Commitment {
+  id: string;
+  label: string;
+  category: string;
+  monthlyAmount: number;
+  essential: boolean;
+  owner?: string;
+}
+
+export interface FamilyPicture {
+  success: boolean;
+  householdId: string;
+  cashflow: {
+    income: Array<{ owner: string; name: string; monthlyTakeHome: number }>;
+    totalTakeHome: number;
+    commitments: Commitment[];
+    groups: Array<{ category: string; label: string; monthlyAmount: number; items: Commitment[]; benchmark: { amount: number; label: string; source: string } | null }>;
+    totalCommitments: number;
+    essentialMonthly: number;
+    flexibleMonthly: number;
+    freeToPlan: number;
+    method: string;
+  };
+  goals: FamilyGoal[];
+  fundingGap: number;
+  totalRequiredMonthly: number;
+  support: {
+    totalGrantValue: number;
+    restrictedValue: number;
+    flexibleValue: number;
+    upcomingDates: Array<{ grantId: string; name: string; date: string }>;
+    notEligible: SupportItem[];
+    disclaimer: string;
+  };
+  findings: string[];
+}
+
+export type PlanOptionId = 'balanced' | 'home_first' | 'education_first' | 'custom';
+
+export interface PlanGoalOutcome {
+  key: string;
+  routeKey: FamilyGoal['routeKey'];
+  group: GoalGroup;
+  groupLabel: string;
+  childName: string | null;
+  owner: 'household' | 'primary' | 'partner';
+  name: string;
+  targetAmount: number;
+  startingAmount: number;
+  deadline: string;
+  requiredMonthly: number;
+  monthlyNow: number;
+  completesBy: string | null;
+  projectedAtDeadline: number;
+  status: 'ON_TRACK' | 'AT_RISK';
+}
+
+export interface PlanOption {
+  id: PlanOptionId;
+  name: string;
+  tagline: string;
+  routes: { emergency: number; housing: number; education: number; custom: number; wealth: number };
+  unallocated: number;
+  priorityOrder: string[];
+  // Each pot (the family pot and each person's own money) and what it leaves free this month.
+  pots: Array<{ id: string; label: string; available: number; free: number }>;
+  keptFree: number;
+  goals: PlanGoalOutcome[];
+  // Money freed when a goal completes, and which pot it is freed in; the family decides where it goes.
+  stepUps: Array<{ month: string; fromGoal: string; pot: string; amount: number; text: string }>;
+  allOnTrack: boolean;
+  atRisk: string[];
+  recommended: boolean;
+  tradeOffs: string[];
+  // Only on the family's own plan: the order and amounts they chose.
+  definition?: { order: string[]; monthlyOverrides: Record<string, number> };
+}
+
+// The one family plan and who has approved it. A change by either adult needs the other's approval.
+export interface FamilyPlanState {
+  success: boolean;
+  plan: PlanOption;
+  investable: number;
+  contributions: Contributions;
+  lumpSum: PlanOptions['lumpSum'];
+  adults: Member[];
+  approvals: Partial<Record<Member, boolean>>;
+  editedBy: Member | null;
+  agreed: boolean;
+}
+
+// A big change, good or bad, that moves when a goal is reached. Monthly amounts stay the same;
+// the alert proposes a new date instead.
+export interface PlanAlert {
+  id: string;
+  tone: 'POSITIVE' | 'NEGATIVE';
+  title: string;
+  detail: string;
+  goalKey: string;
+  goalName: string;
+  monthly: number;
+  before: { deadline: string; reachedBy: string };
+  after: { deadline: string; reachedBy: string };
+}
+
+// Who puts in what: each adult's share of bills, what is left, and how they split it.
+export interface ContributionPerson {
+  member: 'primary' | 'partner';
+  name: string;
+  takeHome: number;
+  billShare: number;
+  sharedBills: number;
+  personalBills: number;
+  leftover: number;
+  toShared: number;
+  toPersonal: number;
+  keptFree: number;
+  suggested: { toShared: number; toPersonal: number };
+  status: 'SUGGESTED' | 'PROPOSED' | 'CONFIRMED';
+  confirmedBy: string | null;
+}
+
+export interface Contributions {
+  billSplit: { method: string; note: string };
+  sharedBills: number;
+  people: ContributionPerson[];
+  familyPot: { contributed: number; protectionPremium: number; available: number };
+  personalPots: Record<string, number>;
+}
+
+export interface PlanOptions {
+  success: boolean;
+  monthlySurplus: number;
+  protectionPremium: number;
+  investable: number;
+  lumpSum: { amount: number; toGoal: string; reason: string } | null;
+  recommendedPlanId: PlanOptionId;
+  contributions: Contributions;
+  needsDecision: Array<{ key: string; name: string; status: GoalInputStatus }>;
+  plans: PlanOption[];
+}
+
+export interface ScenarioLevers {
+  extraChild: boolean;
+  incomeChangePct: number;
+  schoolFeesMonthly: number;
+  extraSavingsMonthly: number;
+}
+
+export interface ScenarioResult {
+  success: boolean;
+  levers: ScenarioLevers;
+  planId: PlanOptionId;
+  surplusBefore: number;
+  surplusAfter: number;
+  monthlyGapToClose: number;
+  goals: Array<{
+    key: string;
+    name: string;
+    isNew: boolean;
+    before: { monthlyNow: number; completesBy: string | null; status: string; targetAmount: number } | null;
+    after: { monthlyNow: number; completesBy: string | null; status: string; targetAmount: number };
+  }>;
+  summary: string[];
+  recommendedPlanIdAfter: PlanOptionId;
+}
+
+export interface PlanProposal {
+  id: string;
+  proposedAt: string;
+  status: 'PENDING' | 'AGREED' | 'SUGGESTED_CHANGE';
+  planId: PlanOptionId;
+  planName: string;
+  proposedBy: string;
+  reviewer: string;
+  note: string | null;
+  finalPlanId?: PlanOptionId;
+  response: { decision: string; message: string; suggestedPlanId?: PlanOptionId } | null;
+}
+
+export interface GrowOverview {
+  success: boolean;
+  readiness: {
+    ready: boolean;
+    checks: Array<{ id: string; label: string; detail: string; passed: boolean }>;
+    suggestions: Array<{ goalKey: string; goalName: string; monthlyAmount: number; product: string; horizon: string }>;
+    totalMonthly: number;
+    handoff: { label: string; destination: string; note: string } | null;
+    blockedReason: string | null;
+  };
+  advisory: {
+    recommended: boolean;
+    flags: Array<{ id: string; label: string }>;
+    title: string;
+    reason: string;
+  };
+}
+
 export interface NextBestAction {
   id: string;
   title: string;
@@ -89,11 +427,19 @@ export interface AgentAnalysisData {
   executiveSummary: string;
   intelligenceSource?: 'GEMINI_2_5_FLASH' | 'DETERMINISTIC_FALLBACK';
   calculationSource?: 'DETERMINISTIC_RULE_ENGINE';
+  verification?: AiVerification;
   aiSynthesis?: {
     executiveSummary: string;
     familyPriorities: string[];
     watchouts: string[];
   };
+}
+
+// Result of checking AI-written text against the planning engine's figures.
+export interface AiVerification {
+  figuresChecked: number;
+  mismatches: string[];
+  outcome: 'ENGINE_TEXT' | 'AI_TEXT_VERIFIED' | 'AI_TEXT_REPLACED';
 }
 
 export interface ChatMessage {
@@ -119,7 +465,10 @@ class ApiService {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
+        const body = await res.json().catch(() => null);
+        const error: Error & { status?: number } = new Error(body?.error || `HTTP Error ${res.status}: ${res.statusText}`);
+        error.status = res.status;
+        throw error;
       }
       return await res.json();
     } catch (err: any) {
@@ -188,10 +537,155 @@ class ApiService {
     return this.request<FamilyInviteStatus>('/api/auth/family/status');
   }
 
-  // SGFinDex Aggregation
-  async getSgFinDexAggregate(householdId?: string): Promise<any> {
+  // Family Financial Workspace (Singpass MyInfo + OCBC accounts)
+  async getWorkspace(householdId?: string): Promise<HouseholdWorkspace> {
     const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
-    return this.request(`/api/sgfindex/aggregate${q}`);
+    return this.request<HouseholdWorkspace>(`/api/household/workspace${q}`);
+  }
+
+  async setAccountSharing(accountNumber: string, sharing: AccountSharing, householdId?: string): Promise<{ success: boolean }> {
+    return this.request('/api/household/sharing', {
+      method: 'POST',
+      body: JSON.stringify({ accountNumber, sharing, householdId })
+    });
+  }
+
+  // Our Family Picture: cash flow, goals with dependencies, support per goal
+  async getPicture(householdId?: string): Promise<FamilyPicture> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<FamilyPicture>(`/api/household/picture${q}`);
+  }
+
+  // Goals: each adult adds goals with the assistant; the other approves or edits them.
+  // asPartner stands in for the partner acting in their own app (sandbox).
+  async getGoals(householdId?: string): Promise<GoalsState> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<GoalsState>(`/api/household/goals${q}`);
+  }
+
+  async proposeGoal(goal: Partial<GoalInput>, asPartner = false): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request('/api/household/goals/propose', {
+      method: 'POST',
+      body: JSON.stringify({ ...goal, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async approveGoal(key: string, asPartner = false): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(asPartner ? { as: 'partner' } : {})
+    });
+  }
+
+  async markGoalsDone(asPartner = false): Promise<GoalsState> {
+    return this.request('/api/household/goals/done', {
+      method: 'POST',
+      body: JSON.stringify(asPartner ? { as: 'partner' } : {})
+    });
+  }
+
+  async updateGoal(key: string, patch: Partial<GoalInput>, asPartner = false): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...patch, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async getContributions(householdId?: string): Promise<Contributions> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<Contributions>(`/api/household/contributions${q}`);
+  }
+
+  // Only that person sets their own amounts; asPartner stands in for the partner's own app (sandbox).
+  async setContribution(member: 'primary' | 'partner', toShared: number, toPersonal: number, asPartner = false): Promise<{ success: boolean }> {
+    return this.request(`/api/household/contributions/${member}`, {
+      method: 'PUT',
+      body: JSON.stringify({ toShared, toPersonal, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async addGoal(goal: { name: string; category: GoalCategory; owner: 'household' | 'primary'; amount: number; saved: number; dueDate: string }): Promise<{ success: boolean; goal: GoalInput }> {
+    return this.request('/api/household/goals', {
+      method: 'POST',
+      body: JSON.stringify(goal)
+    });
+  }
+
+  async removeGoal(key: string, asPartner = false): Promise<{ success: boolean }> {
+    return this.request(`/api/household/goals/${encodeURIComponent(key)}${asPartner ? '?as=partner' : ''}`, { method: 'DELETE' });
+  }
+
+  // Decision engine: plan options, what-if scenarios and partner proposals
+  async getPlanOptions(householdId?: string): Promise<PlanOptions> {
+    const q = householdId ? `?householdId=${encodeURIComponent(householdId)}` : '';
+    return this.request<PlanOptions>(`/api/scenarios/plans${q}`);
+  }
+
+  async customPlan(order: string[], monthlyOverrides: Record<string, number>): Promise<{ success: boolean; investable: number; plan: PlanOption; recommendedPlanId: PlanOptionId }> {
+    return this.request('/api/scenarios/plans/custom', {
+      method: 'POST',
+      body: JSON.stringify({ order, monthlyOverrides })
+    });
+  }
+
+  async getAlerts(): Promise<{ success: boolean; alerts: PlanAlert[] }> {
+    return this.request('/api/grow/alerts');
+  }
+
+  async respondToAlert(alertId: string, decision: 'accept' | 'dismiss', expectedDeadline?: string): Promise<{ success: boolean }> {
+    return this.request(`/api/grow/alerts/${encodeURIComponent(alertId)}`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, expectedDeadline })
+    });
+  }
+
+  async getFamilyPlan(): Promise<FamilyPlanState> {
+    return this.request<FamilyPlanState>('/api/scenarios/plan');
+  }
+
+  async editFamilyPlan(order: string[], monthlyOverrides: Record<string, number>, asPartner = false): Promise<FamilyPlanState> {
+    return this.request('/api/scenarios/plan/edit', {
+      method: 'POST',
+      body: JSON.stringify({ order, monthlyOverrides, ...(asPartner ? { as: 'partner' } : {}) })
+    });
+  }
+
+  async resetFamilyPlan(asPartner = false): Promise<FamilyPlanState> {
+    return this.request('/api/scenarios/plan/reset', { method: 'POST', body: JSON.stringify(asPartner ? { as: 'partner' } : {}) });
+  }
+
+  async approveFamilyPlan(asPartner = false): Promise<FamilyPlanState> {
+    return this.request('/api/scenarios/plan/approve', { method: 'POST', body: JSON.stringify(asPartner ? { as: 'partner' } : {}) });
+  }
+
+  async simulateScenario(levers: Partial<ScenarioLevers>, planId?: PlanOptionId): Promise<ScenarioResult> {
+    return this.request<ScenarioResult>('/api/scenarios/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ levers, planId })
+    });
+  }
+
+  async proposePlan(planId: PlanOptionId, note?: string): Promise<{ success: boolean; proposal: PlanProposal }> {
+    return this.request('/api/scenarios/proposals', {
+      method: 'POST',
+      body: JSON.stringify({ planId, note })
+    });
+  }
+
+  async getLatestProposal(): Promise<{ success: boolean; proposal: PlanProposal | null }> {
+    return this.request('/api/scenarios/proposals/latest');
+  }
+
+  async resolveProposal(planId: PlanOptionId): Promise<{ success: boolean; proposal: PlanProposal }> {
+    return this.request('/api/scenarios/proposals/resolve', {
+      method: 'POST',
+      body: JSON.stringify({ planId })
+    });
+  }
+
+  // Grow: investment readiness, advisory trigger and plan check-ins
+  async getGrowOverview(): Promise<GrowOverview> {
+    return this.request<GrowOverview>('/api/grow/overview');
   }
 
   // Multi-Agent Engine
@@ -202,7 +696,7 @@ class ApiService {
     });
   }
 
-  async sendChatMessage(message: string, history: ChatMessage[] = [], householdId?: string): Promise<{ success: boolean; reply: string; source: string; confidence: number }> {
+  async sendChatMessage(message: string, history: ChatMessage[] = [], householdId?: string): Promise<{ success: boolean; reply: string; source: string; confidence: number; verification?: AiVerification }> {
     return this.request('/api/agents/chat', {
       method: 'POST',
       body: JSON.stringify({ message, history, householdId })
@@ -226,6 +720,7 @@ class ApiService {
     priorities?: PlanRouteId[];
     protection?: { enabled: boolean; tier: 'essential' | 'enhanced' };
     predictionScenario?: PredictionScenario;
+    planId?: PlanOptionId;
     householdId?: string;
   }): Promise<{ success: boolean; plan: OwnlyPlan }> {
     return this.request('/api/finance/plan', {
@@ -241,10 +736,11 @@ class ApiService {
     });
   }
 
-  async executeRoute(routeId: string, amount: number, householdId?: string): Promise<any> {
+  // A transfer runs only when the owner of the source account confirms it.
+  async executeRoute(routeId: string, amount: number, fromAccount: string, confirmedBy: 'primary' | 'partner', householdId?: string): Promise<any> {
     return this.request('/api/finance/execute-route', {
       method: 'POST',
-      body: JSON.stringify({ routeId, amount, householdId })
+      body: JSON.stringify({ routeId, amount, fromAccount, confirmedBy, householdId })
     });
   }
 

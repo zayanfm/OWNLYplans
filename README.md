@@ -5,7 +5,7 @@ OWNLYplans is an AI-driven, multi-agent family financial cockpit embedded inside
 ---
 
 ### Core Value Pillars ("The White Paper Blueprint")
-1. **Household Financial View**: Consolidate multi-bank accounts, CPF (OA/SA/MA), IRAS, and life partner finances via **MockPass** (Singpass/MyInfo simulation) and **SGFinDex**.
+1. **Household Financial View**: Combine each adult's OCBC accounts, joint accounts, CPF (OA/SA/MA) and partner finances via **MockPass** (Singpass/MyInfo simulation). Each owner chooses whether an account is shared, total-only or private.
 2. **Progressive Financial Planning**: Adaptive monthly surplus optimization across high-yield cash sweeps (LionGlobal SGD MMF @ 3.85% p.a.), housing pots, and family milestones.
 3. **"We Guide. You Decide."**: Explainable AI recommendations with explicit confidence scores, transparent trade-offs, and user-controlled autonomy levels (*Notify & Wait*, *24h Window*, *Full Auto*).
 4. **"Stay Connected" RM Advisory Handoff**: Context-rich household financial snapshot export for OCBC Relationship Managers with granular privacy consent filtering.
@@ -27,8 +27,8 @@ OWNLYplans is an AI-driven, multi-agent family financial cockpit embedded inside
              ┌──────────────────────────┼─────────────────────────┐
              ▼                          ▼                         ▼
    ┌──────────────────┐       ┌──────────────────┐      ┌──────────────────┐
-   │ MockPass Service │       │ SGFinDex Service │      │ Household Store  │
-   │ (Singpass/MyInfo)│       │ (Banks, CPF, SGX)│      │  (State Engine)  │
+   │ MockPass Service │       │ Workspace Service│      │ Household Store  │
+   │ (Singpass/MyInfo)│       │ (OCBC + MyInfo)  │      │  (State Engine)  │
    └──────────────────┘       └──────────────────┘      └──────────────────┘
                                         │
                                         ▼
@@ -56,7 +56,7 @@ OWNLYplans is an AI-driven, multi-agent family financial cockpit embedded inside
 
 ### Household planning fixture
 
-The prototype has one coherent sandbox household used by login, SGFinDex, agents, plans and the homepage:
+The prototype has one coherent sandbox household used by login, the household workspace, agents, plans and the homepage:
 - `alex_family`: **Alex Lim and Lila Tan**, with their child **Percy Lim**, a pending 4-room BTO and S$1,340 monthly surplus.
 
 ---
@@ -69,7 +69,25 @@ The prototype has one coherent sandbox household used by login, SGFinDex, agents
 | `/api/auth/mockpass/authorize` | `GET/POST` | Review and approve the Alex Lim test identity |
 | `/api/auth/mockpass/callback` | `GET` | Exchange the one-time authorization code |
 | `/api/auth/mockpass/session/:id` | `GET` | Consume the authenticated sandbox profile once |
-| `/api/sgfindex/aggregate` | `GET` | Aggregated multi-bank, CPF, and net worth data |
+| `/api/household/workspace` | `GET` | Family workspace: MyInfo CPF plus consented OCBC accounts |
+| `/api/household/contributions` | `GET` | Who puts in what: bills split by take-home pay, what each person has left, family pot vs own goals vs kept free |
+| `/api/household/contributions/:member` | `PUT` | A person sets their own amounts; only they can (the partner's is simulated in the sandbox) |
+| `/api/household/sharing` | `POST` | Share an account (personal accounts start private; joint accounts are visible to both holders) |
+| `/api/household/leave` | `POST` | Anyone can leave: the partner's data stops being used, or the primary user deletes the household plan |
+| `/api/household/picture` | `GET` | Cash flow, goals with deadlines/dependencies, support per goal |
+| `/api/household/goals` | `GET` | Goal suggestions (with sources), the family's inputs and each goal's status |
+| `/api/household/goals/:key` | `PUT` | Confirm or edit a goal; only the owner can confirm a personal goal |
+| `/api/household/goals` | `POST` | Add the family's own goal |
+| `/api/household/goals/:key` | `DELETE` | Delete a custom goal or switch off a suggested one |
+| `/api/scenarios/plans` | `GET` | Recommended allocation plan plus two alternatives |
+| `/api/scenarios/plans/custom` | `POST` | The family's own priority order and monthly amounts; consequences flagged, never overridden |
+| `/api/scenarios/simulate` | `POST` | What-if levers: another child, income change, school fees, extra savings |
+| `/api/scenarios/proposals` | `POST` | Propose a plan to the partner (reply simulated after 3s) |
+| `/api/scenarios/proposals/latest` | `GET` | Latest proposal and the partner's reply |
+| `/api/scenarios/proposals/resolve` | `POST` | Record the agreed plan |
+| `/api/grow/overview` | `GET` | Investment readiness checks, suggested long-horizon contributions, advisory trigger |
+| `/api/grow/reviews/simulate` | `POST` | Scripted "3 months later" plan check-in |
+| `/api/grow/reviews/respond` | `POST` | Accept / revise / reject a check-in |
 | `/api/agents/analyze` | `POST` | Run 4-agent parallel financial analysis & NBAs |
 | `/api/agents/chat` | `POST` | Explainable, context-aware AI chatbot |
 | `/api/agents/status` | `GET` | Live telemetry of all 4 AI agents |

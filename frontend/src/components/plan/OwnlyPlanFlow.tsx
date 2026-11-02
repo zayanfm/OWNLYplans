@@ -1,71 +1,57 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import api, { AgentAnalysisData, MockPassAuthResponse } from '../../services/api';
-import { FALLBACK_FAMILY_MEMBERS, FALLBACK_SGFINDEX_INSTITUTIONS } from '../../constants/mockData';
+import api, { AgentAnalysisData, FamilyPicture, HouseholdWorkspace, MockPassAuthResponse, PlanOptionId } from '../../services/api';
+import { FALLBACK_FAMILY_MEMBERS } from '../../constants/mockData';
+import { FALLBACK_PLAN_OPTIONS } from '../../constants/planningFallback';
 import { AIPlanDashboard } from '../AIPlanDashboard';
 
 import { IntroStep } from './steps/IntroStep';
 import { SingpassLoginStep } from './steps/SingpassLoginStep';
-import { MyInfoReviewStep } from './steps/MyInfoReviewStep';
-import { SgFinDexStep } from './steps/SgFinDexStep';
-import { FamilyConsentStep } from './steps/FamilyConsentStep';
-import { InvitePendingStep } from './steps/InvitePendingStep';
-import { AccountsConnectedStep } from './steps/AccountsConnectedStep';
-import { AnalyzingStep } from './steps/AnalyzingStep';
-import { YourPlanStep } from './steps/YourPlanStep';
-import { FamilyMember, OwnlyPlan, OwnlyStep, PlanPreferences } from './types';
+import { HouseholdStep } from './steps/HouseholdStep';
+import { ContributionStep } from './steps/ContributionStep';
+import { SharedGoalsStep } from './steps/SharedGoalsStep';
+import { FALLBACK_PICTURE } from '../../constants/planningFallback';
+import { OurPlanStep } from './steps/OurPlanStep';
+import { FamilyMember, OwnlyPlan, OwnlyStep } from './types';
 import { personalizePlan } from './planPersonalization';
 
-const buildFallbackPlan = (preferences?: PlanPreferences): OwnlyPlan => {
-  const priorities = preferences?.priorities || ['housing', 'education', 'wealth'];
-  const split = preferences?.split || { housing: 0.5, education: 0.3, wealth: 0.2 };
-  const timelineYears = Number(preferences?.timeline || '5');
-  const predictionScenario = preferences?.predictionScenario || 'balanced';
-  const annualReturnRate = predictionScenario === 'growth' ? 0.065 : predictionScenario === 'conservative' ? 0.025 : 0.045;
-  const protectionEnabled = preferences?.protection.enabled !== false;
-  const protectionTier = preferences?.protection.tier || 'essential';
-  const monthlyPremium = protectionEnabled ? (protectionTier === 'enhanced' ? 52 : 28) : 0;
-  const monthlySurplus = 1340;
-  const investableSurplus = monthlySurplus - monthlyPremium;
-  const routeDetails = {
-    housing: ['r1', 'BTO Home Purchase Fund', 'OCBC 360 Savings Goal', 'Build the remaining BTO purchase amount by the selected horizon'],
-    education: ['r2', 'Percy’s Education Fund', 'OCBC Savings Goal + RoboInvest', 'Build education funding by the selected goal horizon'],
-    wealth: ['r3', 'Retirement & Liquid Wealth', 'OCBC RoboInvest + CPF', 'Grow retirement-ready assets while retaining liquidity'],
-  } as const;
-  const months = timelineYears * 12;
+// Offline: build the active plan from the saved optimiser output for the chosen option.
+const buildFallbackPlan = (planId: PlanOptionId): OwnlyPlan => {
+  const options = FALLBACK_PLAN_OPTIONS;
+  const option = options.plans.find((plan) => plan.id === planId) || options.plans[0];
+  const annualReturnRate = 0.045;
+  const months = 60;
   const monthlyRate = annualReturnRate / 12;
   const project = (amount: number) => Math.round(amount * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
-  const routes = priorities.map((key) => {
-    const amount = Math.round(investableSurplus * split[key]);
+  const routeDetails = {
+    housing: ['r1', 'BTO Home Purchase Fund', 'OCBC 360 Savings Goal', 'Build the BTO downpayment by key collection'],
+    education: ['r2', 'Percy’s Education Fund', 'OCBC Savings Goal + Blue Chip Investment Plan', 'Build education funding by age 18'],
+    wealth: ['r3', 'Retirement & Liquid Wealth', 'OCBC RoboInvest + CPF', 'Grow retirement savings, stepping up as earlier goals finish'],
+  } as const;
+  const routes = (['housing', 'education', 'wealth'] as const).map((key) => {
     const [id, name, targetProduct, purpose] = routeDetails[key];
-    return { id, key, name, targetProduct, purpose, monthlyAmount: amount, percentage: Math.round(split[key] * 100), projectedAtEnd: project(amount), status: 'ACTIVE_ROUTING' };
+    const monthlyAmount = option.routes[key];
+    return { id, key, name, targetProduct, purpose, monthlyAmount, percentage: Math.round(monthlyAmount / options.investable * 100), projectedAtEnd: project(monthlyAmount), status: 'ACTIVE_ROUTING' };
   });
-  const projectedAtHorizon = routes.reduce((total, route) => total + route.projectedAtEnd, 0);
 
   return {
-    monthlySurplus,
-    investableSurplus,
-    timelineYears,
-    autonomyMode: preferences?.mode || '24H_WINDOW',
-    predictionScenario,
-    priorities,
+    monthlySurplus: options.monthlySurplus,
+    investableSurplus: options.investable,
+    timelineYears: 5,
+    autonomyMode: 'NOTIFY_AND_WAIT',
+    predictionScenario: 'balanced',
+    priorities: ['housing', 'education', 'wealth'],
     routes,
-    protection: {
-      enabled: protectionEnabled,
-      tier: protectionTier,
-      monthlyPremium,
-      coverageAmount: protectionEnabled ? (protectionTier === 'enhanced' ? 300000 : 160000) : 0,
-      protectionGapClosed: protectionEnabled ? 160000 : 0,
-    },
+    protection: { enabled: true, tier: 'essential', monthlyPremium: options.protectionPremium, coverageAmount: 160000, protectionGapClosed: 160000 },
     assumptions: { annualReturnRate, inflationRate: 0.025 },
     summary: {
-      totalMonthlyRouted: investableSurplus,
-      totalMonthlyCommitted: monthlySurplus,
-      projected5YearAccumulation: Math.round(investableSurplus * 60 * (1 + annualReturnRate)),
-      projected10YearAccumulation: Math.round(investableSurplus * 120 * (1 + annualReturnRate * 2)),
-      projectedAtHorizon,
-      annualYieldLift: '+S$456 / year',
+      totalMonthlyRouted: options.investable,
+      totalMonthlyCommitted: options.monthlySurplus,
+      projected5YearAccumulation: Math.round(options.investable * 60 * (1 + annualReturnRate)),
+      projected10YearAccumulation: Math.round(options.investable * 120 * (1 + annualReturnRate * 2)),
+      projectedAtHorizon: routes.reduce((total, route) => total + route.projectedAtEnd, 0),
+      annualYieldLift: '+S$1,064 / year',
     },
   };
 };
@@ -115,14 +101,18 @@ export interface OwnlyPlanFlowProps {
   authenticatedProfile?: MockPassAuthResponse | null;
 }
 
+/**
+ * The OWNLYplan journey, one surface per stage:
+ * Setup (intro → Singpass → household → contribution) → Decide (shared goals → our plan) → Grow (cockpit).
+ */
 export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, initialPlan, onPlanActivated, authenticatedProfile }) => {
   const [step, setStep] = useState<OwnlyStep>(initialPlan ? 'cockpit' : 'intro');
   const [myInfo, setMyInfo] = useState<MockPassAuthResponse | null>(null);
-  const [aggregate, setAggregate] = useState<any>(null);
+  const [workspace, setWorkspace] = useState<HouseholdWorkspace | null>(null);
+  const [picture, setPicture] = useState<FamilyPicture | null>(null);
   const [family, setFamily] = useState<FamilyMember[]>([]);
   const [analysis, setAnalysis] = useState<AgentAnalysisData | null>(null);
   const [plan, setPlan] = useState<OwnlyPlan | null>(initialPlan || null);
-  const [sending, setSending] = useState<boolean>(false);
   const [savingPlan, setSavingPlan] = useState<boolean>(false);
 
   useEffect(() => {
@@ -132,10 +122,12 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     }
   }, [initialPlan, plan]);
 
+  const partnerJoined = family.some((m) => m.relation === 'Spouse' && m.status === 'APPROVED');
+
   const handleAuthenticated = (profile: MockPassAuthResponse) => {
     setMyInfo(profile);
     setFamily(buildFamilyFromProfile(profile));
-    setStep('myinfo');
+    setStep('household');
   };
 
   useEffect(() => {
@@ -144,65 +136,31 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
     }
   }, [authenticatedProfile, myInfo?.authenticatedAt]);
 
-  const handleToggleMember = (id: string) => {
-    setFamily((prev) => prev.map((m) => (m.id === id ? { ...m, selected: !m.selected } : m)));
+  const handleHouseholdReady = (result: HouseholdWorkspace) => {
+    setWorkspace(result);
+    // Agent analysis feeds the cockpit; run it in the background instead of a loading screen.
+    api.analyzeAgents()
+      .then((response) => setAnalysis(response.data))
+      .catch(() => setAnalysis(null));
+    setStep('contribution');
   };
 
-  const handleSendInvite = async () => {
-    const selected = family.filter((m) => m.selected);
-    if (selected.length === 0) {
-      setStep('connected');
-      return;
-    }
-    setSending(true);
-    try {
-      await api.inviteFamily(
-        selected.map((m) => ({ name: m.name, relation: m.relation, nric: m.maskedNric }))
-      );
-    } catch {
-      // Offline: the pending step resolves the simulated approval locally.
-    } finally {
-      setSending(false);
-    }
-    setFamily((prev) => prev.map((m) => (m.selected ? { ...m, status: 'PENDING' } : m)));
-    setStep('invited');
-  };
-
-  const handleApproved = useCallback(() => {
-    setFamily((prev) => prev.map((m) => (m.selected ? { ...m, status: 'APPROVED' } : m)));
-    setStep('connected');
-  }, []);
-
-  const handleAnalysisComplete = useCallback(async (result: AgentAnalysisData | null) => {
-    setAnalysis(result);
-    try {
-      const response = await api.generatePlan({});
-      setPlan(personalizePlan(response.plan, myInfo, aggregate));
-    } catch {
-      setPlan(personalizePlan(buildFallbackPlan(), myInfo, aggregate));
-    }
-    setStep('review');
-  }, [aggregate, myInfo]);
-
-  const handleConfirmPlan = useCallback(async (preferences: PlanPreferences) => {
+  const handleAgreed = useCallback(async (planId: PlanOptionId) => {
     setSavingPlan(true);
-    let finalPlan = personalizePlan(buildFallbackPlan(preferences), myInfo, aggregate);
+    let finalPlan = personalizePlan(buildFallbackPlan(planId), myInfo, workspace, picture);
     try {
-      const generated = await api.generatePlan(preferences);
-      finalPlan = personalizePlan(generated.plan, myInfo, aggregate);
+      const generated = await api.generatePlan({ planId });
+      finalPlan = personalizePlan(generated.plan, myInfo, workspace, picture);
       await api.approvePlan(finalPlan);
     } catch {
-      // The prototype remains usable offline with the same calculated plan.
+      // The prototype remains usable offline with the saved plan options.
     } finally {
       setPlan(finalPlan);
       setSavingPlan(false);
       setStep('cockpit');
       onPlanActivated?.(finalPlan);
     }
-  }, [aggregate, myInfo, onPlanActivated]);
-
-  const institutionsCount =
-    aggregate?.sgfindexConsent?.financialInstitutions?.length || FALLBACK_SGFINDEX_INSTITUTIONS.length;
+  }, [myInfo, onPlanActivated, picture, workspace]);
 
   return (
     <View style={styles.container}>
@@ -212,52 +170,47 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
         <SingpassLoginStep onAuthenticated={handleAuthenticated} onBack={() => setStep('intro')} />
       )}
 
-      {step === 'myinfo' && myInfo && (
-        <MyInfoReviewStep
+      {step === 'household' && (
+        <HouseholdStep
           profile={myInfo}
-          onNext={() => setStep('sgfindex')}
+          family={family}
+          onFamilyChange={setFamily}
+          onNext={handleHouseholdReady}
           onBack={() => setStep('singpass')}
         />
       )}
 
-      {step === 'sgfindex' && (
-        <SgFinDexStep
-          onNext={(result) => {
-            setAggregate(result);
-            setStep('family');
+      {step === 'contribution' && (
+        <ContributionStep
+          partnerJoined={partnerJoined}
+          jointBalance={(workspace?.accounts || []).filter((a) => a.owner === 'joint').reduce((sum, a) => sum + (a.balance || 0), 0)}
+          onNext={() => setStep('goals')}
+          onBack={() => setStep('household')}
+        />
+      )}
+
+      {step === 'goals' && (
+        <SharedGoalsStep
+          primaryName={myInfo?.user?.name?.split(' ')[0] || 'You'}
+          partnerName={myInfo?.partner?.name?.split(' ')[0] || null}
+          partnerJoined={partnerJoined}
+          onNext={() => {
+            // The cockpit personalises the plan with the family picture; load it in the background.
+            api.getPicture().then(setPicture).catch(() => setPicture(FALLBACK_PICTURE));
+            setStep('plan');
           }}
-          onBack={() => setStep('myinfo')}
+          onBack={() => setStep('contribution')}
         />
       )}
 
-      {step === 'family' && (
-        <FamilyConsentStep
-          members={family}
-          sending={sending}
-          onToggleMember={handleToggleMember}
-          onSendInvite={handleSendInvite}
-          onBack={() => setStep('sgfindex')}
-        />
-      )}
-
-      {step === 'invited' && <InvitePendingStep members={family} onApproved={handleApproved} />}
-
-      {step === 'connected' && (
-        <AccountsConnectedStep
-          members={family}
-          institutionsCount={institutionsCount}
-          onStartPlanning={() => setStep('analyzing')}
-        />
-      )}
-
-      {step === 'analyzing' && <AnalyzingStep onComplete={handleAnalysisComplete} />}
-
-      {step === 'review' && plan && (
-        <YourPlanStep
-          plan={plan}
+      {step === 'plan' && (
+        <OurPlanStep
+          primaryName={myInfo?.user?.name?.split(' ')[0]}
+          partnerFirstName={myInfo?.partner?.name?.split(' ')[0]}
+          partnerJoined={partnerJoined}
           saving={savingPlan}
-          onBack={() => setStep('connected')}
-          onConfirm={handleConfirmPlan}
+          onBack={() => setStep(plan ? 'cockpit' : 'goals')}
+          onAgreed={handleAgreed}
         />
       )}
 
@@ -267,8 +220,9 @@ export const OwnlyPlanFlow: React.FC<OwnlyPlanFlowProps> = ({ onHelp, onNav, ini
           analysis={analysis}
           activePlan={plan}
           profile={myInfo}
-          aggregate={aggregate}
-          onEditPlan={() => setStep('review')}
+          aggregate={workspace}
+          onEditPlan={() => setStep('plan')}
+          onEditGoals={() => setStep('goals')}
         />
       )}
     </View>

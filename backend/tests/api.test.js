@@ -1,6 +1,7 @@
 process.env.NODE_ENV = 'test';
 const assert = require('assert');
 const app = require('../server');
+const { confirmSuggestedGoals } = require('./helpers');
 
 async function testApi() {
   console.log('--- RUNNING API INTEGRATION TESTS ---');
@@ -22,12 +23,57 @@ async function testApi() {
     assert(authRes.authorizationUrl.includes('/api/auth/mockpass/authorize'), 'Sandbox authorization URL expected');
     console.log('✓ Custom MockPass authorization handoff OK');
 
-    // 3. SGFinDex Aggregation
-    const sgfRes = await fetch(`${baseUrl}/api/sgfindex/aggregate`).then(r => r.json());
-    assert(sgfRes.success, 'SGFinDex should succeed');
-    assert(Number.isFinite(sgfRes.summary.netWorth), 'Net worth should be calculated including the mortgage');
-    assert.strictEqual(sgfRes.summary.totalLiquidCash, 36000, 'Linked cash should match the Alex fixture');
-    console.log('✓ SGFinDex Aggregation OK');
+    // 3. Family Financial Workspace (MyInfo + OCBC accounts)
+    const wsRes = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
+    assert(wsRes.success, 'Workspace should succeed');
+    assert.deepStrictEqual(wsRes.sources, ['Singpass MyInfo', 'OCBC accounts']);
+    assert.strictEqual(wsRes.partnerConsent, 'NOT_INVITED', 'Partner accounts wait for consent');
+    assert.strictEqual(wsRes.summary.totalLiquidCash, 9200, 'Only the joint account counts until Alex chooses to share');
+    const share360 = await fetch(`${baseUrl}/api/household/sharing`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountNumber: '512-882910-001', sharing: 'FULL' }) }).then(r => r.json());
+    assert.strictEqual(share360.sharing, 'FULL');
+    const wsShared = await fetch(`${baseUrl}/api/household/workspace`).then(r => r.json());
+    assert.strictEqual(wsShared.summary.totalLiquidCash, 27650, 'Alex opted in his 360 account');
+    assert(wsRes.accounts.filter(a => a.owner === 'partner').every(a => a.balance === null), 'Partner balances hidden before consent');
+    const manualRes = await fetch(`${baseUrl}/api/household/manual-assets`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.strictEqual(manualRes.status, 404, 'Savings outside OCBC are not collected');
+    const jointSharing = await fetch(`${baseUrl}/api/household/sharing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountNumber: '512-773104-003', sharing: 'PRIVATE' })
+    });
+    assert.strictEqual(jointSharing.status, 400, 'Joint accounts cannot be made private by one holder');
+    console.log('✓ Family Workspace OK');
+
+    // 3b. Goals start empty; each adult adds goals through the assistant.
+    const post = (path, body) => fetch(`${baseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const emptyGoals = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
+    assert.strictEqual(emptyGoals.goals.length, 0, 'No goals until the family adds them');
+    assert(emptyGoals.available.every(g => g.source), 'Every suggestion shows where it came from');
+    const education = await post('/api/household/goals/propose', { type: 'EDUCATION', childIndex: 0 }).then(r => r.json());
+    assert(education.goal.confirmed, 'Before the partner joins, Alex alone approves shared goals');
+    const duplicate = await post('/api/household/goals/propose', { type: 'EDUCATION', childIndex: 0 });
+    assert.strictEqual(duplicate.status, 409, 'The same goal cannot be added twice');
+    const partnerPropose = await post('/api/household/goals/propose', { type: 'RETIREMENT', as: 'partner' });
+    assert.strictEqual(partnerPropose.status, 403, 'Lila acts only after she joins');
+    const badPut = await fetch(`${baseUrl}/api/household/goals/education`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startYear: 2001 }) });
+    assert.strictEqual(badPut.status, 400, 'Past start years are rejected');
+    const customRes = await post('/api/household/goals', { name: 'Renovation', amount: 25000, dueDate: '2029-01' }).then(r => r.json());
+    assert(customRes.goal.key.startsWith('custom_'), 'Custom goal added');
+    const deleted = await fetch(`${baseUrl}/api/household/goals/${customRes.goal.key}`, { method: 'DELETE' }).then(r => r.json());
+    assert(deleted.removed, 'Custom goal removed');
+    const done = await post('/api/household/goals/done', {}).then(r => r.json());
+    assert(done.ready, 'With every goal approved, saying done lets the family move on');
+    confirmSuggestedGoals('alex_family', { includePartner: false });
+    console.log('✓ Shared Goals OK');
+
+    // 3c. Our Family Picture
+    const pictureRes = await fetch(`${baseUrl}/api/household/picture`).then(r => r.json());
+    assert(pictureRes.success, 'Picture should succeed');
+    assert.strictEqual(pictureRes.cashflow.freeToPlan, 1340);
+    const educationGoal = pictureRes.goals.find(g => g.key === 'education');
+    assert(educationGoal.support.some(s => s.id === 'cda_matching_percy'), 'CDA support appears inside the education goal');
+    assert(pictureRes.support.notEligible.some(s => s.id === 'ehg_housing_grant'), 'Ineligible schemes are explained');
+    console.log('✓ Family Picture OK');
 
     // 4. Multi-Agent Analysis
     const agentRes = await fetch(`${baseUrl}/api/agents/analyze`, {
@@ -55,8 +101,7 @@ async function testApi() {
         split: { housing: 0.4, education: 0.2, wealth: 0.4 },
         priorities: ['wealth', 'housing', 'education'],
         protection: { enabled: true, tier: 'enhanced' },
-        predictionScenario: 'growth',
-        mode: 'FULL_AUTO'
+        predictionScenario: 'growth'
       })
     }).then(r => r.json());
     assert(tailoredPlanRes.success, 'Tailored plan should generate');
@@ -65,8 +110,71 @@ async function testApi() {
     assert.strictEqual(tailoredPlanRes.plan.predictionScenario, 'growth', 'Prediction scenario should be preserved');
     assert.strictEqual(tailoredPlanRes.plan.timelineYears, 10, 'Timeline should be preserved');
     assert.strictEqual(tailoredPlanRes.plan.summary.totalMonthlyCommitted, 1340, 'Routes and protection should fit the available surplus');
+    const autoMode = await fetch(`${baseUrl}/api/finance/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'FULL_AUTO' }) });
+    assert.strictEqual(autoMode.status, 400, 'Automatic execution is not offered');
+    const unconfirmed = await fetch(`${baseUrl}/api/finance/execute-route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routeId: 'r1', amount: 500, fromAccount: '512-441920-002', confirmedBy: 'primary' }) });
+    assert.strictEqual(unconfirmed.status, 400, 'Alex cannot move money out of Lila\u2019s account');
+    const confirmed = await fetch(`${baseUrl}/api/finance/execute-route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routeId: 'r1', amount: 500, fromAccount: '512-773104-003', confirmedBy: 'primary' }) }).then(r => r.json());
+    assert(confirmed.success, 'Either holder can confirm a joint-account transfer');
+    const unagreed = await fetch(`${baseUrl}/api/finance/approve-plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: { optimiserPlanId: 'balanced' } }) });
+    assert.strictEqual(unagreed.status, 409, 'A household plan needs both adults to agree');
     console.log('✓ Editable Plan Configuration OK');
     console.log('✓ Finance Overview OK');
+
+    const optimisedPlanRes = await fetch(`${baseUrl}/api/finance/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId: 'education_first' })
+    }).then(r => r.json());
+    assert.strictEqual(optimisedPlanRes.plan.optimiserPlanId, 'education_first', 'Without a split, the chosen optimiser plan drives routing');
+    const optimisedTotal = optimisedPlanRes.plan.routes.reduce((sum, route) => sum + route.monthlyAmount, 0)
+      + optimisedPlanRes.plan.emergencyReserve.monthlyAmount + optimisedPlanRes.plan.customGoals.monthlyAmount + optimisedPlanRes.plan.keptFree;
+    assert.strictEqual(optimisedTotal, optimisedPlanRes.plan.investableSurplus, 'Every dollar is allocated or kept free');
+    const contributionsRes = await fetch(`${baseUrl}/api/household/contributions`).then(r => r.json());
+    assert.strictEqual(contributionsRes.people.length, 2);
+    const setPartner = await fetch(`${baseUrl}/api/household/contributions/partner`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toShared: 100, toPersonal: 0 }) });
+    assert.strictEqual(setPartner.status, 403, 'Alex cannot set the partner contribution');
+    const setOwn = await fetch(`${baseUrl}/api/household/contributions/primary`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toShared: 300, toPersonal: 100 }) }).then(r => r.json());
+    assert.strictEqual(setOwn.contribution.toShared, 300);
+    console.log('✓ Optimiser-Driven Plan OK');
+
+    // 5b. Decision engine endpoints
+    const plansRes = await fetch(`${baseUrl}/api/scenarios/plans`).then(r => r.json());
+    assert.strictEqual(plansRes.recommendedPlanId, 'balanced');
+    const simulateRes = await fetch(`${baseUrl}/api/scenarios/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ levers: { incomeChangePct: -10 } })
+    }).then(r => r.json());
+    assert(simulateRes.success && simulateRes.surplusAfter < simulateRes.surplusBefore, 'Income cut lowers the surplus');
+    const ownPlanRes = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: ['education', 'emergency'], monthlyOverrides: { education: 300 } })
+    }).then(r => r.json());
+    assert.strictEqual(ownPlanRes.plan.id, 'custom');
+    const tooMuch = await fetch(`${baseUrl}/api/scenarios/plans/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monthlyOverrides: { emergency: 50000 } })
+    });
+    assert.strictEqual(tooMuch.status, 400, 'Amounts above the investable surplus are rejected');
+    const customPlanRes = await fetch(`${baseUrl}/api/finance/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId: 'custom' }) }).then(r => r.json());
+    assert.strictEqual(customPlanRes.plan.optimiserPlanId, 'custom', 'A saved custom plan can be activated');
+    console.log('✓ Plans & What-if Endpoints OK');
+
+    // 5c. Grow: readiness, advisory trigger, scripted check-in
+    const growRes = await fetch(`${baseUrl}/api/grow/overview`).then(r => r.json());
+    assert(growRes.readiness.ready, 'Floor, short-term goal and risk profile checks pass');
+    assert(growRes.readiness.suggestions.every(s => s.goalKey !== 'housing' && s.goalKey !== 'emergency'), 'Only long-horizon goals are invested');
+    assert(growRes.readiness.handoff, 'Execution hands off to OCBC');
+    assert(growRes.advisory.recommended, 'BTO + child + protection gap triggers the advisory card');
+    const reviewRes = await fetch(`${baseUrl}/api/grow/reviews/simulate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json());
+    assert.strictEqual(reviewRes.review.surplusAfter, reviewRes.review.surplusBefore - 200, 'Check-in applies the detected S$200 increase');
+    assert.deepStrictEqual(reviewRes.review.suggestions.map(s => s.id), ['accept', 'revise', 'reject']);
+    const badDecision = await fetch(`${baseUrl}/api/grow/reviews/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewId: reviewRes.review.id, decision: 'maybe' }) });
+    assert.strictEqual(badDecision.status, 400, 'Unknown review decisions are rejected');
+    console.log('✓ Grow Overview & Check-in OK');
 
     // 6. Persona selection belongs to the sandbox login page
     const personaRes = await fetch(`${baseUrl}/api/auth/personas`).then(r => r.json());
@@ -109,7 +217,28 @@ async function testApi() {
     }).then(r => r.json());
     assert(rmRes.success, 'RM summary should succeed');
     assert(rmRes.data.exportId.startsWith('RM-BRIEF'), 'Briefing ID generated');
+    assert(rmRes.data.familyGoals.length >= 3, 'Briefing carries the family goals (Lila has not joined, so not her retirement)');
+    assert(rmRes.data.scenariosExplored.length > 0, 'Briefing carries the what-ifs the family explored');
+    assert(rmRes.data.decisionsForAdviser.length > 0, 'Briefing lists decisions needing professional review');
+    const privateRes = await fetch(`${baseUrl}/api/rm/household-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consentOptions: { includeScenarios: false, includeMilestones: false } })
+    }).then(r => r.json());
+    assert.strictEqual(privateRes.data.scenariosExplored.length, 0, 'Scenarios respect consent');
+    assert.strictEqual(privateRes.data.familyGoals.length, 0, 'Goals respect consent');
     console.log('✓ RM Brief Export OK');
+
+    // 9. Anyone can leave
+    const partnerLeaves = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'partner' }) }).then(r => r.json());
+    assert(partnerLeaves.success && partnerLeaves.reviewNote, 'Partner leaves with a review note for Alex');
+    const leaveAgain = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'partner' }) });
+    assert.strictEqual(leaveAgain.status, 409);
+    const primaryLeaves = await fetch(`${baseUrl}/api/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member: 'primary' }) }).then(r => r.json());
+    assert(primaryLeaves.deleted, 'Leaving as the primary user deletes the household data');
+    const fresh = await fetch(`${baseUrl}/api/household/goals`).then(r => r.json());
+    assert.strictEqual(fresh.goals.length, 0, 'No goals survive deletion');
+    console.log('✓ Leave Household OK');
 
     console.log('--- ALL API INTEGRATION TESTS PASSED ---\n');
   } finally {

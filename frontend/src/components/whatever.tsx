@@ -157,7 +157,8 @@ export const OwnlyScreen: React.FC<{
   onEditPlan?: () => void;
 }> = ({ onNav, analysis: initialAnalysis, activePlan, onEditPlan }) => {
   const insets = useSafeAreaInsets();
-  const initialMode = activePlan?.autonomyMode === 'FULL_AUTO' ? 'High' : activePlan?.autonomyMode === 'NOTIFY_AND_WAIT' ? 'Low' : 'Medium';
+  // Automatic modes were removed; every transfer is confirmed by the account owner.
+  const initialMode = 'Low';
   const [mode, setMode] = useState<string>(initialMode);
   const [approved, setApproved] = useState<boolean>(Boolean(activePlan));
   const [loading, setLoading] = useState<boolean>(false);

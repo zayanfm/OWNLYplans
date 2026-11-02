@@ -1,4 +1,5 @@
-const geminiService = require('../services/geminiService');
+const { spareCash } = require('../services/goalModel');
+const { plannableAccounts } = require('../services/workspaceService');
 
 class HealthAgent {
   async analyze(household) {
@@ -20,10 +21,12 @@ class HealthAgent {
     const protectionGap = Math.max(0, recommendedLife - existingLife);
 
     // Idle Cash Analysis
-    const lowYieldCash = [...accounts.ocbc, ...accounts.otherBanks].reduce((sum, account) => (
+    const lowYieldCash = plannableAccounts(household).reduce((sum, account) => (
       account.interestRate <= 0.05 ? sum + Number(account.balance || 0) : sum
     ), 0);
-    const idleCashInLowYield = Math.max(0, lowYieldCash - emergencyFund);
+    const idleCashInLowYield = spareCash(household);
+    // The emergency buffer itself sits in base-interest accounts; a T+0 money market fund keeps it liquid.
+    const lowYieldBuffer = Math.min(emergencyFund, lowYieldCash);
 
     // Compute Health Score (0-100)
     let score = 70;
@@ -52,13 +55,17 @@ class HealthAgent {
         protectionGap,
         existingCoverage: existingLife,
         recommendedCoverage: recommendedLife,
-        idleCashIdentified: idleCashInLowYield
+        idleCashIdentified: idleCashInLowYield,
+        lowYieldBuffer
       },
       findings: [
         `Emergency buffer stands at ${bufferMonths} months of household expenses (target: 6 months).`,
         idleCashInLowYield > 0
-          ? `S$${idleCashInLowYield.toLocaleString()} idle cash is earning 0.05% base interest across secondary accounts.`
-          : `Cash balances are efficiently deployed across high-yield vaults.`,
+          ? `S$${idleCashInLowYield.toLocaleString()} OCBC cash is above the emergency floor and a month of working cash.`
+          : `No spare cash beyond the emergency floor and a month of working cash.`,
+        lowYieldBuffer > 0
+          ? `The S$${lowYieldBuffer.toLocaleString()} emergency buffer earns 0.05% base interest.`
+          : `The emergency buffer is not held in base-interest accounts.`,
         protectionGap > 0
           ? `Identified S$${protectionGap.toLocaleString()} family protection gap against outstanding liabilities.`
           : `Life and disability protection is fully covered for all dependents.`

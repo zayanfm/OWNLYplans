@@ -12,7 +12,11 @@
       "employment": "Product Lead (Technology)",
       "monthlyGrossIncome": 5500,
       "monthlyTakeHome": 4400,
-      "cpf": { "oa": 42000, "sa": 28000, "ma": 18000 }
+      "cpf": {
+        "oa": 42000,
+        "sa": 28000,
+        "ma": 18000
+      }
     },
     "partner": {
       "nric": "S****56B",
@@ -23,7 +27,21 @@
       "monthlyGrossIncome": 4800,
       "monthlyTakeHome": 3840,
       "linked": true,
-      "cpf": { "oa": 38000, "sa": 22000, "ma": 16000 }
+      "cpf": {
+        "oa": 38000,
+        "sa": 22000,
+        "ma": 16000
+      },
+      "consentChoices": {
+        "shareAccounts": [
+          "512-441920-002"
+        ],
+        "contribution": {
+          "toShared": 560,
+          "toPersonal": 186
+        },
+        "note": "Sandbox: what Lila chooses in her own app when she accepts. Her income is shared for the household cash flow; her savings account stays private. She puts S$560/month into the family pot and S$186/month into her own retirement, keeping the rest free."
+      }
     },
     "dependents": [
       {
@@ -32,7 +50,15 @@
         "age": 3,
         "birthDate": "2023-04-18",
         "nric": "T****91Z",
-        "citizenship": "Singapore Citizen"
+        "citizenship": "Singapore Citizen",
+        "cda": {
+          "balance": 8000,
+          "firstStepGrantReceived": 5000,
+          "parentDeposits": 1500,
+          "governmentMatched": 1500,
+          "matchingCap": 4000,
+          "closesOn": "2035-12"
+        }
       }
     ],
     "housing": {
@@ -59,32 +85,177 @@
         "recommendedLifeCoverage": 410000,
         "protectionGap": 160000,
         "hospitalPlan": "Great Eastern GREAT SupremeHealth Standard"
-      }
+      },
+      "commitments": [
+        {
+          "id": "rent",
+          "label": "Rent until BTO keys",
+          "category": "HOUSING",
+          "monthlyAmount": 2000,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "infantcare",
+          "label": "Infant care (after subsidy)",
+          "category": "CHILDCARE",
+          "monthlyAmount": 800,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "groceries",
+          "label": "Groceries & household",
+          "category": "LIVING",
+          "monthlyAmount": 1400,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "transport",
+          "label": "Transport",
+          "category": "LIVING",
+          "monthlyAmount": 450,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "insurance",
+          "label": "Insurance premiums",
+          "category": "INSURANCE",
+          "monthlyAmount": 350,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "utilities",
+          "label": "Utilities, phone & internet",
+          "category": "LIVING",
+          "monthlyAmount": 300,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "parents",
+          "label": "Allowance to parents",
+          "category": "FAMILY",
+          "monthlyAmount": 600,
+          "essential": true,
+          "owner": "joint"
+        },
+        {
+          "id": "rsp",
+          "label": "RoboInvest regular savings plan",
+          "category": "SAVINGS",
+          "monthlyAmount": 300,
+          "essential": false,
+          "owner": "primary"
+        },
+        {
+          "id": "lifestyle",
+          "label": "Dining, lifestyle & subscriptions",
+          "category": "LIFESTYLE",
+          "monthlyAmount": 700,
+          "essential": false,
+          "owner": "joint"
+        }
+      ]
     },
     "spendingInsights": {
       "analysisWindowDays": 90,
       "recurringSubscriptions": [
-        { "merchant": "Streaming bundle", "monthlyAmount": 31.98, "usage": "LOW", "recommendation": "REVIEW" },
-        { "merchant": "Fitness app", "monthlyAmount": 22.02, "usage": "LOW", "recommendation": "REVIEW" },
-        { "merchant": "Cloud storage", "monthlyAmount": 9.99, "usage": "HIGH", "recommendation": "KEEP" },
-        { "merchant": "Family music", "monthlyAmount": 16.98, "usage": "HIGH", "recommendation": "KEEP" }
+        {
+          "merchant": "Streaming bundle",
+          "monthlyAmount": 31.98,
+          "usage": "LOW",
+          "recommendation": "REVIEW"
+        },
+        {
+          "merchant": "Fitness app",
+          "monthlyAmount": 22.02,
+          "usage": "LOW",
+          "recommendation": "REVIEW"
+        },
+        {
+          "merchant": "Cloud storage",
+          "monthlyAmount": 9.99,
+          "usage": "HIGH",
+          "recommendation": "KEEP"
+        },
+        {
+          "merchant": "Family music",
+          "monthlyAmount": 16.98,
+          "usage": "HIGH",
+          "recommendation": "KEEP"
+        }
       ],
       "reviewableMonthlySavings": 54,
       "method": "Recurring merchant detection across linked-account transaction categories"
     },
     "accounts": {
       "ocbc": [
-        { "type": "OCBC 360 Account", "number": "512-882910-001", "holder": "Alex Lim", "balance": 18450, "interestRate": 0.05, "role": "Emergency / Salary credit" },
-        { "type": "OCBC Frank Account", "number": "512-441920-002", "holder": "Lila Tan", "balance": 4550, "interestRate": 0.05, "role": "Daily Expenses" }
-      ],
-      "otherBanks": [
-        { "bank": "DBS", "type": "Multiplier Account", "number": "012-99381-2", "holder": "Alex Lim", "balance": 9200, "interestRate": 0.05 },
-        { "bank": "UOB", "type": "One Account", "number": "311-22819-5", "holder": "Lila Tan", "balance": 3800, "interestRate": 0.05 }
+        {
+          "type": "OCBC 360 Account",
+          "number": "512-882910-001",
+          "holder": "Alex Lim",
+          "owner": "primary",
+          "sharing": "PRIVATE",
+          "balance": 18450,
+          "interestRate": 0.05,
+          "role": "Emergency / Salary credit"
+        },
+        {
+          "type": "OCBC Frank Account",
+          "number": "512-441920-002",
+          "holder": "Lila Tan",
+          "owner": "partner",
+          "sharing": "PRIVATE",
+          "balance": 4550,
+          "interestRate": 0.05,
+          "role": "Daily Expenses"
+        },
+        {
+          "type": "OCBC 360 Joint Account",
+          "number": "512-773104-003",
+          "holder": "Alex Lim & Lila Tan",
+          "owner": "joint",
+          "sharing": "FULL",
+          "balance": 9200,
+          "interestRate": 0.05,
+          "role": "Joint household bills"
+        },
+        {
+          "type": "OCBC Monthly Savings Account",
+          "number": "512-660281-004",
+          "holder": "Lila Tan",
+          "owner": "partner",
+          "sharing": "PRIVATE",
+          "balance": 3800,
+          "interestRate": 0.05,
+          "role": "Personal savings"
+        }
       ],
       "investments": [
-        { "platform": "OCBC RoboInvest", "name": "Global Balanced Growth Portfolio", "value": 14200, "unrealizedGain": "+6.4%" },
-        { "platform": "LionGlobal", "name": "LionGlobal SGD Money Market Fund", "value": 0, "yieldRate": 0.0385 }
+        {
+          "owner": "primary",
+          "platform": "OCBC RoboInvest",
+          "name": "Global Balanced Growth Portfolio",
+          "value": 14200,
+          "unrealizedGain": "+6.4%"
+        },
+        {
+          "owner": "joint",
+          "platform": "LionGlobal",
+          "name": "LionGlobal SGD Money Market Fund",
+          "value": 0,
+          "yieldRate": 0.0385
+        }
       ]
+    },
+    "riskProfile": {
+      "level": "BALANCED",
+      "assessedVia": "Sandbox questionnaire",
+      "lastReviewed": "2026-06"
     }
   }
 }

@@ -1,4 +1,4 @@
-import type { MockPassAuthResponse } from '../../services/api';
+import type { FamilyGoal, FamilyPicture, MockPassAuthResponse } from '../../services/api';
 import type { GoalOutlook, HouseholdSnapshot, OwnlyPlan, PlanRouteId, PredictionScenario } from './types';
 
 const titleCase = (value: string) => value.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -34,12 +34,25 @@ const completionDate = (current: number, target: number, monthly: number, annual
   return 'Beyond 30 years';
 };
 
+const parseMonth = (isoMonth: string) => {
+  const [year, month] = isoMonth.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, 1);
+};
+
+// Combine the backend's goals for one route (e.g. both retirement goals) into a single baseline.
+const routeBaseline = (goals: FamilyGoal[]) => ({
+  current: goals.reduce((sum, goal) => sum + goal.currentAmount, 0),
+  target: goals.reduce((sum, goal) => sum + goal.targetAmount, 0),
+  date: parseMonth([...goals].sort((a, b) => a.deadline.localeCompare(b.deadline))[0].deadline),
+});
+
 const scenarioRate = (scenario: PredictionScenario) => scenario === 'growth' ? 0.065 : scenario === 'conservative' ? 0.025 : 0.045;
 
 export const personalizePlan = (
   plan: OwnlyPlan,
   profile: MockPassAuthResponse | null,
   aggregate: any | null,
+  picture?: FamilyPicture | null,
 ): OwnlyPlan => {
   const now = new Date();
   const rawName = profile?.user?.name || plan.householdSnapshot?.primaryName || 'Alex Lim';
@@ -72,7 +85,7 @@ export const personalizePlan = (
       ? [profile.user.cpf, profile.partner?.cpf].filter(Boolean).reduce((total, cpf) => total + Object.values(cpf || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0)
       : 0),
     emergencyFund: aggregate?.summary?.emergencyFund || 0,
-    lastSynced: aggregate?.sgfindexConsent?.lastSynced || profile?.authenticatedAt || new Date().toISOString(),
+    lastSynced: aggregate?.lastSynced || profile?.authenticatedAt || new Date().toISOString(),
   };
 
   const rates: Record<PlanRouteId, number> = {
@@ -107,7 +120,28 @@ export const personalizePlan = (
     },
   };
 
-  const goalOutlooks: GoalOutlook[] = plan.routes.map((route) => {
+  // Prefer the targets and dates the family confirmed in the planning engine.
+  (['housing', 'education', 'wealth'] as PlanRouteId[]).forEach((key) => {
+    const goals = (picture?.goals || []).filter((goal) => goal.routeKey === key && goal.planned);
+    if (!goals.length) return;
+    const real = routeBaseline(goals);
+    baselines[key] = {
+      ...baselines[key],
+      label: goals.length === 1 ? goals[0].name : baselines[key].label,
+      current: real.current,
+      target: real.target,
+      date: real.date,
+      data: goals.map((goal) => goal.basis),
+    };
+  });
+
+  // Only show routes the family actually has a goal for; nothing is assumed (e.g. no home goal
+  // unless they added one).
+  const activeRoutes = picture
+    ? plan.routes.filter((route) => picture.goals.some((goal) => goal.routeKey === route.key && goal.planned))
+    : plan.routes;
+
+  const goalOutlooks: GoalOutlook[] = activeRoutes.map((route) => {
     const baseline = baselines[route.key];
     const months = monthCount(now, baseline.date);
     const rate = rates[route.key];
@@ -149,7 +183,7 @@ export const personalizePlan = (
     ...plan,
     householdSnapshot: snapshot,
     goalOutlooks,
-    routes: plan.routes.map((route) => ({
+    routes: activeRoutes.map((route) => ({
       ...route,
       name: routeLabels[route.key].name,
       purpose: routeLabels[route.key].purpose,

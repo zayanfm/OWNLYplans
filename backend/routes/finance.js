@@ -30,14 +30,12 @@ router.get('/overview', (req, res) => {
         monthlySurplus: household.financials.monthlySurplus,
         emergencyFund: household.financials.emergencyFund,
         totalNetWorth: (household.accounts.ocbc.reduce((s, a) => s + a.balance, 0) +
-          household.accounts.otherBanks.reduce((s, a) => s + a.balance, 0) +
           household.accounts.investments.reduce((s, a) => s + a.value, 0) +
           household.primaryUser.cpf.oa + household.primaryUser.cpf.sa + household.primaryUser.cpf.ma +
           (household.partner ? (household.partner.cpf.oa + household.partner.cpf.sa + household.partner.cpf.ma) : 0))
       },
       accounts: {
         ocbc: household.accounts.ocbc,
-        otherBanks: household.accounts.otherBanks,
         investments: household.accounts.investments
       },
       routes: plan.routes,
@@ -59,14 +57,15 @@ router.get('/overview', (req, res) => {
  */
 router.post('/plan', (req, res) => {
   try {
-    const { householdId, timeline, split, mode, priorities, protection, predictionScenario } = req.body || {};
+    const { householdId, timeline, split, mode, priorities, protection, predictionScenario, planId } = req.body || {};
     const plan = plannerService.generatePlan(householdId, {
       timeline,
       split,
       mode,
       priorities,
       protection,
-      predictionScenario
+      predictionScenario,
+      planId
     });
     res.json({ success: true, plan });
   } catch (error) {
@@ -84,7 +83,7 @@ router.post('/approve-plan', (req, res) => {
     const approved = plannerService.approvePlan(householdId, plan);
     res.json(approved);
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    res.status(error.status || 400).json({ success: false, error: error.message });
   }
 });
 
@@ -94,8 +93,8 @@ router.post('/approve-plan', (req, res) => {
  */
 router.post('/execute-route', (req, res) => {
   try {
-    const { householdId, routeId, amount } = req.body || {};
-    const result = plannerService.executeRoute(householdId, routeId, amount);
+    const { householdId, routeId, amount, fromAccount, confirmedBy } = req.body || {};
+    const result = plannerService.executeRoute(householdId, routeId, amount, { fromAccount, confirmedBy });
     res.json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

@@ -2,6 +2,9 @@ const healthAgent = require('./healthAgent');
 const goalsAgent = require('./goalsAgent');
 const grantsAgent = require('./grantsAgent');
 const geminiService = require('../services/geminiService');
+const optimiserService = require('../services/optimiserService');
+const growService = require('../services/growService');
+const numberCheck = require('../services/numberCheck');
 
 class OrchestratorAgent {
   async runFullAnalysis(household, options = {}) {
@@ -17,25 +20,29 @@ class OrchestratorAgent {
     // 2. Synthesize prioritized Next-Best Actions (NBAs)
     const nextBestActions = [];
 
-    // NBA 1: Cashflow Yield Lift (LionGlobal SGD MMF)
+    // NBA 1: Earn more on the emergency buffer (LionGlobal SGD MMF keeps it T+0 liquid)
+    const bufferToMove = healthRes.metrics.lowYieldBuffer || 0;
     const idleCash = healthRes.metrics.idleCashIdentified || 0;
-    const annualYieldGain = Number((idleCash * (0.0385 - 0.0005)).toFixed(0));
-    nextBestActions.push({
-      id: 'nba_sweep_mmf',
-      title: 'Sweep Idle Cash to LionGlobal SGD MMF',
-      category: 'CASHFLOW',
-      confidence: 0.98,
-      impact: `+S$${annualYieldGain}/year Net Yield`,
-      reason: `Boosts annual yield on S$${idleCash.toLocaleString()} secondary bank cash from 0.05% to 3.85% p.a. with zero lock-in.`,
-      urgency: 'HIGH',
-      badge: 'Immediate Yield Lift',
-      actionPayload: {
-        type: 'AUTO_SWEEP',
-        source: 'DBS & Secondary Accounts',
-        destination: 'LionGlobal SGD Money Market Fund',
-        amount: idleCash
-      }
-    });
+    const annualYieldGain = Number((bufferToMove * (0.0385 - 0.0005)).toFixed(0));
+    if (bufferToMove > 0) {
+      nextBestActions.push({
+        id: 'nba_sweep_mmf',
+        title: 'Earn More on Your Emergency Buffer',
+        category: 'CASHFLOW',
+        confidence: 0.95,
+        impact: `+S$${annualYieldGain.toLocaleString()}/year Net Yield`,
+        reason: `Your S$${bufferToMove.toLocaleString()} emergency buffer earns 0.05% base interest. LionGlobal SGD MMF has no lock-in and T+0 withdrawal, so the buffer stays available.`,
+        urgency: 'HIGH',
+        badge: 'Immediate Yield Lift',
+        actionPayload: {
+          type: 'CONFIRM_TRANSFER',
+          requiresConfirmationBy: 'account owner',
+          source: 'OCBC emergency buffer',
+          destination: 'LionGlobal SGD Money Market Fund',
+          amount: bufferToMove
+        }
+      });
+    }
 
     // NBA 5: Household subscription review (derived from mock linked transactions)
     const spendingInsights = household.spendingInsights;
@@ -79,64 +86,71 @@ class OrchestratorAgent {
       });
     }
 
-    // NBA 3: Government scheme action — only confirmed eligibility can carry a dollar value.
-    const unclaimedGrants = grantsRes.grants.filter(g => g.status.includes('ELIGIBLE'));
-    if (unclaimedGrants.length > 0) {
-      const topGrant = unclaimedGrants[0];
+    // NBA 3: Government support that is available now (estimates from published rules).
+    const availableSupport = grantsRes.grants.filter(g => g.status === 'AVAILABLE' && g.amount > 0);
+    if (availableSupport.length > 0) {
+      const topGrant = availableSupport.sort((a, b) => b.amount - a.amount)[0];
       nextBestActions.push({
         id: `nba_grant_${topGrant.id}`,
-        title: `Claim S$${topGrant.amount.toLocaleString()} via ${topGrant.name}`,
+        title: `Unlock up to S$${topGrant.amount.toLocaleString()} via ${topGrant.name}`,
         category: 'GOVERNMENT_SCHEME',
-        confidence: 0.97,
-        impact: `+S$${topGrant.amount.toLocaleString()} Unlocked Benefits`,
+        confidence: 0.9,
+        impact: `+S$${topGrant.amount.toLocaleString()} estimated ${topGrant.restricted ? 'restricted' : 'flexible'} support`,
         reason: topGrant.reason,
-        urgency: 'HIGH',
-        badge: 'Government Funded',
+        urgency: topGrant.nextDate ? 'MEDIUM' : 'LOW',
+        badge: 'Government Support',
         actionPayload: {
           type: 'CLAIM_GRANT',
           grantId: topGrant.id,
-          actionStep: topGrant.action
+          actionStep: topGrant.action,
+          deadline: topGrant.nextDate
         }
-      });
-    } else if (grantsRes.grants.some(g => g.status === 'VERIFY_ELIGIBILITY')) {
-      const review = grantsRes.grants.find(g => g.status === 'VERIFY_ELIGIBILITY');
-      nextBestActions.push({
-        id: 'nba_government_support_review',
-        title: 'Verify Family Support Eligibility',
-        category: 'GOVERNMENT_SCHEME',
-        confidence: 0.99,
-        impact: 'Avoid counting unverified benefits in the plan',
-        reason: review.reason,
-        urgency: 'LOW',
-        badge: 'Check Eligibility',
-        actionPayload: { type: 'REVIEW_ELIGIBILITY', actionStep: review.action }
       });
     }
 
-    // NBA 4: Goal Surplus Allocation
+    // NBA 4: Goal Surplus Allocation from the optimiser's recommended plan
+    const recommendedPlan = optimiserService.optimise(household).plans.find(plan => plan.recommended);
+
+    // NBA 6: Advisory pathway, triggered by planning complexity rather than wealth alone
+    const advisory = growService.advisory(household, recommendedPlan, healthRes);
+    if (advisory.recommended) {
+      nextBestActions.push({
+        id: 'nba_advisory_review',
+        title: advisory.title,
+        category: 'ADVISORY',
+        confidence: 0.9,
+        impact: 'One conversation covering home, protection and education',
+        reason: `${advisory.reason} ${advisory.flags.map(flag => flag.label).join('; ')}.`,
+        urgency: 'LOW',
+        badge: 'Human Advice',
+        actionPayload: { type: 'BOOK_ADVISER', flags: advisory.flags.map(flag => flag.id) }
+      });
+    }
     nextBestActions.push({
       id: 'nba_surplus_allocation',
-      title: `Automate Monthly S$${monthlySurplus.toLocaleString()} Surplus Routing`,
+      title: `Set Up S$${monthlySurplus.toLocaleString()} of Monthly Transfers You Approve`,
       category: 'MILESTONE_EXECUTION',
       confidence: 0.96,
-      impact: 'Fund three family goals from one monthly surplus',
-      reason: 'Routes 50% to the home-loan reserve, 30% to children’s education, and 20% to retirement and liquid wealth.',
+      impact: `Funds ${recommendedPlan.goals.length} family goals from one monthly surplus`,
+      reason: `${recommendedPlan.name} plan: S$${recommendedPlan.routes.housing}/month home, S$${recommendedPlan.routes.education}/month education, S$${recommendedPlan.routes.emergency}/month emergency buffer and S$${recommendedPlan.routes.wealth}/month retirement, stepping up as earlier goals finish.`,
       urgency: 'MEDIUM',
-      badge: 'Automated Growth',
+      badge: 'You Approve Each Transfer',
       actionPayload: {
         type: 'ALLOCATION_ROUTE',
+        planId: recommendedPlan.id,
         splits: {
-          housingGoal: Number((monthlySurplus * 0.5).toFixed(0)),
-          childGoal: Number((monthlySurplus * 0.3).toFixed(0)),
-          wealthGrowth: Number((monthlySurplus * 0.2).toFixed(0))
+          housingGoal: recommendedPlan.routes.housing,
+          childGoal: recommendedPlan.routes.education,
+          emergencyBuffer: recommendedPlan.routes.emergency,
+          wealthGrowth: recommendedPlan.routes.wealth
         }
       }
     });
 
     const benefitSummary = grantsRes.totalGrantValue > 0
-      ? `confirmed S$${grantsRes.totalGrantValue.toLocaleString()} in eligible benefits`
-      : 'flagged government support for eligibility verification without counting it as plan funding';
-    const deterministicSummary = `OWNLYplans completed financial diagnostics for ${household.name}, ${benefitSummary}, identified S$${healthRes.metrics.idleCashIdentified.toLocaleString()} in potentially idle cash, and assessed ${goalsRes.goals.length} family goals.`;
+      ? `estimated S$${grantsRes.totalGrantValue.toLocaleString()} in available or upcoming government support`
+      : 'found no further government support from the consented data';
+    const deterministicSummary = `OWNLYplans completed financial diagnostics for ${household.name}, ${benefitSummary}, identified S$${healthRes.metrics.idleCashIdentified.toLocaleString()} in spare cash, and assessed ${goalsRes.goals.length} family goals.`;
     const fallbackNarrative = {
       executiveSummary: deterministicSummary,
       familyPriorities: ['Prepare for the BTO purchase', 'Fund Percy’s education', 'Strengthen long-term family wealth'],
@@ -149,9 +163,24 @@ class OrchestratorAgent {
         fallbackNarrative
       );
 
-    const aiSynthesis = narrativeResult.data && typeof narrativeResult.data.executiveSummary === 'string'
+    // Every figure in AI-written text must trace back to the engine, or the AI text is dropped.
+    const candidate = narrativeResult.data && typeof narrativeResult.data.executiveSummary === 'string'
       ? narrativeResult.data
       : fallbackNarrative;
+    const aiWritten = narrativeResult.source !== 'DETERMINISTIC_FALLBACK' && candidate !== fallbackNarrative;
+    const check = aiWritten
+      ? numberCheck.verify(
+        [candidate.executiveSummary, ...(candidate.familyPriorities || []), ...(candidate.watchouts || [])].join(' '),
+        household, healthRes, goalsRes, grantsRes, nextBestActions
+      )
+      : { checked: 0, mismatches: [], passed: true };
+    const aiSynthesis = check.passed ? candidate : fallbackNarrative;
+    const verification = {
+      checkedAgainst: 'DETERMINISTIC_RULE_ENGINE',
+      figuresChecked: check.checked,
+      mismatches: check.mismatches,
+      outcome: !aiWritten ? 'ENGINE_TEXT' : check.passed ? 'AI_TEXT_VERIFIED' : 'AI_TEXT_REPLACED'
+    };
 
     const synthesis = {
       householdId: household.id,
@@ -168,8 +197,9 @@ class OrchestratorAgent {
       nextBestActions,
       executiveSummary: aiSynthesis.executiveSummary,
       aiSynthesis,
-      intelligenceSource: narrativeResult.source,
-      calculationSource: 'DETERMINISTIC_RULE_ENGINE'
+      intelligenceSource: aiWritten && check.passed ? narrativeResult.source : 'DETERMINISTIC_FALLBACK',
+      calculationSource: 'DETERMINISTIC_RULE_ENGINE',
+      verification
     };
 
     return synthesis;
@@ -180,12 +210,19 @@ class OrchestratorAgent {
     const fullAnalysis = await this.runFullAnalysis(household, { skipNarrative: true });
     const geminiReply = await geminiService.generateChatResponse(fullAnalysis, history, message);
 
+    // Numbers the family typed themselves are allowed to be repeated back.
+    let replacedCheck = null;
     if (geminiReply) {
-      return {
-        reply: geminiReply,
-        source: 'GEMINI_LLM_MULTI_AGENT',
-        confidence: 0.96
-      };
+      const check = numberCheck.verify(geminiReply, fullAnalysis, household, message);
+      if (check.passed) {
+        return {
+          reply: geminiReply,
+          source: 'GEMINI_LLM_MULTI_AGENT',
+          confidence: 0.96,
+          verification: { figuresChecked: check.checked, mismatches: [], outcome: 'AI_TEXT_VERIFIED' }
+        };
+      }
+      replacedCheck = check;
     }
 
     // Deterministic Chat responses for high-confidence financial Q&A
@@ -193,25 +230,28 @@ class OrchestratorAgent {
     let reply = "";
 
     if (lower.includes('mmf') || lower.includes('lionglobal') || lower.includes('sweep') || lower.includes('yield') || lower.includes('interest')) {
-      reply = `The analysis found S$${fullAnalysis.agents.health.metrics.idleCashIdentified.toLocaleString()} above operational cash thresholds. Moving it to a higher-yield option could improve returns, but the quoted rate and liquidity terms must be verified before execution and the S$${household.financials.emergencyFund.toLocaleString()} emergency floor stays untouched.`;
+      reply = `Your S$${household.financials.emergencyFund.toLocaleString()} emergency floor earns base interest today. Holding it in a T+0 money market fund could improve returns while keeping it available; the quoted rate and liquidity terms must be verified before execution. Beyond that floor and a month of working cash, S$${fullAnalysis.agents.health.metrics.idleCashIdentified.toLocaleString()} is spare.`;
     } else if (lower.includes('grant') || lower.includes('cda') || lower.includes('baby') || lower.includes('ehg') || lower.includes('housing grant')) {
       reply = fullAnalysis.totalGrantsAvailable > 0
-        ? `We confirmed **S$${fullAnalysis.totalGrantsAvailable.toLocaleString()}** in support from the available household data. Review each scheme’s current agency criteria before acting.`
-        : `No grant value is included in your plan yet. Alex and Lila’s sandbox profiles establish citizenship, but current income, property, child and application criteria still need to be verified before support is counted.`;
+        ? `About **S$${fullAnalysis.totalGrantsAvailable.toLocaleString()}** in support is still available or upcoming, estimated from published scheme rules and your MyInfo data. Restricted funds such as CDA money are kept apart from flexible cash. Confirm with the agency before acting.`
+        : `No further government support was found from your MyInfo data. Schemes you are not eligible for are listed with the reason.`;
     } else if (lower.includes('bto') || lower.includes('downpayment') || lower.includes('tengah') || lower.includes('house') || lower.includes('milestone')) {
       reply = String(household.housing.type || '').includes('BTO')
-        ? `Your BTO purchase fund currently has S$${Number(household.housing.downpaymentAccumulated || 0).toLocaleString()} toward its S$${Number(household.housing.downpaymentRequired || 0).toLocaleString()} target. OWNLYplan tests the remaining amount against your selected 5- or 10-year horizon.`
+        ? `Your BTO purchase fund currently has S$${Number(household.housing.downpaymentAccumulated || 0).toLocaleString()} toward its S$${Number(household.housing.downpaymentRequired || 0).toLocaleString()} target. OWNLYplan plans the remaining amount against the key collection date you confirmed.`
         : `Your current home-loan instalment is S$${Number(household.housing.monthlyLoanInstalment || 0).toLocaleString()}/month. OWNLYplan uses a 12-month mortgage-payment reserve as the home goal and protects the separate S$${household.financials.emergencyFund.toLocaleString()} emergency floor.`;
     } else if (lower.includes('protection') || lower.includes('insurance') || lower.includes('great eastern') || lower.includes('gap')) {
       reply = `Our Household Health Agent identified a S$${(fullAnalysis.agents.health.metrics.protectionGap || 160000).toLocaleString()} life coverage gap against your outstanding mortgage commitments. Adding Great Eastern FlexiLife Term closes this 100% for approximately S$28/month.`;
     } else {
-      reply = `Based on ${household.name}'s linked finances, you have **S$${household.financials.monthlySurplus.toLocaleString()}/month** in surplus. No unverified government support is counted in the plan. Would you like to explore the home reserve, education, retirement, or protection goal?`;
+      reply = `Based on ${household.name}'s linked finances, you have **S$${household.financials.monthlySurplus.toLocaleString()}/month** in surplus. Government support is shown as an estimate until confirmed. Would you like to explore the home reserve, education, retirement, or protection goal?`;
     }
 
     return {
       reply,
       source: 'DETERMINISTIC_EXPLAINABLE_ENGINE',
-      confidence: 0.98
+      confidence: 0.98,
+      verification: replacedCheck
+        ? { figuresChecked: replacedCheck.checked, mismatches: replacedCheck.mismatches, outcome: 'AI_TEXT_REPLACED' }
+        : { figuresChecked: 0, mismatches: [], outcome: 'ENGINE_TEXT' }
     };
   }
 }

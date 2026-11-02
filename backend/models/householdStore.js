@@ -8,6 +8,14 @@ class HouseholdStore {
     this.activePersonaId = 'alex_family';
     this.auditLogs = {};
     this.familyInvites = {};
+    this.proposals = {};
+    this.scenarioLogs = {};
+    this.goalInputs = {};
+    this.customPlans = {};
+    this.contributions = {};
+    this.goalsDone = {};
+    this.planAgreements = {};
+    this.alertDecisions = {};
     this.init();
   }
 
@@ -106,15 +114,208 @@ class HouseholdStore {
 
     if (approved) {
       record.members.forEach((m) => {
-        m.status = 'APPROVED';
+        if (m.status === 'PENDING') m.status = 'APPROVED';
       });
+      if (!record.consentApplied) {
+        record.consentApplied = true;
+        this.applyPartnerConsent(householdId);
+      }
     }
 
     return {
       invitedAt: record.invitedAt,
-      allApproved: approved,
+      allApproved: approved && record.members.every((m) => m.status === 'APPROVED'),
       members: record.members
     };
+  }
+
+  // The partner's own choices from their app (simulated): only the accounts they pick are shared.
+  applyPartnerConsent(householdId) {
+    const household = this.getHousehold(householdId);
+    const choices = household?.partner?.consentChoices;
+    if (!choices) return;
+    household.accounts.ocbc
+      .filter((account) => account.owner === 'partner' && choices.shareAccounts.includes(account.number))
+      .forEach((account) => { account.sharing = 'FULL'; });
+    // The amount they chose to put in, set in their own app when they accepted.
+    if (choices.contribution && !this.getContributions(householdId).partner) {
+      this.saveContribution(householdId, 'partner', { ...choices.contribution, confirmedBy: 'partner', confirmedAt: new Date().toISOString() });
+    }
+    this.recordAudit(householdId, 'PARTNER_CONSENT_APPLIED', { sharedAccounts: choices.shareAccounts.length });
+  }
+
+  /**
+   * Anyone can leave. When the partner leaves, their income, accounts, CPF and personal goals stop
+   * being used, any open proposal or custom plan is withdrawn, and the active plan needs review.
+   */
+  partnerLeaves(householdId = this.activePersonaId) {
+    const household = this.getHousehold(householdId);
+    if (!household?.partner || household.partner.left) return null;
+    const { partner, financials } = household;
+    partner.left = true;
+    financials.householdTakeHome -= Number(partner.monthlyTakeHome || 0);
+    financials.householdMonthlyIncome -= Number(partner.monthlyGrossIncome || 0);
+    financials.monthlySurplus = financials.householdTakeHome - financials.householdMonthlyExpenses;
+    const invite = this.familyInvites[householdId];
+    (invite?.members || []).filter((m) => m.relation === 'Spouse').forEach((m) => { m.status = 'LEFT'; });
+    delete this.proposals[householdId];
+    delete this.customPlans[householdId];
+    delete this.planAgreements[householdId];
+    if (this.contributions[householdId]) delete this.contributions[householdId].partner;
+    const { retirement_partner: removedGoal, ...goals } = this.getGoalInputs(householdId);
+    this.goalInputs[householdId] = goals;
+    if (household.activePlan) household.activePlan.status = 'NEEDS_REVIEW';
+    household.reviewNote = `${partner.name.split(' ')[0]} left. Shared commitments were planned with two incomes; review them now.`;
+    this.recordAudit(householdId, 'MEMBER_LEFT', { member: 'partner' });
+    return household;
+  }
+
+  getContributions(householdId = this.activePersonaId) {
+    return this.contributions[householdId] || {};
+  }
+
+  saveContribution(householdId = this.activePersonaId, member, choice) {
+    this.contributions[householdId] = { ...this.getContributions(householdId), [member]: choice };
+    this.recordAudit(householdId, 'CONTRIBUTION_SET', { member, ...choice });
+    return choice;
+  }
+
+  clearCustomPlan(householdId = this.activePersonaId) {
+    delete this.customPlans[householdId];
+    this.recordAudit(householdId, 'CUSTOM_PLAN_CLEARED', {});
+  }
+
+  getAlertDecisions(householdId = this.activePersonaId) {
+    return this.alertDecisions[householdId] || {};
+  }
+
+  saveAlertDecision(householdId = this.activePersonaId, alertId, decision, member) {
+    this.alertDecisions[householdId] = { ...this.getAlertDecisions(householdId), [alertId]: decision };
+    this.recordAudit(householdId, 'ALERT_DECISION', { alertId, decision, member });
+  }
+
+  getPlanAgreement(householdId = this.activePersonaId) {
+    return this.planAgreements[householdId] || {};
+  }
+
+  savePlanAgreement(householdId = this.activePersonaId, agreement) {
+    this.planAgreements[householdId] = agreement;
+    this.recordAudit(householdId, 'PLAN_APPROVALS', agreement);
+  }
+
+  // Both adults approved the family plan: recorded as an agreed proposal.
+  recordAgreement(householdId = this.activePersonaId, { planId, planName, routes }) {
+    const record = {
+      id: `prop-${Date.now().toString(36)}`,
+      proposedAt: new Date().toISOString(),
+      status: 'AGREED',
+      planId,
+      planName,
+      routes,
+      finalPlanId: planId,
+      response: { decision: 'AGREED', message: 'Both of you approved the plan.' }
+    };
+    this.proposals[householdId] = record;
+    this.recordAudit(householdId, 'PLAN_AGREED', { proposalId: record.id, planId });
+    return record;
+  }
+
+  getCustomPlan(householdId = this.activePersonaId) {
+    return this.customPlans[householdId] || null;
+  }
+
+  saveCustomPlan(householdId = this.activePersonaId, definition) {
+    this.customPlans[householdId] = definition;
+    this.recordAudit(householdId, 'CUSTOM_PLAN_SAVED', definition);
+  }
+
+  getGoalInputs(householdId = this.activePersonaId) {
+    return this.goalInputs[householdId] || {};
+  }
+
+  saveGoalInput(householdId = this.activePersonaId, key, input) {
+    this.goalInputs[householdId] = { ...this.getGoalInputs(householdId), [key]: input };
+    this.recordAudit(householdId, input.enabled === false ? 'GOAL_SWITCHED_OFF' : 'GOAL_CONFIRMED', { key, by: input.confirmedBy });
+    return input;
+  }
+
+  getGoalsDone(householdId = this.activePersonaId) {
+    return this.goalsDone[householdId] || {};
+  }
+
+  setGoalsDone(householdId = this.activePersonaId, member, done) {
+    this.goalsDone[householdId] = { ...this.getGoalsDone(householdId), [member]: done };
+    this.recordAudit(householdId, 'GOALS_DONE', { member });
+  }
+
+  clearGoalsDone(householdId = this.activePersonaId) {
+    delete this.goalsDone[householdId];
+  }
+
+  removeGoalInput(householdId = this.activePersonaId, key) {
+    const { [key]: removed, ...rest } = this.getGoalInputs(householdId);
+    this.goalInputs[householdId] = rest;
+    if (removed) this.recordAudit(householdId, 'GOAL_REMOVED', { key });
+  }
+
+  recordScenario(householdId = this.activePersonaId, scenario) {
+    if (!this.scenarioLogs[householdId]) {
+      this.scenarioLogs[householdId] = [];
+    }
+    this.scenarioLogs[householdId].push({ exploredAt: new Date().toISOString(), ...scenario });
+    this.scenarioLogs[householdId] = this.scenarioLogs[householdId].slice(-10);
+  }
+
+  getScenarios(householdId = this.activePersonaId) {
+    return this.scenarioLogs[householdId] || [];
+  }
+
+  /**
+   * Record a plan proposal for the partner. Like family invites, the partner's prepared
+   * response is revealed once FAMILY_APPROVAL_DELAY_MS has elapsed.
+   */
+  createProposal(householdId = this.activePersonaId, proposal) {
+    const record = {
+      id: `prop-${Date.now().toString(36)}`,
+      proposedAt: new Date().toISOString(),
+      status: 'PENDING',
+      response: null,
+      ...proposal
+    };
+    this.proposals[householdId] = record;
+    this.recordAudit(householdId, 'PLAN_PROPOSED', { proposalId: record.id, planId: record.planId });
+    return this.publicProposal(record);
+  }
+
+  getProposal(householdId = this.activePersonaId) {
+    const record = this.proposals[householdId];
+    if (!record) return null;
+
+    const elapsed = Date.now() - new Date(record.proposedAt).getTime();
+    if (record.status === 'PENDING' && elapsed >= FAMILY_APPROVAL_DELAY_MS) {
+      record.response = record.partnerResponse;
+      record.status = record.partnerResponse.decision;
+      // Agreeing to the plan confirms the partner's own share, unless they already set one.
+      if (record.status === 'AGREED' && record.partnerContribution && !this.getContributions(householdId).partner) {
+        this.saveContribution(householdId, 'partner', { ...record.partnerContribution, confirmedBy: 'partner', confirmedAt: new Date().toISOString() });
+      }
+      this.recordAudit(householdId, 'PLAN_PARTNER_RESPONSE', { proposalId: record.id, decision: record.status });
+    }
+    return this.publicProposal(record);
+  }
+
+  resolveProposal(householdId = this.activePersonaId, finalPlanId) {
+    const record = this.proposals[householdId];
+    if (!record || record.status === 'PENDING') return null;
+    record.status = 'AGREED';
+    record.finalPlanId = finalPlanId || record.planId;
+    this.recordAudit(householdId, 'PLAN_AGREED', { proposalId: record.id, planId: record.finalPlanId });
+    return this.publicProposal(record);
+  }
+
+  publicProposal(record) {
+    const { partnerResponse, partnerContribution, ...visible } = record;
+    return visible;
   }
 
   approveSurplusPlan(householdId = this.activePersonaId, planDetails) {
@@ -170,6 +371,14 @@ class HouseholdStore {
       this.init();
     }
     this.familyInvites = {};
+    this.proposals = {};
+    this.scenarioLogs = {};
+    this.goalInputs = {};
+    this.customPlans = {};
+    this.contributions = {};
+    this.goalsDone = {};
+    this.planAgreements = {};
+    this.alertDecisions = {};
     return true;
   }
 }

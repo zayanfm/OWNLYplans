@@ -12,7 +12,7 @@ const appConfig = {
   featuresEnabled: {
     dynamicIsland: true,
     aiPlanner: true,
-    sgfindexSimulation: true,
+    ocbcWorkspace: true,
   },
 };
 
